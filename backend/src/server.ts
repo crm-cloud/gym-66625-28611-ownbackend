@@ -23,6 +23,16 @@ import branchRoutes from './routes/branch.routes';
 import trainerRoutes from './routes/trainer.routes';
 import membershipRoutes from './routes/membership.routes';
 import classRoutes from './routes/class.routes';
+import productRoutes from './routes/product.routes';
+import orderRoutes from './routes/order.routes';
+import attendanceRoutes from './routes/attendance.routes';
+import transactionRoutes from './routes/transaction.routes';
+import lockerRoutes from './routes/locker.routes';
+import equipmentRoutes from './routes/equipment.routes';
+import dietWorkoutRoutes from './routes/diet-workout.routes';
+import feedbackRoutes from './routes/feedback.routes';
+import announcementRoutes from './routes/announcement.routes';
+import referralRoutes from './routes/referral.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -83,6 +93,16 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/trainers', trainerRoutes);
 app.use('/api/membership-plans', membershipRoutes);
 app.use('/api/classes', classRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/lockers', lockerRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/plans', dietWorkoutRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/referrals', referralRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
