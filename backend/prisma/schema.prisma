@@ -1,0 +1,473 @@
+// Prisma Schema for FitVerse Backend
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== CORE USER MODELS =====
+
+model profiles {
+  user_id        String    @id @default(uuid())
+  email          String    @unique
+  full_name      String?
+  phone          String?
+  date_of_birth  DateTime?
+  gender         String?
+  address        Json?
+  avatar_url     String?
+  password_hash  String
+  email_verified Boolean   @default(false)
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relations
+  user_roles       user_roles[]
+  members          members[]
+  trainer_profiles trainer_profiles[]
+  feedback         feedback[]
+
+  @@map("profiles")
+}
+
+model user_roles {
+  id         String   @id @default(uuid())
+  user_id    String
+  role       String
+  team_role  String?
+  gym_id     String?
+  branch_id  String?
+  created_at DateTime @default(now())
+
+  // Relations
+  profile profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  gym     gyms?    @relation(fields: [gym_id], references: [id])
+  branch  branches? @relation(fields: [branch_id], references: [id])
+
+  @@unique([user_id, role])
+  @@map("user_roles")
+}
+
+// ===== GYM & BRANCH MODELS =====
+
+model gyms {
+  id                String   @id @default(uuid())
+  name              String
+  subscription_plan String
+  status            String   @default("active")
+  max_branches      Int      @default(1)
+  max_trainers      Int      @default(10)
+  max_members       Int      @default(100)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Relations
+  branches   branches[]
+  user_roles user_roles[]
+
+  @@map("gyms")
+}
+
+model branches {
+  id              String   @id @default(uuid())
+  gym_id          String
+  name            String
+  status          String   @default("active")
+  capacity        Int      @default(100)
+  current_members Int      @default(0)
+  address         Json?
+  contact         Json?
+  hours           Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  gym              gyms               @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  members          members[]
+  trainer_profiles trainer_profiles[]
+  gym_classes      gym_classes[]
+  equipment        equipment[]
+  lockers          lockers[]
+  user_roles       user_roles[]
+
+  @@map("branches")
+}
+
+// ===== MEMBER MODELS =====
+
+model members {
+  id                    String    @id @default(uuid())
+  user_id               String
+  branch_id             String
+  member_number         String    @unique
+  first_name            String
+  last_name             String
+  email                 String
+  phone                 String?
+  date_of_birth         DateTime?
+  gender                String?
+  address               Json?
+  emergency_contact     Json?
+  medical_info          Json?
+  status                String    @default("active")
+  joined_date           DateTime  @default(now())
+  last_attendance       DateTime?
+  photo_url             String?
+  referral_code         String?   @unique
+  referred_by_member_id String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  // Relations
+  profile              profiles               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  branch               branches               @relation(fields: [branch_id], references: [id])
+  member_memberships   member_memberships[]
+  invoices             invoices[]
+  transactions         transactions[]
+  attendance           attendance[]
+  member_measurements  member_measurements[]
+  trainer_assignments  trainer_assignments[]
+  class_bookings       class_bookings[]
+  locker_assignments   locker_assignments[]
+  feedback             feedback[]
+  referrals_given      referrals[]            @relation("referrer")
+  referrals_received   referrals[]            @relation("referred")
+
+  @@map("members")
+}
+
+model membership_plans {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String?
+  duration_months    Int
+  price              Decimal  @db.Decimal(10, 2)
+  features           Json?
+  is_active          Boolean  @default(true)
+  max_classes        Int?
+  max_trainer_sessions Int?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  member_memberships member_memberships[]
+
+  @@map("membership_plans")
+}
+
+model member_memberships {
+  id                String    @id @default(uuid())
+  member_id         String
+  membership_plan_id String
+  start_date        DateTime
+  end_date          DateTime
+  status            String    @default("active")
+  auto_renew        Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relations
+  member          members         @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  membership_plan membership_plans @relation(fields: [membership_plan_id], references: [id])
+
+  @@map("member_memberships")
+}
+
+// ===== TRAINER MODELS =====
+
+model trainer_profiles {
+  id              String   @id @default(uuid())
+  user_id         String   @unique
+  branch_id       String
+  name            String
+  specializations Json?
+  certifications  Json?
+  bio             String?
+  hourly_rate     Decimal? @db.Decimal(10, 2)
+  is_active       Boolean  @default(true)
+  photo_url       String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  profile              profiles              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  branch               branches              @relation(fields: [branch_id], references: [id])
+  gym_classes          gym_classes[]
+  trainer_assignments  trainer_assignments[]
+
+  @@map("trainer_profiles")
+}
+
+model trainer_assignments {
+  id         String   @id @default(uuid())
+  trainer_id String
+  member_id  String
+  start_date DateTime
+  end_date   DateTime?
+  status     String   @default("active")
+  notes      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  trainer trainer_profiles @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+  member  members          @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("trainer_assignments")
+}
+
+// ===== CLASS MODELS =====
+
+model gym_classes {
+  id          String   @id @default(uuid())
+  branch_id   String
+  trainer_id  String
+  name        String
+  description String?
+  start_time  DateTime
+  end_time    DateTime
+  capacity    Int      @default(20)
+  status      String   @default("scheduled")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  branch         branches         @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  trainer        trainer_profiles @relation(fields: [trainer_id], references: [id])
+  class_bookings class_bookings[]
+
+  @@map("gym_classes")
+}
+
+model class_bookings {
+  id             String   @id @default(uuid())
+  class_id       String
+  member_id      String
+  status         String   @default("confirmed")
+  booked_at      DateTime @default(now())
+  checked_in_at  DateTime?
+  cancelled_at   DateTime?
+  cancellation_reason String?
+
+  // Relations
+  gym_class gym_classes @relation(fields: [class_id], references: [id], onDelete: Cascade)
+  member    members     @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([class_id, member_id])
+  @@map("class_bookings")
+}
+
+// ===== FINANCE MODELS =====
+
+model invoices {
+  id          String   @id @default(uuid())
+  member_id   String
+  invoice_number String @unique
+  amount      Decimal  @db.Decimal(10, 2)
+  tax         Decimal  @db.Decimal(10, 2) @default(0)
+  total       Decimal  @db.Decimal(10, 2)
+  status      String   @default("pending")
+  due_date    DateTime
+  paid_date   DateTime?
+  items       Json?
+  notes       String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  member       members        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  transactions transactions[]
+
+  @@map("invoices")
+}
+
+model transactions {
+  id             String   @id @default(uuid())
+  member_id      String
+  invoice_id     String?
+  amount         Decimal  @db.Decimal(10, 2)
+  type           String
+  payment_method String?
+  status         String   @default("completed")
+  description    String?
+  transaction_date DateTime @default(now())
+  created_at     DateTime @default(now())
+
+  // Relations
+  member  members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  invoice invoices? @relation(fields: [invoice_id], references: [id])
+
+  @@map("transactions")
+}
+
+// ===== EQUIPMENT MODELS =====
+
+model equipment {
+  id           String   @id @default(uuid())
+  branch_id    String
+  name         String
+  category     String
+  status       String   @default("operational")
+  purchase_date DateTime?
+  last_maintenance DateTime?
+  next_maintenance DateTime?
+  notes        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // Relations
+  branch branches @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@map("equipment")
+}
+
+// ===== LOCKER MODELS =====
+
+model lockers {
+  id          String   @id @default(uuid())
+  branch_id   String
+  number      String
+  name        String?
+  status      String   @default("available")
+  monthly_fee Decimal  @db.Decimal(10, 2) @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  branch             branches             @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  locker_assignments locker_assignments[]
+
+  @@unique([branch_id, number])
+  @@map("lockers")
+}
+
+model locker_assignments {
+  id         String   @id @default(uuid())
+  locker_id  String
+  member_id  String
+  start_date DateTime
+  end_date   DateTime
+  status     String   @default("active")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  locker lockers @relation(fields: [locker_id], references: [id], onDelete: Cascade)
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("locker_assignments")
+}
+
+// ===== ATTENDANCE MODELS =====
+
+model attendance {
+  id         String   @id @default(uuid())
+  member_id  String
+  check_in   DateTime @default(now())
+  check_out  DateTime?
+  created_at DateTime @default(now())
+
+  // Relations
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("attendance")
+}
+
+// ===== MEASUREMENT MODELS =====
+
+model member_measurements {
+  id            String   @id @default(uuid())
+  member_id     String
+  measured_by   String
+  measured_date DateTime
+  weight        Decimal? @db.Decimal(5, 2)
+  height        Decimal? @db.Decimal(5, 2)
+  body_fat      Decimal? @db.Decimal(5, 2)
+  muscle_mass   Decimal? @db.Decimal(5, 2)
+  measurements  Json?
+  notes         String?
+  created_at    DateTime @default(now())
+
+  // Relations
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("member_measurements")
+}
+
+// ===== REFERRAL MODELS =====
+
+model referrals {
+  id               String   @id @default(uuid())
+  referrer_id      String
+  referred_id      String
+  referral_code    String
+  status           String   @default("pending")
+  reward_amount    Decimal? @db.Decimal(10, 2)
+  reward_status    String?
+  created_at       DateTime @default(now())
+  completed_at     DateTime?
+
+  // Relations
+  referrer members @relation("referrer", fields: [referrer_id], references: [id], onDelete: Cascade)
+  referred members @relation("referred", fields: [referred_id], references: [id], onDelete: Cascade)
+
+  @@map("referrals")
+}
+
+// ===== FEEDBACK MODELS =====
+
+model feedback {
+  id         String   @id @default(uuid())
+  member_id  String
+  user_id    String
+  branch_id  String?
+  rating     Int
+  category   String
+  message    String
+  status     String   @default("pending")
+  response   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  member members  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  user   profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("feedback")
+}
+
+// ===== PRODUCTS MODELS =====
+
+model products {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  image_url   String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("products")
+}
+
+// ===== SETTINGS MODELS =====
+
+model system_settings {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value      Json
+  category   String
+  description String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("system_settings")
+}

@@ -2,24 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiError } from './errorHandler';
 
 /**
- * Authorization middleware - Check user role
- * Usage: authorize(['admin', 'manager'])
+ * Authorization middleware - Check if user has required role
  */
 export function authorize(allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new ApiError('Authentication required', 401));
+      return next(new ApiError('Not authenticated', 401));
     }
 
     const userRole = req.user.role;
-
-    if (!allowedRoles.includes(userRole)) {
-      return next(
-        new ApiError(
-          `Access denied. Required roles: ${allowedRoles.join(', ')}`,
-          403
-        )
-      );
+    
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return next(new ApiError('Insufficient permissions', 403));
     }
 
     next();
@@ -27,21 +21,20 @@ export function authorize(allowedRoles: string[]) {
 }
 
 /**
- * Check if user owns the resource or is admin
- * Usage: checkOwnership('userId') - checks req.params.userId matches req.user.userId
+ * Check if user owns the resource or is an admin
  */
 export function checkOwnership(userIdParam: string = 'id') {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new ApiError('Authentication required', 401));
+      return next(new ApiError('Not authenticated', 401));
     }
 
     const resourceUserId = req.params[userIdParam];
-    const currentUserId = req.user.userId;
     const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+    const isOwner = req.user.userId === resourceUserId;
 
-    if (resourceUserId !== currentUserId && !isAdmin) {
-      return next(new ApiError('Access denied. You can only access your own resources', 403));
+    if (!isAdmin && !isOwner) {
+      return next(new ApiError('Access denied', 403));
     }
 
     next();
@@ -49,26 +42,23 @@ export function checkOwnership(userIdParam: string = 'id') {
 }
 
 /**
- * Check if user has access to specific branch
+ * Check if user can access branch resources
  */
 export function checkBranchAccess() {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new ApiError('Authentication required', 401));
+      return next(new ApiError('Not authenticated', 401));
     }
 
-    const requestedBranchId = req.params.branchId || req.body.branchId || req.query.branchId;
-    const userBranchId = req.user.branchId;
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
-
-    // Admins have access to all branches
-    if (isAdmin) {
+    // Admins and super admins can access all branches
+    if (req.user.role === 'admin' || req.user.role === 'super_admin') {
       return next();
     }
 
-    // Check if user's branch matches requested branch
-    if (requestedBranchId && userBranchId !== requestedBranchId) {
-      return next(new ApiError('Access denied. You can only access your assigned branch', 403));
+    const branchId = req.params.branchId || req.body.branch_id || req.query.branchId;
+    
+    if (branchId && req.user.branchId !== branchId) {
+      return next(new ApiError('Cannot access resources from other branches', 403));
     }
 
     next();
