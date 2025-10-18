@@ -39,6 +39,8 @@ import roleRoutes from './routes/role.routes';
 import paymentRoutes from './routes/payment.routes';
 import subscriptionRoutes from './routes/subscription.routes';
 import invoiceRoutes from './routes/invoice.routes';
+// Phase 9-10: Trainer Advanced & Multi-Tenancy
+import assignmentRoutes from './routes/assignment.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -115,6 +117,8 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/invoices', invoiceRoutes);
+// Phase 9-10: Trainer Advanced & Multi-Tenancy
+app.use('/api/assignments', assignmentRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
