@@ -1,90 +1,172 @@
-import { useSupabaseQuery, useSupabaseMutation } from './useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/axios';
+import { toast } from '@/hooks/use-toast';
 
-interface CreateTrainerData {
-  full_name: string;
-  email: string;
-  phone: string;
-  branch_id: string;
-  role: 'trainer';
+export const useTrainers = (filters?: { 
+  branchId?: string; 
   specialties?: string[];
-  is_active?: boolean;
-  profile_photo?: string;
-}
+  status?: string;
+  search?: string;
+}) => {
+  return useQuery({
+    queryKey: ['trainers', filters?.branchId ?? 'all', filters?.specialties ?? [], filters?.status ?? 'all', filters?.search ?? ''],
+    queryFn: async () => {
+      const params: any = {};
+      
+      if (filters?.branchId) {
+        params.branch_id = filters.branchId;
+      }
+      if (filters?.specialties && filters.specialties.length > 0) {
+        params.specialties = filters.specialties.join(',');
+      }
+      if (filters?.status) {
+        params.status = filters.status;
+      }
+      if (filters?.search) {
+        params.search = filters.search;
+      }
 
-export const useTrainers = () => {
-  return useSupabaseQuery(
-    ['trainers'],
-    async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          branches!branch_id (
-            name
-          )
-        `)
-        .eq('role', 'trainer')
-        .eq('is_active', true)
-        .order('full_name');
-
-      if (error) throw error;
-      return data || [];
-    }
-  );
+      const response = await api.get('/api/trainers', { params });
+      return response.data;
+    },
+  });
 };
 
 export const useTrainerById = (trainerId: string) => {
-  return useSupabaseQuery(
-    ['trainers', trainerId],
-    async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          branches!branch_id (
-            name
-          )
-        `)
-        .eq('user_id', trainerId)
-        .eq('role', 'trainer')
-        .single();
-
-      if (error) throw error;
-      return data;
+  return useQuery({
+    queryKey: ['trainers', trainerId],
+    queryFn: async () => {
+      const response = await api.get(`/api/trainers/${trainerId}`);
+      return response.data;
     },
-    {
-      enabled: !!trainerId
-    }
-  );
+    enabled: !!trainerId
+  });
+};
+
+export const useTrainerStats = (trainerId: string) => {
+  return useQuery({
+    queryKey: ['trainer-stats', trainerId],
+    queryFn: async () => {
+      const response = await api.get(`/api/trainers/${trainerId}/stats`);
+      return response.data;
+    },
+    enabled: !!trainerId
+  });
+};
+
+export const useTrainerSchedule = (trainerId: string, date?: string) => {
+  return useQuery({
+    queryKey: ['trainer-schedule', trainerId, date ?? 'today'],
+    queryFn: async () => {
+      const params: any = {};
+      if (date) {
+        params.date = date;
+      }
+      const response = await api.get(`/api/trainers/${trainerId}/schedule`, { params });
+      return response.data;
+    },
+    enabled: !!trainerId
+  });
 };
 
 export const useCreateTrainer = () => {
-  return useSupabaseMutation(
-    async (data: CreateTrainerData) => {
-      // Call the secure edge function to create trainer account
-      const { data: result, error } = await supabase.functions.invoke('create-trainer-account', {
-        body: {
-          full_name: data.full_name,
-          email: data.email,
-          phone: data.phone,
-          branch_id: data.branch_id,
-          specialties: data.specialties,
-          is_active: data.is_active ?? true,
-          profile_photo: data.profile_photo
-        }
-      });
+  const queryClient = useQueryClient();
 
-      if (error) throw error;
-      if (!result.success) throw new Error(result.error || 'Failed to create trainer');
-
-      return result.userId;
+  return useMutation({
+    mutationFn: async (trainerData: any) => {
+      const response = await api.post('/api/trainers', trainerData);
+      return response.data;
     },
-    {
-      onSuccess: () => {
-        // Invalidate trainer queries to refetch
-      },
-      invalidateQueries: [['trainers']]
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainers'] });
+      toast({
+        title: 'Success',
+        description: 'Trainer created successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to create trainer',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateTrainer = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ trainerId, data }: { trainerId: string; data: any }) => {
+      const response = await api.put(`/api/trainers/${trainerId}`, data);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['trainers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainers', variables.trainerId] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-stats', variables.trainerId] });
+      toast({
+        title: 'Success',
+        description: 'Trainer updated successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update trainer',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateTrainerAvailability = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ trainerId, availability }: { trainerId: string; availability: any }) => {
+      const response = await api.patch(`/api/trainers/${trainerId}/availability`, availability);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['trainers', variables.trainerId] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-schedule', variables.trainerId] });
+      toast({
+        title: 'Success',
+        description: 'Trainer availability updated successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update trainer availability',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteTrainer = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (trainerId: string) => {
+      await api.delete(`/api/trainers/${trainerId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainers'] });
+      toast({
+        title: 'Success',
+        description: 'Trainer deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to delete trainer',
+        variant: 'destructive',
+      });
+    },
+  });
 };

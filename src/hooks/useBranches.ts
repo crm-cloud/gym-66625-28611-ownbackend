@@ -1,31 +1,44 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { useSupabaseQuery } from './useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/axios';
+import { toast } from '@/hooks/use-toast';
 
 const SELECTED_BRANCH_KEY = 'selected_branch_id';
 
-export const useBranches = () => {
+export const useBranches = (filters?: { search?: string; isActive?: boolean }) => {
   const [selectedBranch, setSelectedBranchState] = useState<any>(null);
   const queryClient = useQueryClient();
-  
-  // Initialize selected branch from localStorage on mount
+
+  const queryResult = useQuery({
+    queryKey: ['branches', filters?.search ?? '', filters?.isActive ?? 'all'],
+    queryFn: async () => {
+      const params: any = {};
+      
+      if (filters?.search) {
+        params.search = filters.search;
+      }
+      if (filters?.isActive !== undefined) {
+        params.is_active = filters.isActive;
+      }
+
+      const response = await api.get('/api/branches', { params });
+      return response.data;
+    },
+  });
+
+  // Initialize selected branch from localStorage
   useEffect(() => {
     const savedBranchId = localStorage.getItem(SELECTED_BRANCH_KEY);
-    if (savedBranchId) {
-      // Try to find the branch in the cache first
-      const cachedBranches = queryClient.getQueryData(['branches']) as any[];
-      if (cachedBranches && Array.isArray(cachedBranches)) {
-        const branch = cachedBranches.find((b: any) => b.id === savedBranchId);
-        if (branch) {
-          setSelectedBranchState(branch);
-        } else {
-          localStorage.removeItem(SELECTED_BRANCH_KEY);
-        }
+    if (savedBranchId && queryResult.data) {
+      const branch = queryResult.data.find((b: any) => b.id === savedBranchId);
+      if (branch) {
+        setSelectedBranchState(branch);
       }
+    } else if (queryResult.data && queryResult.data.length > 0 && !selectedBranch) {
+      setSelectedBranchState(queryResult.data[0]);
     }
-  }, [queryClient]);
-  
+  }, [queryResult.data, selectedBranch]);
+
   const setSelectedBranch = (branch: any) => {
     if (branch) {
       localStorage.setItem(SELECTED_BRANCH_KEY, branch.id);
@@ -34,33 +47,6 @@ export const useBranches = () => {
     }
     setSelectedBranchState(branch);
   };
-  
-  const queryResult = useSupabaseQuery(
-    ['branches'],
-    async () => {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) throw error;
-      
-      // If no branch is selected, select the first one by default
-      if (data && data.length > 0 && !selectedBranch) {
-        const savedBranchId = localStorage.getItem(SELECTED_BRANCH_KEY);
-        const branchToSelect = savedBranchId 
-          ? data.find(b => b.id === savedBranchId) || data[0]
-          : data[0];
-        
-        if (branchToSelect) {
-          setSelectedBranch(branchToSelect);
-        }
-      }
-      
-      return data || [];
-    }
-  );
 
   return {
     ...queryResult,
@@ -68,4 +54,90 @@ export const useBranches = () => {
     selectedBranch: selectedBranch || (queryResult.data?.[0] || null),
     setSelectedBranch
   };
+};
+
+export const useBranchById = (branchId: string) => {
+  return useQuery({
+    queryKey: ['branches', branchId],
+    queryFn: async () => {
+      const response = await api.get(`/api/branches/${branchId}`);
+      return response.data;
+    },
+    enabled: !!branchId
+  });
+};
+
+export const useCreateBranch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (branchData: any) => {
+      const response = await api.post('/api/branches', branchData);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      toast({
+        title: 'Success',
+        description: 'Branch created successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to create branch',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateBranch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ branchId, data }: { branchId: string; data: any }) => {
+      const response = await api.put(`/api/branches/${branchId}`, data);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      queryClient.invalidateQueries({ queryKey: ['branches', variables.branchId] });
+      toast({
+        title: 'Success',
+        description: 'Branch updated successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update branch',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteBranch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (branchId: string) => {
+      await api.delete(`/api/branches/${branchId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      toast({
+        title: 'Success',
+        description: 'Branch deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to delete branch',
+        variant: 'destructive',
+      });
+    },
+  });
 };

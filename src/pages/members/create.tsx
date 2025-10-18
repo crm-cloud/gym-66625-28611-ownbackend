@@ -44,24 +44,17 @@ export const MemberCreatePage = () => {
 
       // Enable login if requested
       if (data.enableLogin && data.password) {
-        const loginResult = await enableMemberLogin(
-          insertResult.id,
-          data.email,
-          data.fullName,
-          data.password,
-          data.branchId
-        );
-
-        if (loginResult.error) {
-          toast({
-            title: 'Member Created (Login Setup Failed)',
-            description: `${data.fullName} was created but login setup failed: ${loginResult.error.message}`,
-            variant: 'destructive',
-          });
-        } else {
+        try {
+          await enableMemberLogin(insertResult.id, data.password);
           toast({
             title: 'Member Created with Login Access',
             description: `${data.fullName} has been added and can now log in.`,
+          });
+        } catch (error: any) {
+          toast({
+            title: 'Member Created (Login Setup Failed)',
+            description: `${data.fullName} was created but login setup failed`,
+            variant: 'destructive',
           });
         }
       } else {
