@@ -1,0 +1,25 @@
+project_id = "gfrpkapmievifpqfhjrp"
+
+[functions.create-admin-user]
+verify_jwt = true
+
+[functions.create-trainer-account]
+verify_jwt = false
+
+[functions.send-admin-welcome-email]
+verify_jwt = false
+
+[functions.send-referral-notification]
+verify_jwt = false
+
+[functions.seed-demo-accounts]
+verify_jwt = false
+
+[functions.create-payment-order]
+verify_jwt = true
+
+[functions.payment-webhook]
+verify_jwt = false
+
+[functions.validate-discount-code]
+verify_jwt = true
