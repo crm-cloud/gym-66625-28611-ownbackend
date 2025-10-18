@@ -16,8 +16,8 @@ dotenv.config();
 initializeStorage().catch(console.error);
 initializeEmailService();
 
-// Import routes (will be created in next phases)
-// import authRoutes from './routes/auth.routes';
+// Import routes
+import authRoutes from './routes/auth.routes';
 // import memberRoutes from './routes/member.routes';
 // ... more routes
 
@@ -73,8 +73,8 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// API routes (to be added in phases)
-// app.use('/api/auth', authRoutes);
+// API routes
+app.use('/api/auth', authRoutes);
 // app.use('/api/members', memberRoutes);
 // app.use('/api/branches', branchRoutes);
 // app.use('/api/trainers', trainerRoutes);
