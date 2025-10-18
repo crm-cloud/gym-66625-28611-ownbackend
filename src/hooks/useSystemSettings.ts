@@ -1,6 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useApiQuery, useApiMutation } from './useApiQuery';
 
 export interface SystemSetting {
   id: string;
@@ -13,91 +11,56 @@ export interface SystemSetting {
 }
 
 export const useSystemSettings = (category?: string) => {
-  return useQuery({
-    queryKey: ['system-settings', category],
-    queryFn: async () => {
-      let query = supabase
-        .from('system_settings')
-        .select('*');
-      
-      if (category) {
-        query = query.eq('category', category);
-      }
-      
-      const { data, error } = await query.order('key');
-      
-      if (error) throw error;
-      return data as SystemSetting[];
-    }
-  });
+  const endpoint = category ? `/api/settings?category=${category}` : '/api/settings';
+  return useApiQuery<SystemSetting[]>(['system-settings', category], endpoint);
 };
 
-export const useUpdateSystemSetting = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ id, value }: { id: string; value: any }) => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
-      toast({
-        title: "Success",
-        description: "Setting updated successfully"
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-};
-
-export const useCreateSystemSetting = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (setting: Omit<SystemSetting, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .insert(setting)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
-      toast({
-        title: "Success",
-        description: "Setting created successfully"
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-};
-
-// Helper hook to get a specific setting value
 export const useSystemSetting = (category: string, key: string) => {
   const { data: settings } = useSystemSettings(category);
   const setting = settings?.find(s => s.key === key);
   return setting?.value;
+};
+
+export const useUpdateSystemSetting = () => {
+  return useApiMutation(
+    '/api/settings',
+    'put',
+    {
+      invalidateQueries: [['system-settings']],
+      successMessage: 'Setting updated successfully'
+    }
+  );
+};
+
+export const useBulkUpdateSettings = () => {
+  return useApiMutation(
+    '/api/settings/bulk',
+    'put',
+    {
+      invalidateQueries: [['system-settings']],
+      successMessage: 'Settings updated successfully'
+    }
+  );
+};
+
+export const useCreateSystemSetting = () => {
+  return useApiMutation(
+    '/api/settings',
+    'post',
+    {
+      invalidateQueries: [['system-settings']],
+      successMessage: 'Setting created successfully'
+    }
+  );
+};
+
+export const useResetSettings = () => {
+  return useApiMutation(
+    '/api/settings/reset',
+    'post',
+    {
+      invalidateQueries: [['system-settings']],
+      successMessage: 'Settings reset to defaults'
+    }
+  );
 };

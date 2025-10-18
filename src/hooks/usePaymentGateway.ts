@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranchContext } from '@/hooks/useBranchContext';
 import { toast } from '@/hooks/use-toast';
@@ -13,19 +13,15 @@ export const usePaymentGateway = () => {
   const createPaymentOrder = async (params: Omit<CreatePaymentOrderParams, 'customerId' | 'customerEmail' | 'customerPhone' | 'customerName'>): Promise<CreatePaymentOrderResponse | null> => {
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-payment-order', {
-        body: {
-          ...params,
-          customerId: authState.user?.id,
-          customerEmail: authState.user?.email || '',
-          customerPhone: authState.user?.phone || '',
-          customerName: authState.user?.email?.split('@')[0] || 'Member',
-          branchId: params.branchId || currentBranchId,
-        },
+      const { data } = await api.post('/api/payment-gateways/create-order', {
+        ...params,
+        customerId: authState.user?.id,
+        customerEmail: authState.user?.email || '',
+        customerPhone: authState.user?.phone || '',
+        customerName: authState.user?.name || 'Member',
+        branchId: params.branchId || currentBranchId,
       });
 
-      if (error) throw error;
-      
       if (!data.success) {
         throw new Error(data.error || 'Payment order creation failed');
       }
@@ -35,7 +31,7 @@ export const usePaymentGateway = () => {
       console.error('Payment order creation error:', error);
       toast({
         title: 'Payment Error',
-        description: error.message || 'Failed to create payment order',
+        description: error.response?.data?.error || error.message || 'Failed to create payment order',
         variant: 'destructive',
       });
       return null;
@@ -48,7 +44,6 @@ export const usePaymentGateway = () => {
     const { provider, gatewayOrderId, paymentUrl, apiKey } = response;
 
     if (provider === 'razorpay') {
-      // Load Razorpay script if not already loaded
       if (!(window as any).Razorpay) {
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -58,7 +53,6 @@ export const usePaymentGateway = () => {
         initRazorpay(gatewayOrderId, apiKey || '', amount);
       }
     } else if (paymentUrl) {
-      // Redirect to payment URL for other providers
       window.location.href = paymentUrl;
     } else {
       toast({
@@ -82,7 +76,6 @@ export const usePaymentGateway = () => {
           title: 'Payment Successful',
           description: 'Your payment has been processed successfully',
         });
-        // Reload to update payment status
         window.location.reload();
       },
       modal: {
