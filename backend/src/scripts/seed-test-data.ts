@@ -12,11 +12,15 @@ async function seed() {
       create: {
         id: 'demo-gym-id',
         name: 'FitVerse Demo Gym',
-        subscription_plan: 'pro',
-        status: 'active',
-        max_branches: 10,
-        max_trainers: 50,
-        max_members: 500,
+        contact_email: 'admin@fitverse.com',
+        contact_phone: '+1234567890',
+        address: '123 Fitness Street',
+        city: 'Demo City',
+        state: 'Demo State',
+        pincode: '12345',
+        currency: 'USD',
+        timezone: 'America/New_York',
+        is_active: true,
       }
     });
     console.log('✅ Gym created');
@@ -26,11 +30,17 @@ async function seed() {
       data: {
         gym_id: gym.id,
         name: 'Downtown Branch',
-        status: 'active',
+        code: 'DT-001',
+        address: '123 Main Street',
+        city: 'Demo City',
+        state: 'Demo State',
+        pincode: '12345',
+        phone: '+1234567890',
+        email: 'downtown@fitverse.com',
         capacity: 200,
-        current_members: 0,
-        address: { street: '123 Main St', city: 'City', state: 'ST', zip: '12345' },
-        contact: { email: 'downtown@fitverse.com', phone: '+1234567890' },
+        opening_time: '06:00:00',
+        closing_time: '22:00:00',
+        is_active: true,
       }
     });
 
@@ -38,11 +48,17 @@ async function seed() {
       data: {
         gym_id: gym.id,
         name: 'Uptown Branch',
-        status: 'active',
+        code: 'UP-001',
+        address: '456 High Street',
+        city: 'Demo City',
+        state: 'Demo State',
+        pincode: '12346',
+        phone: '+1234567891',
+        email: 'uptown@fitverse.com',
         capacity: 200,
-        current_members: 0,
-        address: { street: '456 High St', city: 'City', state: 'ST', zip: '12346' },
-        contact: { email: 'uptown@fitverse.com', phone: '+1234567891' },
+        opening_time: '06:00:00',
+        closing_time: '22:00:00',
+        is_active: true,
       }
     });
     console.log('✅ Branches created');
@@ -59,7 +75,7 @@ async function seed() {
       }
     });
     await prisma.user_roles.create({
-      data: { user_id: superAdmin.user_id, role: 'super_admin' }
+      data: { user_id: superAdmin.user_id, role: 'admin' }
     });
 
     // Create Admin
@@ -74,7 +90,7 @@ async function seed() {
       }
     });
     await prisma.user_roles.create({
-      data: { user_id: admin.user_id, role: 'admin', gym_id: gym.id }
+      data: { user_id: admin.user_id, role: 'admin' }
     });
     console.log('✅ Admin users created');
 
@@ -96,13 +112,15 @@ async function seed() {
       });
       const branchId = i <= 3 ? branch1.id : branch2.id;
       await prisma.user_roles.create({
-        data: { user_id: trainer.user_id, role: 'team', team_role: 'trainer', branch_id: branchId }
+        data: { user_id: trainer.user_id, role: 'trainer' }
       });
       await prisma.trainer_profiles.create({
         data: {
           user_id: trainer.user_id,
           branch_id: branchId,
-          name: `Trainer ${i}`,
+          specializations: ['Strength Training', 'Cardio'],
+          experience_years: i,
+          certifications: ['ACE Certified', 'CPR Certified'],
           is_active: true,
         }
       });
@@ -122,16 +140,13 @@ async function seed() {
       });
       const branchId = i <= 5 ? branch1.id : branch2.id;
       await prisma.user_roles.create({
-        data: { user_id: member.user_id, role: 'member', branch_id: branchId }
+        data: { user_id: member.user_id, role: 'member' }
       });
       await prisma.members.create({
         data: {
           user_id: member.user_id,
           branch_id: branchId,
-          member_number: `MEM${String(i).padStart(4, '0')}`,
-          first_name: `Member`,
-          last_name: `${i}`,
-          email: `member${String(i).padStart(2, '0')}@fitverse.com`,
+          membership_id: `MEM${String(i).padStart(4, '0')}`,
           status: 'active',
         }
       });
@@ -149,9 +164,8 @@ async function seed() {
           is_active: true,
         }
       });
-      const branchId = i === 1 ? branch1.id : branch2.id;
       await prisma.user_roles.create({
-        data: { user_id: staff.user_id, role: 'team', team_role: 'staff', branch_id: branchId }
+        data: { user_id: staff.user_id, role: 'staff' }
       });
     }
     console.log('✅ Staff created');
