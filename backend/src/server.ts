@@ -47,6 +47,9 @@ import trainerReviewRoutes from './routes/trainer-review.routes';
 import gymRoutes from './routes/gym.routes';
 import enrollmentRoutes from './routes/enrollment.routes';
 import leadRoutes from './routes/lead.routes';
+// Phase 11-12: Member Progress & Task Management
+import memberProgressRoutes from './routes/member-progress.routes';
+import taskRoutes from './routes/task.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -131,6 +134,9 @@ app.use('/api/trainer-reviews', trainerReviewRoutes);
 app.use('/api/gyms', gymRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/leads', leadRoutes);
+// Phase 11-12: Member Progress & Task Management
+app.use('/api/progress', memberProgressRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
