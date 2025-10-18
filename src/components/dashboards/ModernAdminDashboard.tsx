@@ -21,89 +21,39 @@ import {
   Star
 } from 'lucide-react';
 import { useBranchContext } from '@/hooks/useBranchContext';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 export const ModernAdminDashboard = () => {
   const { currentBranchId } = useBranchContext();
 
   // Fetch real dashboard data
-  const { data: analyticsData } = useSupabaseQuery(
+  const { data: analyticsData } = useApiQuery(
     ['revenue_analytics', currentBranchId],
-    async () => {
-      const { data, error } = await supabase
-        .from('branch_analytics')
-        .select('*')
-        .eq('branch_id', currentBranchId)
-        .order('month_year', { ascending: false })
-        .limit(7);
-
-      if (error) throw error;
-      return data || [];
-    },
+    `/api/branches/${currentBranchId}/analytics?limit=7`,
     { enabled: !!currentBranchId }
   );
 
-  const { data: membersData } = useSupabaseQuery(
+  const { data: membersData } = useApiQuery(
     ['members_count', currentBranchId],
-    async () => {
-      const { count, error } = await supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true })
-        .eq('branch_id', currentBranchId);
-
-      if (error) throw error;
-      return count || 0;
-    },
+    `/api/branches/${currentBranchId}/members/count`,
     { enabled: !!currentBranchId }
   );
 
-  const { data: todayRevenue } = useSupabaseQuery(
+  const { data: todayRevenue } = useApiQuery(
     ['today_revenue', currentBranchId],
-    async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('total')
-        .eq('branch_id', currentBranchId)
-        .gte('created_at', today)
-        .eq('status', 'paid');
-
-      if (error) throw error;
-      return data?.reduce((sum, invoice) => sum + (invoice.total || 0), 0) || 0;
-    },
+    `/api/branches/${currentBranchId}/revenue/today`,
     { enabled: !!currentBranchId }
   );
 
-  const { data: newMembersToday } = useSupabaseQuery(
+  const { data: newMembersToday } = useApiQuery(
     ['new_members_today', currentBranchId],
-    async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true })
-        .eq('branch_id', currentBranchId)
-        .gte('created_at', today);
-
-      if (error) throw error;
-      return count || 0;
-    },
+    `/api/branches/${currentBranchId}/members/new-today`,
     { enabled: !!currentBranchId }
   );
 
-  const { data: attendanceToday } = useSupabaseQuery(
+  const { data: attendanceToday } = useApiQuery(
     ['attendance_today', currentBranchId],
-    async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('attendance_records')
-        .select('*', { count: 'exact', head: true })
-        .eq('branch_id', currentBranchId)
-        .gte('check_in_time', today);
-
-      if (error) throw error;
-      return count || 0;
-    },
+    `/api/branches/${currentBranchId}/attendance/today`,
     { enabled: !!currentBranchId }
   );
 

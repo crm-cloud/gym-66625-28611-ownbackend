@@ -15,7 +15,7 @@ import {
   Crown,
   Shield
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,74 +70,9 @@ export default function UserManagement() {
   const { data: users = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          user_id,
-          full_name,
-          email,
-          phone,
-          avatar_url,
-          role,
-          is_active,
-          created_at,
-          gym_id,
-          branch_id,
-          gyms!inner(
-            name
-          )
-        `)
-        .in('role', ['admin', 'super-admin'])
-        .order('created_at', { ascending: false });
+      const { data } = await api.get('/api/users/admin-list');
+      return data || [];
 
-      if (error) throw error;
-
-      // Transform data and add additional counts
-      const transformedData = await Promise.all(
-        (data || []).map(async (user) => {
-          // Get branches count for this user's gym
-          const { count: branchesCount } = await supabase
-            .from('branches')
-            .select('*', { count: 'exact', head: true })
-            .eq('gym_id', user.gym_id)
-            .eq('status', 'active');
-
-          // Get trainers count for this user's gym
-          const { count: trainersCount } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('gym_id', user.gym_id)
-            .eq('role', 'trainer')
-            .eq('is_active', true);
-
-          // Get members count for this user's gym  
-          const { count: membersCount } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('membership_status', 'active');
-
-          return {
-            id: user.user_id,
-            full_name: user.full_name || '',
-            email: user.email || '',
-            phone: user.phone || '',
-            avatar_url: user.avatar_url,
-            role: user.role,
-            status: user.is_active ? 'active' : 'inactive',
-            created_at: user.created_at,
-            gym_id: user.gym_id,
-            gym_name: (user.gyms as any)?.name || 'No Gym',
-            branches_count: branchesCount || 0,
-            trainers_count: trainersCount || 0,
-            members_count: membersCount || 0,
-            branch_id: user.branch_id,
-            department: 'Not specified'
-          } as AdminUser;
-        })
-      );
-
-      return transformedData;
     }
   });
 
@@ -151,42 +86,11 @@ export default function UserManagement() {
       if (!user) return null;
 
       // Get branches for this user's gym
-      const { data: branches, error } = await supabase
-        .from('branches')
-        .select(`
-          id,
-          name,
-          address,
-          status,
-          current_members,
-          capacity,
-          created_at
-        `)
-        .eq('gym_id', user.gym_id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Add trainer counts to branches
-      const branchesWithCounts = await Promise.all(
-        (branches || []).map(async (branch) => {
-          const { count: trainersCount } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('branch_id', branch.id)
-            .eq('role', 'trainer')
-            .eq('is_active', true);
-
-          return {
-            ...branch,
-            trainers_count: trainersCount || 0
-          };
-        })
-      );
+      const { data: branches } = await api.get(`/api/gyms/${user.gym_id}/branches`);
 
       return {
         ...user,
-        branches: branchesWithCounts
+        branches: branches || []
       };
     },
     enabled: !!userId && (users?.length || 0) > 0

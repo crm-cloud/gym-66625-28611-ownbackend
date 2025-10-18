@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BranchEditForm } from '@/components/branches/BranchEditForm';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,7 @@ export function BranchEditPage() {
     queryKey: ['branch', id],
     queryFn: async () => {
       if (!id) throw new Error('Branch ID is required');
-      
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const { data } = await api.get(`/api/branches/${id}`);
       return data;
     },
     enabled: !!id,

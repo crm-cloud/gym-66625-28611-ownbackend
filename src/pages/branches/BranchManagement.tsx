@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,32 +39,19 @@ export default function BranchManagement() {
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ['branches'],
     queryFn: async () => {
-      let query = supabase.from('branches').select(`
-        *,
-        profiles!branches_manager_id_fkey(full_name)
-      `);
-
-      // Super admins see all branches, gym admins see only their gym's branches
+      const params: any = {};
       if (authState.user?.role !== 'super-admin' && authState.user?.gym_id) {
-        query = query.eq('gym_id', authState.user.gym_id);
+        params.gym_id = authState.user.gym_id;
       }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      const { data } = await api.get('/api/branches', { params });
+      return data || [];
     },
     enabled: !!authState.user,
   });
 
   const deleteBranch = useMutation({
     mutationFn: async (branchId: string) => {
-      const { error } = await supabase
-        .from('branches')
-        .update({ status: 'inactive' })
-        .eq('id', branchId);
-      
-      if (error) throw error;
+      await api.patch(`/api/branches/${branchId}`, { status: 'inactive' });
     },
     onSuccess: () => {
       toast({

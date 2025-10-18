@@ -28,7 +28,7 @@ import { PaymentRecorderDialog } from '@/components/finance/PaymentRecorderDialo
 import { useCurrency } from '@/hooks/useCurrency';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 
 interface InvoiceUI {
   id: string;
@@ -49,14 +49,7 @@ export default function InvoicesPage() {
   const { data: rows = [], isLoading, refetch: refetchInvoices } = useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          member:customer_id (id, full_name)
-        `)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const { data } = await api.get('/api/invoices');
       return data || [];
     },
     refetchOnWindowFocus: true,
@@ -149,10 +142,7 @@ customerName: r.customer_name,
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Update invoice status to sent
-      await supabase
-        .from('invoices')
-        .update({ status: 'sent' })
-        .eq('id', invoice.id);
+      await api.patch(`/api/invoices/${invoice.id}`, { status: 'sent' });
       
       toast({
         title: 'Invoice Sent',
@@ -173,11 +163,7 @@ customerName: r.customer_name,
   };
   const handleMarkAsPaid = async (invoiceId: string) => {
     try {
-      const { error } = await supabase
-        .from('invoices')
-        .update({ status: 'paid' })
-        .eq('id', invoiceId);
-      if (error) throw error;
+      await api.patch(`/api/invoices/${invoiceId}`, { status: 'paid' });
       await refetchInvoices();
       toast({
         title: 'Payment recorded',

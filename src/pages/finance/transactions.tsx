@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, RefreshCw, Download, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PermissionGate } from '@/components/PermissionGate';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
@@ -24,18 +24,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const fetchTransactions = async (): Promise<Transaction[]> => {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select(`
-      *,
-      category:category_id (id, name, type),
-      paymentMethod:payment_method_id (id, name)
-    `)
-    .order('date', { ascending: false });
-
-  if (error) throw error;
+  const { data } = await api.get('/api/transactions');
   
-  return (data || []).map(t => ({
+  return (data || []).map((t: any) => ({
     id: t.id,
     amount: t.amount,
     type: t.type as 'income' | 'expense',
@@ -154,42 +145,23 @@ export default function TransactionsPage() {
     return { income, expenses, netBalance, transactionCount: filtered.length };
   }, [transactions, filterTransactionsByDate]);
 
-  useEffect(() => {
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('transactions_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'transactions' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [queryClient]);
+  // Real-time updates handled by React Query's refetch mechanism
 
   const handleAddTransaction = async (data: any) => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .insert([{
-          amount: data.amount,
-          type: data.type,
-          description: data.description,
-          date: data.date,
-          category_id: data.categoryId,
-          payment_method_id: data.paymentMethodId,
-          status: 'completed',
-          reference: data.reference || null,
-          member_id: data.memberId || null,
-          member_name: data.memberName || null,
-          invoice_id: data.invoiceId || null
-        }]);
-
-      if (error) throw error;
+      await api.post('/api/transactions', {
+        amount: data.amount,
+        type: data.type,
+        description: data.description,
+        date: data.date,
+        category_id: data.categoryId,
+        payment_method_id: data.paymentMethodId,
+        status: 'completed',
+        reference: data.reference || null,
+        member_id: data.memberId || null,
+        member_name: data.memberName || null,
+        invoice_id: data.invoiceId || null
+      });
 
       await refetch();
       toast({
@@ -215,25 +187,20 @@ export default function TransactionsPage() {
     if (!selectedTransaction) return;
 
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({
-          amount: data.amount,
-          type: data.type,
-          description: data.description,
-          date: data.date,
-          category_id: data.categoryId,
-          payment_method_id: data.paymentMethodId,
-          status: data.status || 'completed',
-          reference: data.reference || null,
-          member_id: data.memberId || null,
-          member_name: data.memberName || null,
-          invoice_id: data.invoiceId || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedTransaction.id);
-
-      if (error) throw error;
+      await api.patch(`/api/transactions/${selectedTransaction.id}`, {
+        amount: data.amount,
+        type: data.type,
+        description: data.description,
+        date: data.date,
+        category_id: data.categoryId,
+        payment_method_id: data.paymentMethodId,
+        status: data.status || 'completed',
+        reference: data.reference || null,
+        member_id: data.memberId || null,
+        member_name: data.memberName || null,
+        invoice_id: data.invoiceId || null,
+        updated_at: new Date().toISOString()
+      });
 
       await refetch();
       toast({
@@ -253,13 +220,7 @@ export default function TransactionsPage() {
 
   const handleDeleteTransaction = async (transactionId: string) => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', transactionId);
-
-      if (error) throw error;
-
+      await api.delete(`/api/transactions/${transactionId}`);
       await refetch();
       toast({
         title: "Transaction Deleted",
@@ -277,12 +238,7 @@ export default function TransactionsPage() {
 
   const handleExportTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .csv();
-
-      if (error) throw error;
+      const { data } = await api.get('/api/transactions/export', { responseType: 'blob' });
 
       // Create a download link
       const blob = new Blob([data], { type: 'text/csv' });

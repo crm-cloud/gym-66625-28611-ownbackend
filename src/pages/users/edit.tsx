@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { useUpdateProfile } from '@/hooks/useProfiles';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export default function EditUser() {
@@ -35,13 +35,7 @@ export default function EditUser() {
       if (!userId) return;
       
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*, branches(name)')
-          .eq('user_id', userId)
-          .single();
-
-        if (error) throw error;
+        const { data } = await api.get(`/api/profiles/${userId}`);
 
         setUser(data);
         setFormData({

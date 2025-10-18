@@ -16,7 +16,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { FinanceOverviewCards } from '@/components/finance/FinanceOverviewCards';
 import { MonthlyTrendChart } from '@/components/finance/MonthlyTrendChart';
 import { CategoryBreakdownChart } from '@/components/finance/CategoryBreakdownChart';
@@ -45,66 +45,23 @@ export default function FinanceDashboard() {
   const navigate = useNavigate();
   const { currentBranchId, getAccessibleBranches } = useBranchContext();
 
-  // Fetch transactions from Supabase
+  // Fetch transactions
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
     queryKey: ['transactions', selectedBranch],
     queryFn: async () => {
-      let query = supabase
-        .from('transactions')
-        .select(`
-          *,
-          transaction_categories(name, type, color),
-          payment_methods(name, type)
-        `)
-        .order('date', { ascending: false });
-      
-      if (selectedBranch !== 'all') {
-        query = query.eq('branch_id', selectedBranch);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
+      const params = selectedBranch !== 'all' ? { branch_id: selectedBranch } : {};
+      const { data } = await api.get('/api/transactions', { params });
       return data || [];
     },
   });
 
-  // Fetch monthly analytics - simplified version
+  // Fetch monthly analytics
   const { data: monthlyData = [], isLoading: monthlyLoading } = useQuery({
     queryKey: ['monthly-analytics', selectedBranch],
     queryFn: async () => {
-      // Fallback calculation - get transactions grouped by month
-      let query = supabase
-        .from('transactions')
-        .select('date, type, amount')
-        .gte('date', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
-      
-      if (selectedBranch !== 'all') {
-        query = query.eq('branch_id', selectedBranch);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      // Process data to monthly format
-      const monthlyMap: Record<string, {month: string, income: number, expenses: number, profit: number}> = {};
-      
-      (data || []).forEach((transaction: any) => {
-        const date = new Date(transaction.date);
-        const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
-        
-        if (!monthlyMap[monthKey]) {
-          monthlyMap[monthKey] = { month: monthKey, income: 0, expenses: 0, profit: 0 };
-        }
-        
-        if (transaction.type === 'income') {
-          monthlyMap[monthKey].income += Number(transaction.amount);
-        } else {
-          monthlyMap[monthKey].expenses += Number(transaction.amount);
-        }
-        monthlyMap[monthKey].profit = monthlyMap[monthKey].income - monthlyMap[monthKey].expenses;
-      });
-      
-      return Object.values(monthlyMap);
+      const params = selectedBranch !== 'all' ? { branch_id: selectedBranch } : {};
+      const { data } = await api.get('/api/analytics/monthly', { params });
+      return data || [];
     },
   });
 

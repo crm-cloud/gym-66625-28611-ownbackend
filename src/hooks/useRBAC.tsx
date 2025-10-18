@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Permission, RoleDefinition, UserWithRoles, AuditLog, type RBACContext as RBACContextType } from '@/types/rbac';
 import { useAuth } from './useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { UserRole } from '@/types/auth';
 
 // Role definitions - metadata only (permissions fetched from database)
@@ -276,13 +276,11 @@ export const RBACProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         // Step 1: Fetch roles from user_roles table
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role, team_role, branch_id')
-          .eq('user_id', authState.user.id);
+        const rolesResponse = await api.get(`/api/users/${authState.user.id}/roles`);
+        const rolesData = rolesResponse.data;
 
-        if (rolesError) {
-          console.error('Error fetching user roles:', rolesError);
+        if (!rolesData) {
+          console.error('Error fetching user roles');
           setUserRoles([]);
           setUserPermissions([]);
         } else {
@@ -297,38 +295,34 @@ export const RBACProvider = ({ children }: { children: ReactNode }) => {
           // Step 2: Fetch permissions for these roles from database
           if (rolesData && rolesData.length > 0) {
             // Get role IDs from roles table based on role names
-            const roleNames = rolesData.map(r => {
+            const roleNames = rolesData.map((r: any) => {
               if (r.role === 'team' && r.team_role) {
                 return `team-${r.team_role}`;
               }
               return r.role;
             });
 
-            const { data: roleRecords } = await supabase
-              .from('roles')
-              .select('id, name')
-              .in('name', roleNames);
+            const roleRecordsResponse = await api.get('/api/roles', {
+              params: { names: roleNames.join(',') }
+            });
+            const roleRecords = roleRecordsResponse.data;
 
             if (roleRecords && roleRecords.length > 0) {
-              const roleIds = roleRecords.map(r => r.id);
+              const roleIds = roleRecords.map((r: any) => r.id);
 
               // Fetch permissions via role_permissions junction table
-              const { data: permissionsData, error: permissionsError } = await supabase
-                .from('role_permissions')
-                .select(`
-                  permissions (
-                    name
-                  )
-                `)
-                .in('role_id', roleIds);
+              const permissionsResponse = await api.get('/api/role-permissions', {
+                params: { roleIds: roleIds.join(',') }
+              });
+              const permissionsData = permissionsResponse.data;
 
-              if (permissionsError) {
-                console.error('❌ [RBAC] Failed to fetch permissions:', permissionsError);
+              if (!permissionsData) {
+                console.error('❌ [RBAC] Failed to fetch permissions');
                 setUserPermissions([]);
               } else {
                 // Extract permission names
                 const permissions = permissionsData
-                  .map(rp => (rp.permissions as any)?.name)
+                  .map((rp: any) => rp.permissions?.name)
                   .filter(Boolean) as Permission[];
 
                 console.log('✅ [RBAC] Permissions loaded from database:', {
@@ -346,11 +340,8 @@ export const RBACProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Step 3: Fetch profile data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', authState.user.id)
-          .maybeSingle();
+        const profileResponse = await api.get(`/api/profiles/${authState.user.id}`);
+        const profile = profileResponse.data;
 
         if (profile && rolesData && rolesData.length > 0) {
           // Build roles array from user_roles data

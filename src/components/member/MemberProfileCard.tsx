@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { assignMembership } from '@/services/memberships';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Phone, Mail, MapPin, Calendar, User, Activity, AlertTriangle, CreditCard, Plus, TrendingUp } from 'lucide-react';
 import { useTrainers } from '@/hooks/useTrainers';
 import { useToast } from '@/hooks/use-toast';
@@ -93,12 +93,7 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
   const { data: dbMeasurements = [] } = useQuery<any[]>({
     queryKey: ['member-measurements', member.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('member_measurements')
-        .select('*')
-        .eq('member_id', member.id)
-        .order('measured_date', { ascending: false });
-      if (error) throw error;
+      const { data } = await api.get(`/api/members/${member.id}/measurements`);
       return data || [];
     }
   });
@@ -168,12 +163,7 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
     const bestTrainer = availableTrainers[0];
     
     try {
-      const { error } = await supabase
-        .from('members')
-        .update({ trainer_id: bestTrainer.id })
-        .eq('id', member.id);
-
-      if (error) throw error;
+      await api.patch(`/api/members/${member.id}`, { trainer_id: bestTrainer.id });
 
       toast({
         title: 'Trainer Assigned',
@@ -194,12 +184,7 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
     if (!selectedTrainerId) return;
 
     try {
-      const { error } = await supabase
-        .from('members')
-        .update({ trainer_id: selectedTrainerId })
-        .eq('id', member.id);
-
-      if (error) throw error;
+      await api.patch(`/api/members/${member.id}`, { trainer_id: selectedTrainerId });
 
       const trainer = availableTrainers?.find(t => t.id === selectedTrainerId);
       toast({
@@ -226,12 +211,7 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
   const { data: creditTx = [] } = useQuery<any>({
     queryKey: ['member-credits', member.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('credit_transactions')
-        .select('*')
-        .eq('reference_id', member.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const { data } = await api.get(`/api/members/${member.id}/credits`);
       return data || [];
     }
   });
@@ -239,117 +219,33 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
   const computedPointsBalance = (creditTx as any[]).reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
   const [latestMembershipLocal, setLatestMembershipLocal] = useState<any | null>(null);
-  // Latest membership for this member with plan details - handle both user_id and null cases
+  // Latest membership for this member with plan details
   const { data: latestMembershipFetched } = useQuery<any>({
     queryKey: ['member-membership', member.id],
     queryFn: async () => {
-      // First try to find by user_id if member has one
-      if (memberUserId) {
-        const { data, error } = await supabase
-          .from('member_memberships')
-          .select(`
-            *,
-            membership_plans!inner(
-              id,
-              name,
-              price,
-              duration_months,
-              features
-            )
-          `)
-          .eq('user_id', memberUserId)
-          .order('start_date', { ascending: false })
-          .limit(1);
-        if (error) throw error;
-        if (data && data.length > 0) return data[0];
-      }
-      
-      // If no user_id or no membership found, look for memberships with null user_id
-      // that might be associated with this member through other means
-      const { data, error } = await supabase
-        .from('member_memberships')
-        .select(`
-          *,
-          membership_plans!inner(
-            id,
-            name,
-            price,
-            duration_months,
-            features
-          )
-        `)
-        .is('user_id', null)
-        .order('start_date', { ascending: false })
-        .limit(5); // Get recent ones to check
-      
-      if (error) throw error;
-      
-      // For now, return the most recent one with null user_id
-      // In a production system, you'd want a better way to link members to memberships
-      return (data && data[0]) || null;
+      const { data } = await api.get(`/api/members/${member.id}/membership/latest`);
+      return data || null;
     },
-    enabled: true // Always run this query
+    enabled: true
   });
 
-  // Membership history for timeline - handle both user_id and null cases
+  // Membership history for timeline
   const { data: membershipHistory = [] } = useQuery<any[]>({
     queryKey: ['member-membership-history', member.id],
     queryFn: async () => {
-      // First try to find by user_id if member has one
-      if (memberUserId) {
-        const { data, error } = await supabase
-          .from('member_memberships')
-          .select(`
-            *,
-            membership_plans!inner(
-              id,
-              name,
-              price,
-              duration_months,
-              features
-            )
-          `)
-          .eq('user_id', memberUserId)
-          .order('start_date', { ascending: false });
-        if (error) throw error;
-        if (data && data.length > 0) return data;
-      }
-      
-      // If no user_id or no membership found, look for memberships with null user_id
-      const { data, error } = await supabase
-        .from('member_memberships')
-        .select(`
-          *,
-          membership_plans!inner(
-            id,
-            name,
-            price,
-            duration_months,
-            features
-          )
-        `)
-        .is('user_id', null)
-        .order('start_date', { ascending: false });
-      
-      if (error) throw error;
+      const { data } = await api.get(`/api/members/${member.id}/membership/history`);
       return data || [];
     },
-    enabled: true // Always run this query
+    enabled: true
   });
   const latestMembership = latestMembershipLocal || latestMembershipFetched;
 
-  // Pending freeze requests for latest membership (place after latestMembership is defined)
+  // Pending freeze requests for latest membership
   const { data: pendingFreezes = [], refetch: refetchFreezes } = useQuery<any[]>({
     queryKey: ['member-freeze-requests', latestMembership?.id],
     queryFn: async () => {
       if (!latestMembership?.id) return [] as any[];
-      const { data, error } = await supabase
-        .from('membership_freeze_requests')
-        .select('*')
-        .eq('membership_id', latestMembership.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const { data } = await api.get(`/api/memberships/${latestMembership.id}/freeze-requests`);
       return data || [];
     },
     enabled: !!latestMembership?.id,
@@ -359,14 +255,8 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
   const { data: latestInvoice } = useQuery<any>({
     queryKey: ['member-latest-invoice', member.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('customer_id', member.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return (data && data[0]) || null;
+      const { data } = await api.get(`/api/members/${member.id}/invoices/latest`);
+      return data || null;
     },
   });
 
@@ -533,33 +423,12 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
                               variant="outline"
                               onClick={async () => {
                                 try {
-                                  await supabase
-                                    .from('membership_freeze_requests')
-                                    .update({ status: 'approved', approved_at: new Date().toISOString() })
-                                    .eq('id', fr.id);
+                                  await api.patch(`/api/membership-freeze-requests/${fr.id}/approve`);
                                   // Optionally set membership to frozen
                                   if (latestMembership?.id) {
-                                    // Read current end_date
-                                    const { data: mm } = await supabase
-                                      .from('member_memberships')
-                                      .select('end_date')
-                                      .eq('id', latestMembership.id)
-                                      .maybeSingle();
-                                    let newEnd = latestMembership.end_date ? new Date(latestMembership.end_date) : (mm?.end_date ? new Date(mm.end_date) : null);
-                                    if (newEnd) {
-                                      newEnd.setDate(newEnd.getDate() + Number(fr.requested_days || 0));
-                                      const newEndStr = newEnd.toISOString().slice(0, 10);
-                                      await supabase
-                                        .from('member_memberships')
-                                        .update({ status: 'frozen', end_date: newEndStr })
-                                        .eq('id', latestMembership.id);
-                                    } else {
-                                      // fallback: just set status frozen if end_date missing
-                                      await supabase
-                                        .from('member_memberships')
-                                        .update({ status: 'frozen' })
-                                        .eq('id', latestMembership.id);
-                                    }
+                                    await api.patch(`/api/memberships/${latestMembership.id}/freeze`, {
+                                      requested_days: fr.requested_days || 0
+                                    });
                                   }
                                   await refetchFreezes();
                                   await queryClient.invalidateQueries({ queryKey: ['member-membership', member.id] });
@@ -574,10 +443,7 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
                               variant="destructive"
                               onClick={async () => {
                                 try {
-                                  await supabase
-                                    .from('membership_freeze_requests')
-                                    .update({ status: 'rejected', approved_at: new Date().toISOString() })
-                                    .eq('id', fr.id);
+                                  await api.patch(`/api/membership-freeze-requests/${fr.id}/reject`);
                                   await refetchFreezes();
                                   toast({ title: 'Freeze rejected' });
                                 } catch (e) {
@@ -954,17 +820,13 @@ export const MemberProfileCard = ({ member }: MemberProfileCardProps) => {
                             const end = new Date();
                             end.setDate(start.getDate() + Number(freezeDays));
                             try {
-                              await supabase.from('membership_freeze_requests').insert([
-                                {
-                                  membership_id: latestMembership.id,
-                                  // user_id: null // proceed with null as discussed
-                                  reason: freezeReason,
-                                  requested_days: Number(freezeDays),
-                                  freeze_start_date: start.toISOString().slice(0, 10),
-                                  freeze_end_date: end.toISOString().slice(0, 10),
-                                  // status defaults to 'pending'
-                                }
-                              ]);
+                              await api.post('/api/membership-freeze-requests', {
+                                membership_id: latestMembership.id,
+                                reason: freezeReason,
+                                requested_days: Number(freezeDays),
+                                freeze_start_date: start.toISOString().slice(0, 10),
+                                freeze_end_date: end.toISOString().slice(0, 10),
+                              });
                               toast({ title: 'Freeze requested', description: 'Your freeze request has been submitted for approval.' });
                               setShowFreezeForm(false);
                               setFreezeReason('');

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Building2, Mail, Phone, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,42 +31,18 @@ export default function AdminManagement() {
   const { data: adminProfiles = [], isLoading } = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          gyms!profiles_gym_id_fkey (
-            name,
-            subscription_plan
-          )
-        `)
-        .eq('role', 'admin')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as AdminProfile[];
+      const { data } = await api.get('/api/profiles?role=admin&is_active=true');
+      return data as AdminProfile[] || [];
     }
   });
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const { data: gyms, error: gymsError } = await supabase
-        .from('gyms')
-        .select('id')
-        .eq('status', 'active');
-
-      const { data: branches, error: branchesError } = await supabase
-        .from('branches')
-        .select('id, gym_id')
-        .eq('status', 'active');
-
-      if (gymsError || branchesError) throw gymsError || branchesError;
-
+      const { data } = await api.get('/api/admin-stats');
       return {
-        totalGyms: gyms?.length || 0,
-        totalBranches: branches?.length || 0,
+        totalGyms: data?.totalGyms || 0,
+        totalBranches: data?.totalBranches || 0,
         totalAdmins: adminProfiles.length,
       };
     },
