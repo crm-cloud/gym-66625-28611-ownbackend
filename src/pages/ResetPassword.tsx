@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { toast } from '@/hooks/use-toast';
 
 const ResetPassword = () => {
@@ -16,16 +16,12 @@ const ResetPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we're in a password recovery flow
-    const checkRecovery = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error || !data.session) {
-        setIsValidLink(false);
-      }
-    };
-    
-    checkRecovery();
-  }, []);
+    // Check if we have a reset token in URL
+    const token = searchParams.get('token');
+    if (!token) {
+      setIsValidLink(false);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +38,13 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
+      const token = searchParams.get('token');
+      if (!token) throw new Error('Invalid reset token');
 
-      if (error) throw error;
+      await api.post('/api/auth/reset-password', {
+        token,
+        new_password: password,
+      });
       
       toast({
         title: "Success",

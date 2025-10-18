@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
 
@@ -19,11 +19,10 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      await api.post('/api/auth/request-password-reset', {
+        email,
+        redirect_url: `${window.location.origin}/reset-password`,
       });
-
-      if (error) throw error;
       
       setIsSent(true);
       toast({

@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { MemberForm } from '@/components/member/MemberForm';
 import { MemberFormData } from '@/types/member';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
-import { enableMemberLogin } from '@/hooks/useMembers';
 
 export const MemberCreatePage = () => {
   const navigate = useNavigate();
@@ -17,62 +16,37 @@ export const MemberCreatePage = () => {
 
   const handleSubmit = async (data: MemberFormData) => {
     try {
-      // Map form data to DB columns (snake_case)
-      const payload: any = {
+      const payload = {
         full_name: data.fullName,
         phone: data.phone,
         email: data.email,
         date_of_birth: data.dateOfBirth?.toISOString?.() || data.dateOfBirth,
         gender: data.gender,
-        address: data.address, // JSON
-        government_id: data.governmentId, // JSON
-        measurements: data.measurements, // JSON includes BMI if present
-        emergency_contact: data.emergencyContact, // JSON
+        address: data.address,
+        government_id: data.governmentId,
+        measurements: data.measurements,
+        emergency_contact: data.emergencyContact,
         profile_photo: data.profilePhoto ?? null,
         branch_id: data.branchId,
         trainer_id: data.trainerId ?? null,
-        created_by: authState.user?.id ?? null,
+        enable_login: data.enableLogin,
+        password: data.password,
       };
 
-      const { data: insertResult, error } = await supabase
-        .from('members')
-        .insert([payload])
-        .select('id')
-        .single();
+      await api.post('/api/members', payload);
 
-      if (error) throw error;
+      toast({
+        title: 'Member Created',
+        description: `${data.fullName} has been successfully added as a member.`,
+      });
 
-      // Enable login if requested
-      if (data.enableLogin && data.password) {
-        try {
-          await enableMemberLogin(insertResult.id, data.password);
-          toast({
-            title: 'Member Created with Login Access',
-            description: `${data.fullName} has been added and can now log in.`,
-          });
-        } catch (error: any) {
-          toast({
-            title: 'Member Created (Login Setup Failed)',
-            description: `${data.fullName} was created but login setup failed`,
-            variant: 'destructive',
-          });
-        }
-      } else {
-        toast({
-          title: 'Member Created',
-          description: `${data.fullName} has been successfully added as a member.`,
-        });
-      }
-
-      // Refresh members list
       await queryClient.invalidateQueries({ queryKey: ['members'] });
-
       navigate('/members');
     } catch (err: any) {
       console.error('Failed to create member:', err);
       toast({
         title: 'Failed to create member',
-        description: err?.message || 'Please try again.',
+        description: err.response?.data?.error || err.message || 'Please try again.',
         variant: 'destructive',
       });
     }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/useProfiles';
 import { ArrowLeft, Edit, Phone, Mail, MapPin, Calendar, User, Shield } from 'lucide-react';
 
 export default function UserProfile() {
@@ -13,36 +13,17 @@ export default function UserProfile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const { data: user, isLoading: loading, error } = useProfile(userId);
 
   useEffect(() => {
-    const loadUser = async () => {
-      if (!userId) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*, branches(name)')
-          .eq('user_id', userId)
-          .single();
-
-        if (error) throw error;
-        setUser(data);
-      } catch (error) {
-        console.error('Error loading user:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load user data',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUser();
-  }, [userId, toast]);
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load user data',
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
 
   const getInitials = (name: string) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';

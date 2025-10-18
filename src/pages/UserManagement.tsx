@@ -70,10 +70,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PermissionGate } from '@/components/PermissionGate';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function UserManagement() {
   const navigate = useNavigate();
@@ -81,6 +80,7 @@ export default function UserManagement() {
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const { toast } = useToast();
   const { data: profiles, isLoading } = useProfiles();
+  const updateProfile = useUpdateProfile();
   
   const users = profiles || [];
 
@@ -89,26 +89,18 @@ export default function UserManagement() {
   };
 
   const handleDeleteUser = async (user: any) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('user_id', user.user_id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: `User ${user.full_name} has been deactivated`,
-        variant: 'default',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to deactivate user',
-        variant: 'destructive',
-      });
-    }
+    updateProfile.mutate(
+      { userId: user.user_id, updates: { is_active: false } },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Success',
+            description: `User ${user.full_name} has been deactivated`,
+            variant: 'default',
+          });
+        }
+      }
+    );
   };
 
   const handleViewDetails = (user: any) => {
