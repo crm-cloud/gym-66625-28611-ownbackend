@@ -41,6 +41,12 @@ import subscriptionRoutes from './routes/subscription.routes';
 import invoiceRoutes from './routes/invoice.routes';
 // Phase 9-10: Trainer Advanced & Multi-Tenancy
 import assignmentRoutes from './routes/assignment.routes';
+import packageRoutes from './routes/package.routes';
+import trainerChangeRoutes from './routes/trainer-change.routes';
+import trainerReviewRoutes from './routes/trainer-review.routes';
+import gymRoutes from './routes/gym.routes';
+import enrollmentRoutes from './routes/enrollment.routes';
+import leadRoutes from './routes/lead.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -119,6 +125,12 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/invoices', invoiceRoutes);
 // Phase 9-10: Trainer Advanced & Multi-Tenancy
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/packages', packageRoutes);
+app.use('/api/trainer-changes', trainerChangeRoutes);
+app.use('/api/trainer-reviews', trainerReviewRoutes);
+app.use('/api/gyms', gymRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/leads', leadRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
