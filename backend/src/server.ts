@@ -3,11 +3,18 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './middleware/logger';
+import { initializeStorage, UPLOAD_DIR } from './config/storage';
+import { initializeEmailService } from './config/email';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize services
+initializeStorage().catch(console.error);
+initializeEmailService();
 
 // Import routes (will be created in next phases)
 // import authRoutes from './routes/auth.routes';
@@ -52,6 +59,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
 app.use(logger);
+
+// Serve static files (uploads)
+app.use('/uploads', express.static(path.join(__dirname, '..', UPLOAD_DIR)));
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
