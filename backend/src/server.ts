@@ -18,8 +18,11 @@ initializeEmailService();
 
 // Import routes
 import authRoutes from './routes/auth.routes';
-// import memberRoutes from './routes/member.routes';
-// ... more routes
+import memberRoutes from './routes/member.routes';
+import branchRoutes from './routes/branch.routes';
+import trainerRoutes from './routes/trainer.routes';
+import membershipRoutes from './routes/membership.routes';
+import classRoutes from './routes/class.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -75,11 +78,11 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/members', memberRoutes);
-// app.use('/api/branches', branchRoutes);
-// app.use('/api/trainers', trainerRoutes);
-// app.use('/api/classes', classRoutes);
-// ... more routes
+app.use('/api/members', memberRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/trainers', trainerRoutes);
+app.use('/api/membership-plans', membershipRoutes);
+app.use('/api/classes', classRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
