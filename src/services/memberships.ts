@@ -1,5 +1,5 @@
 import { addMonths } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import type { MembershipFormData } from '@/types/membership';
 
 export interface AssignMembershipInput {
@@ -28,16 +28,13 @@ export async function assignMembership({
   branchId,
   notes
 }: AssignMembershipInput): Promise<AssignMembershipResult> {
-  // 1) Fetch plan
-  const { data: plan, error: planErr } = await supabase
-    .from('membership_plans')
-    .select('id, name, price, duration_months')
-    .eq('id', data.planId)
-    .single();
-  
-  if (planErr || !plan) {
-    throw new Error(planErr?.message || 'Plan not found');
-  }
+  try {
+    // 1) Fetch plan
+    const { data: plan } = await api.get(`/api/membership-plans/${data.planId}`);
+    
+    if (!plan) {
+      throw new Error('Plan not found');
+    }
 
   const price = Number(plan.price || 0);
 
@@ -88,141 +85,55 @@ export async function assignMembership({
     notes: notes
   };
 
-  // 1. First, create the membership
-  const { data: insertedMembership, error: mmErr } = await supabase
-    .from('member_memberships')
-    .insert(membershipData)
-    .select('id')
-    .single();
+    // 4) Create membership
+    const { data: insertedMembership } = await api.post('/api/subscriptions', membershipData);
 
-  if (mmErr) {
-    console.error('Membership insert error:', {
-      error: mmErr,
-      membershipData
-    });
-    throw mmErr;
-  }
-
-  // 2. Update member's status
-  const { error: memErr } = await supabase
-    .from('members')
-    .update({ 
+    // 5) Update member's status
+    await api.patch(`/api/members/${member.id}`, {
       membership_status: 'active',
       membership_plan: plan.name
-    })
-    .eq('id', member.id);
-
-  if (memErr) {
-    console.error('Member update error:', memErr);
-    throw memErr;
-  }
-
-  // 3. Create invoice
-const invoiceNumber = `INV-${Date.now()}`;
-const invoiceData = {
-  invoice_number: invoiceNumber,
-  customer_id: member.id,
-  customer_name: member.fullName,
-  customer_email: member.email,
-  due_date: addMonths(new Date(), 1).toISOString().slice(0, 10),
-  subtotal: base,
-  tax: gstAmount,
-  discount: flatDisc + (data.promoCode ? referralDisc : 0),
-  total: finalAmount,
-  status: 'draft' as 'draft',
-  branch_id: branchId,
-  membership_id: insertedMembership.id,
-  created_by: assignedBy,
-  // Add date field which might be required
-  date: new Date().toISOString().slice(0, 10)
-};
-
-console.log('Attempting to create invoice with data:', invoiceData);
-
-let invoice;
-try {
-  const { data: invoiceResult, error: invErr } = await supabase
-    .from('invoices')
-    .insert(invoiceData)
-    .select('id')
-    .single();
-
-  if (invErr) {
-    console.error('Invoice creation error details:', {
-      error: invErr,
-      requestData: invoiceData,
-      errorDetails: {
-        code: invErr.code,
-        message: invErr.message,
-        details: invErr.details,
-        hint: invErr.hint
-      }
     });
-    throw invErr;
-  }
 
-  invoice = invoiceResult;
-  console.log('Invoice created successfully:', invoice);
-} catch (error) {
-  console.error('Unexpected error during invoice creation:', {
-    error,
-    invoiceData
-  });
-  throw error; // Re-throw to be caught by the caller
-}
+    // 6) Create invoice
+    const invoiceData = {
+      invoice_number: `INV-${Date.now()}`,
+      customer_id: member.id,
+      customer_name: member.fullName,
+      customer_email: member.email,
+      due_date: addMonths(new Date(), 1).toISOString().slice(0, 10),
+      subtotal: base,
+      tax: gstAmount,
+      discount: flatDisc + (data.promoCode ? referralDisc : 0),
+      total: finalAmount,
+      status: 'draft',
+      branch_id: branchId,
+      membership_id: insertedMembership.id,
+      date: new Date().toISOString().slice(0, 10)
+    };
 
-  // 4. Handle referral bonuses if promo code exists
-  if (data.promoCode) {
-    try {
-      const { data: referral } = await supabase
-        .from('referrals')
-        .select('id, referrer_id, referred_id, membership_bonus_amount')
-        .eq('referral_code', data.promoCode)
-        .single();
+    const { data: invoice } = await api.post('/api/invoices', invoiceData);
 
-      if (referral) {
-        const bonusAmount = referral.membership_bonus_amount || 2500; // Default bonus
-        
-        // Credit referrer
-        if (referral.referrer_id) {
-          await supabase.from('referral_bonuses').insert([{
-            referral_id: referral.id,
-            user_id: referral.referrer_id,
-            bonus_type: 'referral_membership',
-            amount: bonusAmount,
-            description: `Referral bonus for ${member.fullName}'s membership`
-          }]);
-        }
-
-        // Credit referred user (if different from the member)
-        if (referral.referred_id && referral.referred_id !== member.userId) {
-          await supabase.from('referral_bonuses').insert([{
-            referral_id: referral.id,
-            user_id: referral.referred_id,
-            bonus_type: 'referral_membership',
-            amount: bonusAmount,
-            description: 'Referred member bonus'
-          }]);
-        }
-
-        // Mark referral as completed
-        await supabase
-          .from('referrals')
-          .update({ 
-            status: 'completed',
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', referral.id);
+    // 7) Handle referral bonuses if promo code exists
+    if (data.promoCode) {
+      try {
+        await api.post('/api/referrals/process-bonus', {
+          referral_code: data.promoCode,
+          member_id: member.id,
+          member_name: member.fullName
+        });
+      } catch (err) {
+        console.error('Referral processing error:', err);
+        // Don't fail the whole operation
       }
-    } catch (err) {
-      console.error('Referral processing error:', err);
-      // Don't fail the whole operation if referral bonus fails
     }
-  }
 
-  return {
-    membershipId: insertedMembership?.id,
-    invoiceId: invoice?.id,
-    total: finalAmount
-  };
+    return {
+      membershipId: insertedMembership?.id,
+      invoiceId: invoice?.id,
+      total: finalAmount
+    };
+  } catch (error) {
+    console.error('Failed to assign membership:', error);
+    throw error;
+  }
 }

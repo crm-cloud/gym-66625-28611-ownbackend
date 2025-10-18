@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Invoice } from '@/types/finance';
 
 export interface UseInvoicesOptions {
@@ -13,33 +13,17 @@ export const useInvoices = (options: UseInvoicesOptions = {}) => {
   return useQuery({
     queryKey: ['invoices', options],
     queryFn: async () => {
-      let query = supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const params = new URLSearchParams();
+      
+      if (options.limit) params.append('limit', options.limit.toString());
+      if (options.status && options.status !== 'all') params.append('status', options.status);
+      if (options.customerId) params.append('customer_id', options.customerId);
+      if (options.branchId) params.append('branch_id', options.branchId);
 
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      if (options.status && options.status !== 'all') {
-        query = query.eq('status', options.status as any);
-      }
-
-      if (options.customerId) {
-        query = query.eq('customer_id', options.customerId);
-      }
-
-      if (options.branchId) {
-        query = query.eq('branch_id', options.branchId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const { data } = await api.get(`/api/invoices?${params.toString()}`);
 
       // Transform data to match Invoice interface
-      return (data || []).map(invoice => ({
+      return (data.invoices || []).map((invoice: any) => ({
         id: invoice.id,
         invoiceNumber: invoice.invoice_number,
         date: invoice.date,
@@ -47,7 +31,7 @@ export const useInvoices = (options: UseInvoicesOptions = {}) => {
         customerId: invoice.customer_id,
         customerName: invoice.customer_name,
         customerEmail: invoice.customer_email,
-        items: [], // Will be populated from invoice_items if needed
+        items: [],
         subtotal: invoice.subtotal,
         tax: invoice.tax,
         discount: invoice.discount,
@@ -65,22 +49,14 @@ export const useRecentInvoices = (gymId?: string, limit: number = 5) => {
   return useQuery({
     queryKey: ['recent-invoices', gymId, limit],
     queryFn: async () => {
-      let query = supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      params.append('sort', 'created_at');
+      params.append('order', 'desc');
 
-      if (gymId) {
-        // In a real app, you'd filter by gym_id through branches
-        // For now, we'll fetch all recent invoices
-      }
+      const { data } = await api.get(`/api/invoices?${params.toString()}`);
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return (data || []).map(invoice => ({
+      return (data.invoices || []).map((invoice: any) => ({
         id: invoice.id,
         invoiceNumber: invoice.invoice_number,
         date: invoice.date,

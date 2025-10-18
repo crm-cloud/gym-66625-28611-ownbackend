@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranchContext } from '@/hooks/useBranchContext';
 import type { MemberFormData } from '@/types/member';
@@ -36,35 +36,22 @@ export const useMembershipWorkflow = () => {
           phone: memberData.phone,
           date_of_birth: memberData.dateOfBirth ? memberData.dateOfBirth.toISOString().split('T')[0] : undefined,
           gender: memberData.gender,
-          address: memberData.address as any, // JSON field
-          emergency_contact: memberData.emergencyContact as any, // JSON field
+          address: memberData.address,
+          emergency_contact: memberData.emergencyContact,
           profile_photo: memberData.profilePhoto,
           branch_id: currentBranchId || memberData.branchId,
-          created_by: authState.user?.id,
         };
 
-        const { data: member, error: memberError } = await supabase
-          .from('members')
-          .insert(memberPayload)
-          .select('id')
-          .single();
-
-        if (memberError) throw memberError;
+        const { data: member } = await api.post('/api/members', memberPayload);
 
         // Step 2: Get Membership Plan Details
-        const { data: membershipPlan, error: planError } = await supabase
-          .from('membership_plans')
-          .select('*')
-          .eq('id', membershipPlanId)
-          .single();
-
-        if (planError) throw planError;
+        const { data: membershipPlan } = await api.get(`/api/membership-plans/${membershipPlanId}`);
 
         // Step 3: Calculate Pricing
         const originalPrice = membershipPlan.price;
         const discountAmount = membershipData.discountAmount || (originalPrice * (membershipData.discountPercent || 0)) / 100;
         const subtotal = originalPrice - discountAmount;
-        const gstAmount = membershipData.gstEnabled ? (subtotal * 0.18) : 0; // 18% GST
+        const gstAmount = membershipData.gstEnabled ? (subtotal * 0.18) : 0;
         const finalAmount = subtotal + gstAmount;
 
         // Step 4: Create Member Membership
@@ -74,10 +61,9 @@ export const useMembershipWorkflow = () => {
           start_date: membershipData.startDate.toISOString().split('T')[0],
           end_date: new Date(membershipData.startDate.getTime() + (membershipPlan.duration_months * 30 * 24 * 60 * 60 * 1000))
             .toISOString().split('T')[0],
-          status: 'active' as 'active',
-          payment_status: 'pending' as 'pending',
+          status: 'active',
+          payment_status: 'pending',
           payment_amount: finalAmount,
-          assigned_by: authState.user?.id,
           branch_id: currentBranchId || memberData.branchId,
           notes: `Membership plan: ${membershipPlan.name}`,
           discount_percent: membershipData.discountPercent || 0,
@@ -87,13 +73,7 @@ export const useMembershipWorkflow = () => {
           final_amount: finalAmount,
         };
 
-        const { data: membership, error: membershipError } = await supabase
-          .from('member_memberships')
-          .insert(membershipPayload)
-          .select('id')
-          .single();
-
-        if (membershipError) throw membershipError;
+        const { data: membership } = await api.post('/api/subscriptions', membershipPayload);
 
         // Step 5: Generate Invoice
         const invoiceNumber = `INV-${Date.now()}-${member.id.slice(-4)}`;
@@ -104,24 +84,17 @@ export const useMembershipWorkflow = () => {
           customer_name: memberData.fullName,
           customer_email: memberData.email,
           date: new Date().toISOString().split('T')[0],
-          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           subtotal: originalPrice,
           discount: discountAmount,
           tax: gstAmount,
           total: finalAmount,
-          status: 'draft' as 'draft',
+          status: 'draft',
           branch_id: currentBranchId || memberData.branchId,
-          created_by: authState.user?.id,
           notes: `Membership: ${membershipPlan.name} (${membershipPlan.duration_months} months)`,
         };
 
-        const { data: invoice, error: invoiceError } = await supabase
-          .from('invoices')
-          .insert(invoicePayload)
-          .select('id')
-          .single();
-
-        if (invoiceError) throw invoiceError;
+        const { data: invoice } = await api.post('/api/invoices', invoicePayload);
 
         return {
           memberId: member.id,
@@ -153,65 +126,29 @@ export const useMembershipWorkflow = () => {
       notes?: string;
     }) => {
       try {
-        // Step 1: Create Transaction Record
-        const { data: paymentMethodRecord } = await supabase
-          .from('payment_methods')
-          .select('id')
-          .eq('type', paymentMethod)
-          .single();
-
-        const { data: categoryRecord } = await supabase
-          .from('transaction_categories')
-          .select('id')
-          .eq('name', 'Membership Payment')
-          .eq('type', 'income')
-          .single();
-
-        const transactionData = {
-          date: new Date().toISOString().split('T')[0],
-          type: 'income' as const,
-          category_id: categoryRecord?.id,
-          amount: amount,
-          description: `Membership payment - Reference: ${referenceNumber || 'N/A'}`,
-          payment_method_id: paymentMethodRecord?.id,
-          reference: referenceNumber,
-          status: 'completed' as const
+        // Create payment transaction
+        const paymentData = {
+          invoice_id: invoiceId,
+          amount,
+          payment_method: paymentMethod,
+          reference_number: referenceNumber,
+          notes,
         };
 
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert(transactionData);
+        await api.post('/api/payments', paymentData);
 
-        if (transactionError) {
-          console.warn('Failed to create transaction record:', transactionError);
-        }
+        // Get invoice total to determine if fully paid
+        const { data: invoice } = await api.get(`/api/invoices/${invoiceId}`);
+        const newStatus = amount >= invoice.total ? 'paid' : 'sent';
 
-        // Step 2: Update Invoice Status
-        const { data: invoice } = await supabase
-          .from('invoices')
-          .select('total')
-          .eq('id', invoiceId)
-          .single();
+        // Update invoice status
+        await api.patch(`/api/invoices/${invoiceId}`, { status: newStatus });
 
-        const newStatus = amount >= (invoice?.total || 0) ? 'paid' : 'sent';
-        
-        const { error: invoiceUpdateError } = await supabase
-          .from('invoices')
-          .update({ status: newStatus as 'paid' | 'sent' })
-          .eq('id', invoiceId);
-
-        if (invoiceUpdateError) throw invoiceUpdateError;
-
-        // Step 3: Update Membership Status
-        const { error: membershipUpdateError } = await supabase
-          .from('member_memberships')
-          .update({ 
-            payment_status: amount >= (invoice?.total || 0) ? 'completed' as 'completed' : 'pending' as 'pending',
-            status: 'active' as 'active'
-          })
-          .eq('id', membershipId);
-
-        if (membershipUpdateError) throw membershipUpdateError;
+        // Update membership status
+        await api.patch(`/api/subscriptions/${membershipId}`, {
+          payment_status: amount >= invoice.total ? 'completed' : 'pending',
+          status: 'active'
+        });
 
         return { success: true };
       } catch (error) {
