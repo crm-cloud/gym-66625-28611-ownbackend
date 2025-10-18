@@ -33,6 +33,12 @@ import dietWorkoutRoutes from './routes/diet-workout.routes';
 import feedbackRoutes from './routes/feedback.routes';
 import announcementRoutes from './routes/announcement.routes';
 import referralRoutes from './routes/referral.routes';
+// Phase 6-8: User, Role, Payment, Subscription Management
+import userRoutes from './routes/user.routes';
+import roleRoutes from './routes/role.routes';
+import paymentRoutes from './routes/payment.routes';
+import subscriptionRoutes from './routes/subscription.routes';
+import invoiceRoutes from './routes/invoice.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -103,6 +109,12 @@ app.use('/api/plans', dietWorkoutRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/referrals', referralRoutes);
+// Phase 6-8: User, Role, Payment, Subscription Management
+app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
