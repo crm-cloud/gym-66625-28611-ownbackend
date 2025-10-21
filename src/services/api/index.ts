@@ -10,6 +10,7 @@ export { BranchService, type Branch, type BranchFilters } from './BranchService'
 export { ReportService, type RevenueByAdminReport, type RevenueByBranchReport, type PendingInvoicesReport, type MembershipSummaryReport, type LeadConversionReport } from './ReportService';
 export { ReferralService, type Referral, type ReferralSettings, type ReferralAnalytics, type BonusHistory } from './ReferralService';
 export { AuthService, type LoginCredentials, type RegisterData, type AuthResponse } from './AuthService';
+export { UserManagementService, type CreateUserParams, type CreateUserResult } from './UserManagementService';
 
 // Re-export axios instance for direct access if needed
 export { api } from '@/lib/axios';

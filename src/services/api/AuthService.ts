@@ -1,5 +1,4 @@
 import { api } from '@/lib/axios';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface LoginCredentials {
   email: string;
@@ -22,35 +21,25 @@ export interface AuthResponse {
 /**
  * Auth Service
  * Handles authentication operations
- * Uses Supabase Auth for user management and JWT tokens for API access
+ * Uses backend API for all authentication functionality
  */
 class AuthServiceClass {
   /**
-   * Register new user (uses Supabase Auth)
+   * Register new user
    */
   async register(data: RegisterData): Promise<AuthResponse> {
-    const { data: authData, error } = await supabase.auth.signUp({
+    const { data: response } = await api.post('/api/auth/signup', {
       email: data.email,
       password: data.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: { 
-          full_name: data.full_name, 
-          phone: data.phone 
-        }
-      }
+      full_name: data.full_name,
+      phone: data.phone
     });
 
-    if (error) throw error;
-    if (!authData.user) throw new Error('User creation failed');
-
-    // Get JWT tokens from backend
-    const response = await api.post('/api/auth/login', {
+    // Automatically log in after registration
+    return this.login({
       email: data.email,
       password: data.password
     });
-
-    return response.data;
   }
 
   /**
@@ -75,16 +64,15 @@ class AuthServiceClass {
    */
   async logout(): Promise<void> {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/api/auth/logout', {
+        refresh_token: localStorage.getItem('refresh_token')
+      });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       // Always clear local tokens
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      
-      // Sign out from Supabase Auth
-      await supabase.auth.signOut();
     }
   }
 
