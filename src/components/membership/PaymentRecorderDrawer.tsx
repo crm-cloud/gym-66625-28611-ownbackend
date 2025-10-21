@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Banknote, Smartphone, Building2 } from 'lucide-react';
+import { api } from '@/lib/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,31 +61,15 @@ export const PaymentRecorderDrawer = ({
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        // First, get the member ID from the invoice
-        const { data: memberData, error: memberError } = await supabase
-          .from('members')
-          .select('id')
-          .eq('id', invoice.memberId)
-          .single();
-          
-        if (memberError) throw memberError;
-        
-        if (!memberData) {
-          throw new Error('Member not found');
+        if (!invoice.memberId) {
+          throw new Error('Member ID not found');
         }
         
-        // Then get all payment transactions for this member
-        const { data: transactions, error: txError } = await supabase
-          .from('transactions')
-          .select('amount, description, date')
-          .eq('member_id', memberData.id)
-          .eq('type', 'income')
-          .order('date', { ascending: false });
-          
-        if (txError) throw txError;
+        // Get all payment transactions for this member
+        const { data } = await api.get(`/api/transactions?member_id=${invoice.memberId}&type=income`);
         
         // Sum up all payment amounts
-        const totalPaid = transactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+        const totalPaid = data.transactions?.reduce((sum: number, tx: any) => sum + (Number(tx.amount) || 0), 0) || 0;
         setPaidAmount(totalPaid);
         
       } catch (error) {
@@ -103,7 +87,7 @@ export const PaymentRecorderDrawer = ({
     if (open) {
       fetchPayments();
     }
-  }, [open, invoice.id, toast]);
+  }, [open, invoice.memberId, toast]);
 
   // Calculate remaining amount after any previous payments
   const remainingAmount = invoice.finalAmount - paidAmount;
@@ -130,44 +114,24 @@ export const PaymentRecorderDrawer = ({
         throw new Error('Member ID or Branch ID is missing. Cannot process payment.');
       }
       
-      // 2. Create finance transaction
-      const transactionData = {
-        id: uuidv4(),
+      // Create finance transaction via REST API
+      await api.post('/api/transactions', {
         type: 'income',
         amount: formData.amount,
-        description: `Payment for Invoice #${invoice.invoiceNumber}${formData.notes ? ' - ' + formData.notes : ''}`,
-        reference: formData.referenceNumber || null,
+        description: `Membership payment - ${invoice.planName}`,
+        reference: formData.referenceNumber || `REF-${Date.now()}`,
         member_id: invoice.memberId,
         branch_id: invoice.branchId,
         status: 'completed',
         date: today,
-      };
-      
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          type: 'income',
-          amount: formData.amount,
-          description: `Membership payment - ${invoice.planName}`,
-          reference: formData.referenceNumber || `REF-${Date.now()}`,
-          member_id: invoice.memberId,
-          branch_id: invoice.branchId,
-          status: 'completed',
-          date: today
-        });
+        invoice_id: invoice.id
+      });
 
-      if (transactionError) throw transactionError;
-
-      // 3. Update invoice status if fully paid
+      // Update invoice status if fully paid
       if (formData.amount >= invoice.finalAmount) {
-        const { error: invoiceError } = await supabase
-          .from('invoices')
-          .update({ 
-            status: 'paid'
-          })
-          .eq('id', invoice.id);
-
-        if (invoiceError) throw invoiceError;
+        await api.patch(`/api/invoices/${invoice.id}`, { 
+          status: 'paid'
+        });
       }
 
       toast({

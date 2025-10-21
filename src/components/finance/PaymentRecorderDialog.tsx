@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/hooks/useCurrency';
+import { api } from '@/lib/axios';
 
 interface Invoice {
   id: string;
@@ -75,19 +75,18 @@ export function PaymentRecorderDialog({
     setIsProcessing(true);
     
     try {
-      // Use the database function to record payment with all related updates
-      const { data, error } = await supabase.rpc('record_invoice_payment', {
-        p_invoice_id: invoice.id,
-        p_amount: paymentData.amount,
-        p_payment_method: paymentData.method,
-        p_reference: paymentData.reference || null,
-        p_notes: paymentData.notes || null,
-        p_payment_date: paymentData.date,
-        p_member_id: invoice.customerId || null,
-        p_member_name: invoice.customerName || null
+      // Record payment via REST API
+      await api.post('/api/transactions', {
+        type: 'income',
+        amount: paymentData.amount,
+        payment_method: paymentData.method,
+        reference: paymentData.reference || null,
+        notes: paymentData.notes || null,
+        date: paymentData.date,
+        invoice_id: invoice.id,
+        member_id: invoice.customerId || null,
+        customer_name: invoice.customerName || null
       });
-
-      if (error) throw error;
 
       // Invalidate and refetch all related queries
       await Promise.all([

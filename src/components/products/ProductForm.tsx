@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,22 +62,10 @@ export const ProductForm = ({ product, onSuccess, onCancel }: ProductFormProps) 
     mutationFn: async (data: typeof formData) => {
       if (product) {
         // Update existing product
-        const { error } = await supabase
-          .from('products')
-          .update({
-            ...data,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', product.id);
-        
-        if (error) throw error;
+        await api.patch(`/api/products/${product.id}`, data);
       } else {
         // Create new product
-        const { error } = await supabase
-          .from('products')
-          .insert([data]);
-        
-        if (error) throw error;
+        await api.post('/api/products', data);
       }
     },
     onSuccess: () => {

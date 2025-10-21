@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { Plus, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -54,38 +54,21 @@ export function SubscriptionPlanForm({ plan, onSuccess }: SubscriptionPlanFormPr
   const createPlan = useMutation({
     mutationFn: async (data: PlanFormData) => {
       const features = data.features.map(f => f.value).filter(f => f.trim() !== '');
+      const planData = {
+        name: data.name,
+        price: data.price,
+        billing_cycle: data.billing_cycle,
+        max_branches: data.max_branches,
+        max_trainers: data.max_trainers,
+        max_members: data.max_members,
+        features: features,
+        is_active: data.is_active
+      };
       
       if (plan) {
-        const { error } = await supabase
-          .from('subscription_plans')
-          .update({
-            name: data.name,
-            price: data.price,
-            billing_cycle: data.billing_cycle,
-            max_branches: data.max_branches,
-            max_trainers: data.max_trainers,
-            max_members: data.max_members,
-            features: features,
-            is_active: data.is_active
-          })
-          .eq('id', plan.id);
-        
-        if (error) throw error;
+        await api.patch(`/api/gym-subscriptions/${plan.id}`, planData);
       } else {
-        const { error } = await supabase
-          .from('subscription_plans')
-          .insert([{
-            name: data.name,
-            price: data.price,
-            billing_cycle: data.billing_cycle,
-            max_branches: data.max_branches,
-            max_trainers: data.max_trainers,
-            max_members: data.max_members,
-            features: features,
-            is_active: true
-          }]);
-        
-        if (error) throw error;
+        await api.post('/api/gym-subscriptions', { ...planData, is_active: true });
       }
     },
     onSuccess: () => {

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/axios';
 import { Plus, Edit, DollarSign, Building2, Users, UserCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,12 +63,7 @@ export const SubscriptionPlanManager = () => {
   const { data: plans, isLoading } = useQuery({
     queryKey: ['subscription-plans-all'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('price', { ascending: true });
-      
-      if (error) throw error;
+      const { data } = await api.get('/api/gym-subscriptions');
       return data as SubscriptionPlan[];
     }
   });
@@ -81,18 +76,9 @@ export const SubscriptionPlanManager = () => {
       };
 
       if (editingPlan) {
-        const { error } = await supabase
-          .from('subscription_plans')
-          .update(planData)
-          .eq('id', editingPlan.id);
-        
-        if (error) throw error;
+        await api.patch(`/api/gym-subscriptions/${editingPlan.id}`, planData);
       } else {
-        const { error } = await supabase
-          .from('subscription_plans')
-          .insert([planData]);
-        
-        if (error) throw error;
+        await api.post('/api/gym-subscriptions', planData);
       }
     },
     onSuccess: () => {

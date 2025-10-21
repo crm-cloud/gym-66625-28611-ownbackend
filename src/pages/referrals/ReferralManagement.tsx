@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Share2, Plus, Users, TrendingUp, DollarSign, Gift, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useReferrals } from '@/hooks/useReferrals';
+import { api } from '@/lib/axios';
 
 interface Referral {
   id: string;
@@ -35,69 +36,6 @@ interface ReferralSettings {
   isActive: boolean;
 }
 
-// Fetch referrals from the database with user information
-const fetchReferrals = async (): Promise<Referral[]> => {
-  // First, get all referrals
-  const { data: referralsData, error: referralsError } = await supabase
-    .from('referrals')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (referralsError) {
-    console.error('Error fetching referrals:', referralsError);
-    throw referralsError;
-  }
-
-  if (!referralsData || referralsData.length === 0) {
-    return [];
-  }
-
-  // Get unique user IDs from referrers and referred users
-  const userIds = [
-    ...new Set(
-      referralsData.flatMap(ref => [
-        ref.referrer_id,
-        ref.referred_id
-      ]).filter(Boolean) as string[]
-    )
-  ];
-
-  // Fetch user profiles data
-  const { data: profilesData, error: profilesError } = await supabase
-    .from('profiles')
-    .select('user_id, email, full_name')
-    .in('user_id', userIds);
-
-  if (profilesError) {
-    console.error('Error fetching profile data:', profilesError);
-    // Continue with just the referral data if user fetch fails
-    return referralsData.map(ref => ({
-      ...ref,
-      referrer_name: ref.referrer_id ? 'User' : 'Unknown',
-      referred_name: ref.referred_email,
-      status: ref.status as 'pending' | 'completed' | 'expired'
-    }));
-  }
-
-  // Create a map of user IDs to profile data
-  const profilesMap = new Map(profilesData?.map(profile => [profile.user_id, profile]) || []);
-
-  // Combine referral data with user information
-  return referralsData.map(ref => {
-    const referrer = ref.referrer_id ? profilesMap.get(ref.referrer_id) : null;
-    const referredUser = ref.referred_id ? profilesMap.get(ref.referred_id) : null;
-
-    return {
-      ...ref,
-      referrer_name: referrer?.full_name || referrer?.email || 'Unknown',
-      referrer_email: referrer?.email || 'Unknown',
-      referred_name: referredUser?.full_name || ref.referred_email,
-      referred_email: referredUser?.email || ref.referred_email,
-      status: ref.status as 'pending' | 'completed' | 'expired'
-    };
-  });
-};
-
 export default function ReferralManagement() {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<ReferralSettings>({
@@ -107,31 +45,17 @@ export default function ReferralManagement() {
   });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   
-  // Fetch referrals
-  const { data: referrals = [], isLoading, error } = useQuery({
-    queryKey: ['referrals'],
-    queryFn: fetchReferrals
-  });
+  // Use referrals hook
+  const { data: referrals = [], isLoading, error } = useReferrals();
 
-  // Set up real-time subscription
+  // Set up real-time subscription - removed as we now use REST API polling
   useEffect(() => {
-    const channel = supabase
-      .channel('referrals_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'referrals' 
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['referrals'] });
-        }
-      )
-      .subscribe();
+    // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['referrals'] });
+    }, 30000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, [queryClient]);
 
   const stats = useMemo(() => {
@@ -166,17 +90,13 @@ export default function ReferralManagement() {
 
   const handleMarkAsCompleted = async (referralId: string) => {
     try {
-      const { error } = await supabase
-        .from('referrals')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', referralId);
-
-      if (error) throw error;
+      await api.patch(`/api/referrals/${referralId}`, { 
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      });
       
       toast.success('Referral marked as completed');
+      queryClient.invalidateQueries({ queryKey: ['referrals'] });
     } catch (error) {
       console.error('Error updating referral status:', error);
       toast.error('Failed to update referral status');

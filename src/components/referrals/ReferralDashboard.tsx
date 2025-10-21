@@ -18,17 +18,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { ReferralSettingsDialog } from './ReferralSettingsDialog';
 import { ReferralCodeGenerator } from './ReferralCodeGenerator';
 import { ReferralRewardsTable } from './ReferralRewardsTable';
-import {
-  fetchUserReferrals,
-  createReferral,
-  generateReferralCode as generateCode,
-  invalidateReferralQueries,
-  fetchReferralSettings
-} from '@/services/referrals';
+import { useReferrals } from '@/hooks/useReferrals';
+import { api } from '@/lib/axios';
 
 export const ReferralDashboard = () => {
   const { authState } = useAuth();
@@ -36,38 +30,21 @@ export const ReferralDashboard = () => {
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Use referrals hook
+  const { data: referralData } = useReferrals({ 
+    referrerId: authState.user?.id,
+    status: 'active'
+  });
+
+  // Get referral code from referralData
+  const myReferralCode = referralData?.[0]?.referral_code || null;
+
   // Fetch referral settings
   const { data: settings } = useQuery({
     queryKey: ['referral-settings'],
-    queryFn: fetchReferralSettings,
-    enabled: !!authState.user?.id
-  });
-
-  // Fetch user's referral data
-  const { data: referralData } = useQuery({
-    queryKey: ['my-referrals', authState.user?.id],
-    queryFn: () => {
-      if (!authState.user?.id) return Promise.resolve([]);
-      return fetchUserReferrals(authState.user.id);
-    },
-    enabled: !!authState.user?.id
-  });
-
-  // Get or generate referral code
-  const { data: myReferralCode } = useQuery({
-    queryKey: ['my-referral-code', authState.user?.id],
     queryFn: async () => {
-      if (!authState.user?.id) return null;
-      
-      // Try to get existing referral code
-      const { data: existing } = await supabase
-        .from('referrals')
-        .select('referral_code')
-        .eq('referrer_id', authState.user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-        
-      return existing?.referral_code || null;
+      const { data } = await api.get('/api/settings?category=referral');
+      return data.find((s: any) => s.category === 'referral');
     },
     enabled: !!authState.user?.id
   });
@@ -77,25 +54,16 @@ export const ReferralDashboard = () => {
     mutationFn: async () => {
       if (!authState.user?.id) throw new Error('User not authenticated');
       
-      const code = await generateCode(authState.user.id);
-      
-      await createReferral({
-        referrer_id: authState.user.id,
-        referred_email: authState.user.email || 'self@example.com',
-        referral_code: code,
-        status: 'active',
+      const { data } = await api.post('/api/referrals/generate-code', {
+        user_id: authState.user.id,
         signup_bonus_amount: settings?.referral_signup_bonus || 500,
-        membership_bonus_amount: settings?.referral_membership_bonus || 2500,
-        converted_at: null,
-        membership_id: null,
-        referred_id: null
+        membership_bonus_amount: settings?.referral_membership_bonus || 2500
       });
       
-      return code;
+      return data.code;
     },
     onSuccess: (code) => {
-      queryClient.setQueryData(['my-referral-code', authState.user?.id], code);
-      queryClient.invalidateQueries({ queryKey: ['my-referrals', authState.user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['referrals'] });
       
       toast({
         title: 'Success',

@@ -22,10 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useRBAC } from '@/hooks/useRBAC';
 import { Settings, DollarSign, Users, Gift } from 'lucide-react';
+import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 
 const settingsSchema = z.object({
   referral_enabled: z.boolean(),
@@ -53,67 +53,37 @@ export const ReferralSettingsDialog = ({
   // Check for the correct permission based on your RBAC system
   const canManageSettings = hasPermission('settings.edit');
 
-  // Fetch current settings
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ['referral-settings'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .like('key', 'referral_%');
-      
-      if (error) throw error;
-      
-      // Convert to object and provide defaults
-      const settingsObj = data.reduce((acc, setting) => {
-        acc[setting.key] = setting.value;
-        return acc;
-      }, {} as Record<string, any>);
+  // Fetch current settings using REST API
+  const { data: settingsData, isLoading } = useSystemSettings('referral');
+  const updateSetting = useUpdateSystemSetting();
 
-      return {
-        referral_enabled: settingsObj.referral_enabled ?? true,
-        referral_signup_bonus: settingsObj.referral_signup_bonus ?? 500,
-        referral_membership_bonus: settingsObj.referral_membership_bonus ?? 2500,
-        referral_min_redeem_amount: settingsObj.referral_min_redeem_amount ?? 1000,
-        referral_max_bonus_per_month: settingsObj.referral_max_bonus_per_month ?? 50000,
-      };
-    },
-    enabled: open && canManageSettings
-  });
+  const settings = settingsData?.reduce((acc, setting) => {
+    acc[setting.key] = setting.value;
+    return acc;
+  }, {} as Record<string, any>) || {
+    referral_enabled: true,
+    referral_signup_bonus: 500,
+    referral_membership_bonus: 2500,
+    referral_min_redeem_amount: 1000,
+    referral_max_bonus_per_month: 50000,
+  };
 
   const form = useForm<ReferralSettingsData>({
     resolver: zodResolver(settingsSchema),
     values: settings,
   });
 
-  const updateSettings = useMutation({
+  const saveSettings = useMutation({
     mutationFn: async (data: ReferralSettingsData) => {
       const settingsToUpdate = Object.entries(data).map(([key, value]) => ({
         key,
         value,
+        category: 'referral',
         description: getSettingDescription(key)
       }));
 
       for (const setting of settingsToUpdate) {
-        const settingData = {
-          key: setting.key,
-          value: setting.value,
-          description: setting.description,
-          category: 'referral',
-          updated_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          is_encrypted: false,
-          branch_id: null
-        };
-
-        const { error } = await supabase
-          .from('system_settings')
-          .upsert(
-            settingData as any, // Type assertion to handle database types
-            { onConflict: 'key' }
-          );
-
-        if (error) throw error;
+        await updateSetting.mutateAsync(setting);
       }
     },
     onSuccess: () => {
@@ -121,7 +91,7 @@ export const ReferralSettingsDialog = ({
         title: 'Settings Updated',
         description: 'Referral settings have been updated successfully.'
       });
-      queryClient.invalidateQueries({ queryKey: ['referral-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -186,7 +156,7 @@ export const ReferralSettingsDialog = ({
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => updateSettings.mutate(data))} className="space-y-6">
+            <form onSubmit={form.handleSubmit((data) => saveSettings.mutate(data))} className="space-y-6">
               {/* General Settings */}
               <Card>
                 <CardHeader>
@@ -358,8 +328,8 @@ export const ReferralSettingsDialog = ({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updateSettings.isPending}>
-                  {updateSettings.isPending ? 'Saving...' : 'Save Settings'}
+                <Button type="submit" disabled={saveSettings.isPending}>
+                  {saveSettings.isPending ? 'Saving...' : 'Save Settings'}
                 </Button>
               </div>
             </form>
