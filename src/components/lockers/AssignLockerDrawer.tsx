@@ -34,7 +34,7 @@ export function AssignLockerDrawer({
   const [notes, setNotes] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
 
-  const { data: lockers = [] } = useLockers(branchId);
+  const { data: lockers = [] } = useLockers({ branchId });
   
   // Filter available lockers
   const availableLockers = lockers.filter(locker => 

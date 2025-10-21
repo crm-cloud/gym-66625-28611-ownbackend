@@ -28,7 +28,7 @@ export default function LockerManagement() {
   
   const { currentBranchId } = useBranchContext();
   const { branches } = useBranches();
-  const { data: lockers = [], isLoading } = useLockers(currentBranchId || undefined);
+  const { data: lockers = [], isLoading } = useLockers({ branchId: currentBranchId || undefined });
   const { data: summary } = useLockerSummary(currentBranchId || undefined);
   
   const createLockerMutation = useCreateLocker();
