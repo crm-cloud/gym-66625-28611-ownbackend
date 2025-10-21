@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useMembershipPlans } from '@/hooks/useMembershipPlans';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
+import { useApiMutation } from '@/hooks/useApiQuery';
 import {
   Table,
   TableBody,
@@ -33,39 +34,20 @@ export const MembershipPlanList = () => {
   const { formatCurrency } = useCurrency();
   const [viewingPlan, setViewingPlan] = useState<any | null>(null);
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data: plans = [], isLoading, error, refetch } = useSupabaseQuery(
-    ['membership_plans'],
-    async () => {
-      const { data, error } = await supabase
-        .from('membership_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
+  const { data: plans = [], isLoading, error } = useMembershipPlans({ isActive: true });
 
-      if (error) throw error;
-      return data || [];
+  // Fetch member counts per plan using subscriptions hook
+  const { data: allSubscriptions = [] } = useSubscriptions({ status: 'active' });
+  
+  const memberCounts = allSubscriptions.reduce((counts: Record<string, number>, sub: any) => {
+    const planId = sub.plan_id || sub.membership_plan_id;
+    if (planId) {
+      counts[planId] = (counts[planId] || 0) + 1;
     }
-  );
-
-  // Fetch member counts per plan
-  const { data: memberCounts = {} } = useQuery({
-    queryKey: ['membership-plan-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('member_memberships')
-        .select('membership_plan_id')
-        .eq('status', 'active');
-      if (error) throw error;
-      
-      const counts = {};
-      data?.forEach(membership => {
-        const planId = membership.membership_plan_id;
-        counts[planId] = (counts[planId] || 0) + 1;
-      });
-      return counts;
-    }
-  });
+    return counts;
+  }, {});
 
   // Calculate stats
   const stats = {
@@ -77,47 +59,27 @@ export const MembershipPlanList = () => {
     totalMembers: Object.values(memberCounts).reduce((sum: number, count: number) => sum + count, 0) as number
   };
 
+  const deletePlan = useApiMutation('/api/membership-plans', 'delete', {
+    invalidateQueries: [['membership-plans']],
+    successMessage: 'Membership plan deleted successfully',
+  });
+
   const handleDeletePlan = async (planId: string) => {
-    try {
-      // Check if any members are assigned to this plan
-      const { data: assignedMembers, error: checkError } = await supabase
-        .from('member_memberships')
-        .select('id')
-        .eq('membership_plan_id', planId)
-        .eq('status', 'active')
-        .limit(1);
+    // Check if any members are assigned to this plan
+    const assignedMembers = allSubscriptions.filter((sub: any) => 
+      (sub.plan_id || sub.membership_plan_id) === planId
+    );
 
-      if (checkError) throw checkError;
-
-      if (assignedMembers && assignedMembers.length > 0) {
-        toast({
-          title: 'Cannot Delete Plan',
-          description: 'This plan has active members assigned to it. Please reassign or expire their memberships first.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('membership_plans')
-        .update({ is_active: false })
-        .eq('id', planId);
-
-      if (error) throw error;
-
+    if (assignedMembers.length > 0) {
       toast({
-        title: 'Plan Deleted',
-        description: 'Membership plan has been successfully deleted.',
-      });
-      
-      refetch();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete membership plan.',
+        title: 'Cannot Delete Plan',
+        description: 'This plan has active members assigned to it. Please reassign or expire their memberships first.',
         variant: 'destructive'
       });
+      return;
     }
+
+    deletePlan.mutate({ id: planId });
   };
 
   const formatDuration = (months: number) => {

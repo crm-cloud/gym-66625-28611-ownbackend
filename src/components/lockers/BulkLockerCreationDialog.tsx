@@ -8,9 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Key, Plus } from 'lucide-react';
-import { useBulkCreateLockers } from '@/hooks/useLockers';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useBulkCreateLockers, useLockerSizes } from '@/hooks/useLockers';
 
 interface BulkLockerCreationDialogProps {
   open: boolean;
@@ -28,18 +26,7 @@ export function BulkLockerCreationDialog({
   const [prefix, setPrefix] = useState<string>('');
   const [sizeId, setSizeId] = useState<string>('');
 
-  const { data: lockerSizes = [] } = useSupabaseQuery(
-    ['locker-sizes'],
-    async () => {
-      const { data, error } = await supabase
-        .from('locker_sizes')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      return data || [];
-    }
-  );
+  const { data: lockerSizes = [] } = useLockerSizes();
 
   const bulkCreateMutation = useBulkCreateLockers();
 

@@ -17,8 +17,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AssignMembershipDrawer } from '@/components/membership/AssignMembershipDrawer';
 import { MembershipFormData } from '@/types/membership';
 import { useToast } from '@/hooks/use-toast';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
+import { useInvoices } from '@/hooks/useInvoices';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MemberDashboardProps {
@@ -40,64 +40,18 @@ export const MemberDashboard = ({ memberId, memberName, memberAvatar }: MemberDa
   const { toast } = useToast();
   const { authState } = useAuth();
 
-  // Fetch active membership - bypassing type inference to avoid TypeScript errors
-  const membershipQuery = useSupabaseQuery(
-    ['member-active-membership', memberId],
-    async () => {
-      const { data: membership, error: membershipError } = await (supabase as any)
-        .from('member_memberships')
-        .select('*')
-        .eq('member_id', memberId)
-        .eq('status', 'active')
-        .maybeSingle();
-      
-      if (membershipError) throw membershipError;
-      if (!membership) return null;
-
-      // Fetch related plan
-      const { data: plan } = await (supabase as any)
-        .from('membership_plans')
-        .select('name, price, duration_days')
-        .eq('id', membership.membership_plan_id)
-        .single();
-
-      // Fetch member's branch
-      const { data: member } = await (supabase as any)
-        .from('members')
-        .select('branch_id, branches(name)')
-        .eq('id', memberId)
-        .single();
-
-      return {
-        ...membership,
-        membership_plans: plan,
-        members: member
-      };
-    },
-    { enabled: !!memberId }
-  );
+  // Fetch active membership using new hook
+  const { data: subscriptions = [], isLoading: membershipLoading } = useSubscriptions({
+    memberId,
+    status: 'active'
+  });
   
-  const activeMembership = membershipQuery.data;
-  const membershipLoading = membershipQuery.isLoading;
+  const activeMembership = subscriptions?.[0] || null;
 
-  // Fetch invoices - using any to bypass type issues
-  const invoicesQuery = useSupabaseQuery(
-    ['member-invoices', authState.user?.id],
-    async () => {
-      const { data, error } = await (supabase as any)
-        .from('invoices')
-        .select('*')
-        .eq('customer_id', authState.user?.id)
-        .order('issue_date', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!authState.user?.id }
-  );
-
-  const memberInvoices = invoicesQuery.data || [];
-  const invoicesLoading = invoicesQuery.isLoading;
+  // Fetch invoices using new hook
+  const { data: memberInvoices = [], isLoading: invoicesLoading } = useInvoices({
+    customerId: authState.user?.id,
+  });
   const unpaidInvoices = memberInvoices.filter((invoice: any) => 
     invoice.status === 'pending' || invoice.status === 'overdue'
   );
@@ -290,8 +244,8 @@ export const MemberDashboard = ({ memberId, memberName, memberAvatar }: MemberDa
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {unpaidInvoices.map((invoice) => {
-                  const isOverdue = isAfter(new Date(), new Date(invoice.due_date));
+                {unpaidInvoices.map((invoice: any) => {
+                  const isOverdue = isAfter(new Date(), new Date(invoice.dueDate));
                   return (
                     <div 
                       key={invoice.id}
@@ -301,12 +255,12 @@ export const MemberDashboard = ({ memberId, memberName, memberAvatar }: MemberDa
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-medium">{invoice.invoice_number}</h4>
+                          <h4 className="font-medium">{invoice.invoiceNumber}</h4>
                           <p className="text-sm text-muted-foreground">Membership Invoice</p>
                           <p className={`text-sm font-medium ${
                             isOverdue ? 'text-red-600' : 'text-yellow-600'
                           }`}>
-                            {isOverdue ? 'Overdue' : 'Due'}: {format(new Date(invoice.due_date), 'MMM dd, yyyy')}
+                            {isOverdue ? 'Overdue' : 'Due'}: {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                           </p>
                         </div>
                         <div className="text-right">

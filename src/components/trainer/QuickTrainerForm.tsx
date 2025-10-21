@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Upload, Users, Mail, Phone, MapPin, Award } from 'lucide-react';
-import { useBranches } from '@/hooks/useSupabaseQuery';
+import { useBranches } from '@/hooks/useBranches';
 import { useCreateTrainer } from '@/hooks/useTrainers';
 import type { TrainerSpecialty } from '@/types/trainer';
 
@@ -54,7 +54,7 @@ export const QuickTrainerForm = ({ open, onOpenChange, onSuccess }: QuickTrainer
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string>('');
 
-  const { data: branches = [] } = useBranches();
+  const { branches = [] } = useBranches();
   const createTrainer = useCreateTrainer();
 
   const form = useForm<QuickTrainerFormData>({

@@ -54,6 +54,41 @@ export const useTrainerStats = (trainerId: string) => {
   });
 };
 
+export const useTrainerDashboard = (trainerId: string) => {
+  return useQuery({
+    queryKey: ['trainer-dashboard', trainerId],
+    queryFn: async () => {
+      const response = await api.get(`/api/trainers/${trainerId}/dashboard`);
+      return response.data;
+    },
+    enabled: !!trainerId
+  });
+};
+
+export const useTrainerAssignments = (trainerId: string) => {
+  return useQuery({
+    queryKey: ['trainer-assignments', trainerId],
+    queryFn: async () => {
+      const response = await api.get(`/api/assignments?trainerId=${trainerId}`);
+      return response.data;
+    },
+    enabled: !!trainerId
+  });
+};
+
+export const useTrainerClasses = (trainerId: string, date?: string) => {
+  return useQuery({
+    queryKey: ['trainer-classes', trainerId, date ?? 'today'],
+    queryFn: async () => {
+      const params: any = { trainerId };
+      if (date) params.date = date;
+      const response = await api.get('/api/classes', { params });
+      return response.data;
+    },
+    enabled: !!trainerId
+  });
+};
+
 export const useTrainerSchedule = (trainerId: string, date?: string) => {
   return useQuery({
     queryKey: ['trainer-schedule', trainerId, date ?? 'today'],

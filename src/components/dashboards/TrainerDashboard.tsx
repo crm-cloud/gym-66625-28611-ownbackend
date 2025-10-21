@@ -18,92 +18,31 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useTrainerDashboard, useTrainerAssignments, useTrainerClasses, useTrainerById } from '@/hooks/useTrainers';
+import { useTransactions } from '@/hooks/useTransactions';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 export const TrainerDashboard = () => {
   const { authState } = useAuth();
 
-  // Fetch trainer assignments (clients)
-  const { data: assignments = [], isLoading: assignmentsLoading } = useSupabaseQuery(
-    ['trainer-assignments', authState.user?.id],
-    async () => {
-      const { data, error } = await supabase
-        .from('trainer_assignments')
-        .select(`
-          *,
-          members (id, full_name, user_id)
-        `)
-        .eq('trainer_id', authState.user?.id)
-        .in('status', ['scheduled', 'in_progress']);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!authState.user?.id }
+  // Fetch trainer data using new hooks
+  const { data: trainerProfile } = useTrainerById(authState.user?.id || '');
+  const { data: assignments = [], isLoading: assignmentsLoading } = useTrainerAssignments(authState.user?.id || '');
+  const { data: todayClasses = [], isLoading: classesLoading } = useTrainerClasses(
+    authState.user?.id || '', 
+    format(new Date(), 'yyyy-MM-dd')
   );
+  const { data: monthlyTransactions = [], isLoading: earningsLoading } = useTransactions({
+    memberId: authState.user?.id,
+    type: 'income',
+    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+  });
 
-  // Fetch today's classes
-  const { data: todayClasses = [], isLoading: classesLoading } = useSupabaseQuery(
-    ['trainer-today-classes', authState.user?.id],
-    async () => {
-      const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-      const { data, error } = await supabase
-        .from('gym_classes')
-        .select('*')
-        .eq('trainer_id', authState.user?.id)
-        .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString())
-        .eq('status', 'scheduled')
-        .order('start_time');
-      
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!authState.user?.id }
-  );
-
-  // Fetch monthly earnings
-  const { data: earnings, isLoading: earningsLoading } = useSupabaseQuery(
-    ['trainer-monthly-earnings', authState.user?.id],
-    async () => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('type', 'income')
-        .gte('date', startOfMonth(new Date()).toISOString().split('T')[0])
-        .lte('date', endOfMonth(new Date()).toISOString().split('T')[0]);
-      
-      if (error) throw error;
-      return data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-    },
-    { enabled: !!authState.user?.id }
-  );
-
-  // Fetch trainer profile for rating
-  const { data: trainerProfile } = useSupabaseQuery(
-    ['trainer-profile', authState.user?.id],
-    async () => {
-      const { data, error } = await supabase
-        .from('trainer_profiles')
-        .select('rating, total_clients')
-        .eq('user_id', authState.user?.id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    { enabled: !!authState.user?.id }
-  );
-
-  const activeClients = assignments.filter(a => a.status === 'in_progress').length;
-  const todaySessions = todayClasses.length;
+  const activeClients = assignments.filter((a: any) => a.status === 'in_progress').length;
+  const todaySessions = todayClasses?.length || 0;
   const avgRating = trainerProfile?.rating || 4.8;
-  const monthlyEarnings = earnings || 0;
+  const monthlyEarnings = monthlyTransactions?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0;
 
   if (assignmentsLoading || classesLoading || earningsLoading) {
     return (

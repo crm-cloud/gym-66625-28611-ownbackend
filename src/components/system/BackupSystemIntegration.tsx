@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/axios';
 
 interface SystemBackup {
   id: string;
@@ -29,93 +29,23 @@ export function BackupSystemIntegration() {
   const { data: backups, isLoading } = useQuery({
     queryKey: ['system-backups'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('system_backups')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      return data as SystemBackup[];
+      const response = await api.get('/api/system/backups');
+      return response.data as SystemBackup[];
     }
   });
 
   const { data: backupStats } = useQuery({
     queryKey: ['backup-stats'],
     queryFn: async () => {
-      const { data: allBackups, error } = await supabase
-        .from('system_backups')
-        .select('status, file_size, backup_type, started_at');
-      
-      if (error) throw error;
-
-      const stats = {
-        totalBackups: allBackups?.length || 0,
-        completedBackups: allBackups?.filter(b => b.status === 'completed').length || 0,
-        failedBackups: allBackups?.filter(b => b.status === 'failed').length || 0,
-        totalSize: allBackups?.reduce((sum, b) => sum + (b.file_size || 0), 0) || 0,
-        lastBackupDate: allBackups?.[0]?.started_at || null
-      };
-
-      return stats;
+      const response = await api.get('/api/system/backups/stats');
+      return response.data;
     }
   });
 
   const createBackup = useMutation({
     mutationFn: async (backupType: 'full' | 'incremental' | 'schema_only') => {
-      // Create backup record
-      const { data, error } = await supabase
-        .from('system_backups')
-        .insert({
-          backup_type: backupType,
-          status: 'pending',
-          backup_data: {
-            requested_by: 'admin',
-            created_via: 'web_interface'
-          }
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-
-      // In a real implementation, this would trigger a backup process
-      // For now, we'll simulate a backup by updating the status
-      setTimeout(async () => {
-        await supabase
-          .from('system_backups')
-          .update({
-            status: 'running',
-            started_at: new Date().toISOString(),
-            backup_data: {
-              ...((data as any).backup_data || {}),
-              started_at: new Date().toISOString()
-            }
-          })
-          .eq('id', data.id);
-
-        // Simulate completion
-        setTimeout(async () => {
-          await supabase
-            .from('system_backups')
-            .update({
-              status: 'completed',
-              completed_at: new Date().toISOString(),
-              file_size: Math.floor(Math.random() * 1000000000), // Random file size
-              backup_data: {
-                ...((data as any).backup_data || {}),
-                completed_at: new Date().toISOString(),
-                backup_location: `backups/${data.id}_${backupType}_${Date.now()}.sql`
-              }
-            })
-            .eq('id', data.id);
-            
-          queryClient.invalidateQueries({ queryKey: ['system-backups'] });
-          queryClient.invalidateQueries({ queryKey: ['backup-stats'] });
-        }, 3000);
-      }, 1000);
-
-      return data;
+      const response = await api.post('/api/system/backups', { backup_type: backupType });
+      return response.data;
     },
     onSuccess: () => {
       toast({
@@ -136,20 +66,8 @@ export function BackupSystemIntegration() {
 
   const restoreBackup = useMutation({
     mutationFn: async (backupId: string) => {
-      // In a real implementation, this would trigger a restore process
-      console.log('Restoring backup:', backupId);
-      
-      // Log the restore event
-      await supabase.from('system_events').insert({
-        event_type: 'info',
-        event_category: 'backup',
-        title: 'Backup Restore Initiated',
-        description: `Backup restore process started for backup ID: ${backupId}`,
-        metadata: { backup_id: backupId },
-        severity: 2
-      });
-
-      return { success: true };
+      const response = await api.post(`/api/system/backups/${backupId}/restore`);
+      return response.data;
     },
     onSuccess: () => {
       toast({

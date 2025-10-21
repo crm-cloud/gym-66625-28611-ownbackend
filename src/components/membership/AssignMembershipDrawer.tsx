@@ -26,7 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { MembershipFormData, MembershipPlan } from '@/types/membership';
 import { useBranches } from '@/hooks/useBranches';
-import { useMembershipPlans } from '@/hooks/useSupabaseQuery';
+import { useMembershipPlans } from '@/hooks/useMembershipPlans';
 
 const membershipFormSchema = z.object({
   planId: z.string().min(1, 'Please select a membership plan'),

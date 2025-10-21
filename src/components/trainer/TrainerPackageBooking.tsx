@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { usePackages } from '@/hooks/usePackages';
 import { UnifiedCheckoutModal } from '@/components/checkout/UnifiedCheckoutModal';
 import { Dumbbell, Calendar, CheckCircle2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,32 +16,16 @@ export const TrainerPackageBooking = ({ trainerId, branchId }: TrainerPackageBoo
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
-  const { data: packages, isLoading } = useSupabaseQuery(
-    ['trainer-packages', trainerId, branchId],
-    async () => {
-      let query = supabase
-        .from('trainer_package_rates')
-        .select('*, profiles(full_name, email)')
-        .eq('is_active', true);
-      
-      if (trainerId) {
-        query = query.eq('trainer_id', trainerId);
-      }
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
-      }
-
-      const { data, error } = await query.order('price', { ascending: true });
-      if (error) throw error;
-      return data || [];
-    }
-  );
+  const { data: packages = [], isLoading } = usePackages({
+    trainerId,
+    isActive: true,
+  });
 
   const handleBuyPackage = (pkg: any) => {
     setSelectedPackage([{
       type: 'training',
       id: pkg.id,
-      name: `${pkg.package_name} - ${pkg.profiles.full_name}`,
+      name: `${pkg.package_name} - ${pkg.trainer_name || 'Trainer'}`,
       price: pkg.price,
       description: `${pkg.session_count} sessions • ${pkg.duration_days} days validity`,
     }]);
@@ -85,7 +68,7 @@ export const TrainerPackageBooking = ({ trainerId, branchId }: TrainerPackageBoo
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="text-lg">{pkg.package_name}</span>
-                <Badge variant="secondary">{pkg.profiles.full_name}</Badge>
+                <Badge variant="secondary">{pkg.trainer_name || 'Trainer'}</Badge>
               </CardTitle>
               <CardDescription>
                 {pkg.description || 'Personal training package'}

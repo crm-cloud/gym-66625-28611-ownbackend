@@ -8,7 +8,8 @@ import { AlertTriangle, Calendar, CreditCard, User, Activity, Zap, TrendingUp, U
 import { AssignMembershipDrawer } from '@/components/membership/AssignMembershipDrawer';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useMembershipPlans, useMembers } from '@/hooks/useSupabaseQuery';
+import { useMembershipPlans } from '@/hooks/useMembershipPlans';
+import { useMembers } from '@/hooks/useMembers';
 import { format, differenceInDays } from 'date-fns';
 
 interface MemberDashboardProps {
