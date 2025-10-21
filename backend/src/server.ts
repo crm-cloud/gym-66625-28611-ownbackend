@@ -53,6 +53,10 @@ import taskRoutes from './routes/task.routes';
 // Phase 1 Migration: Member Credits & Membership Freeze
 import memberCreditsRoutes from './routes/member-credits.routes';
 import membershipFreezeRoutes from './routes/membership-freeze.routes';
+import memberGoalsRoutes from './routes/member-goals.routes';
+import analyticsEventsRoutes from './routes/analytics-events.routes';
+import teamRoutes from './routes/team.routes';
+import templatesRoutes from './routes/templates.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -143,6 +147,10 @@ app.use('/api/tasks', taskRoutes);
 // Phase 1 Migration: Member Credits & Membership Freeze
 app.use('/api/member-credits', memberCreditsRoutes);
 app.use('/api/membership-freeze', membershipFreezeRoutes);
+app.use('/api/member-goals', memberGoalsRoutes);
+app.use('/api/analytics', analyticsEventsRoutes);
+app.use('/api/team', teamRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

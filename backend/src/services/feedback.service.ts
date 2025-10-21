@@ -42,5 +42,55 @@ export const feedbackService = {
 
   async updateFeedback(id: string, data: any) {
     return await prisma.feedback.update({ where: { id }, data });
+  },
+
+  // Feedback Responses
+  async createFeedbackResponse(feedbackId: string, response: string, respondedBy: string) {
+    const feedbackExists = await prisma.feedback.findUnique({
+      where: { id: feedbackId }
+    });
+
+    if (!feedbackExists) {
+      throw new Error('Feedback not found');
+    }
+
+    const feedbackResponse = await prisma.feedback_responses.create({
+      data: {
+        feedback_id: feedbackId,
+        response_text: response,
+        responded_by: respondedBy
+      }
+    });
+
+    // Update feedback status to responded
+    await prisma.feedback.update({
+      where: { id: feedbackId },
+      data: { status: 'responded' }
+    });
+
+    return feedbackResponse;
+  },
+
+  async getFeedbackResponses(feedbackId: string) {
+    return await prisma.feedback_responses.findMany({
+      where: { feedback_id: feedbackId },
+      orderBy: { created_at: 'desc' }
+    });
+  },
+
+  async updateFeedbackResponse(responseId: string, responseText: string) {
+    return await prisma.feedback_responses.update({
+      where: { id: responseId },
+      data: { 
+        response_text: responseText,
+        updated_at: new Date()
+      }
+    });
+  },
+
+  async deleteFeedbackResponse(responseId: string) {
+    await prisma.feedback_responses.delete({
+      where: { id: responseId }
+    });
   }
 };

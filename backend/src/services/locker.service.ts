@@ -77,5 +77,47 @@ export const lockerService = {
         data: { status: 'available' }
       });
     });
+  },
+
+  // Locker Sizes Management
+  async getLockerSizes(branchId?: string) {
+    const where: any = {};
+    if (branchId) where.branch_id = branchId;
+
+    return await prisma.locker_sizes.findMany({
+      where,
+      orderBy: { name: 'asc' }
+    });
+  },
+
+  async getLockerSizeById(id: string) {
+    return await prisma.locker_sizes.findUnique({
+      where: { id }
+    });
+  },
+
+  async createLockerSize(data: any) {
+    return await prisma.locker_sizes.create({ 
+      data: {
+        name: data.name,
+        dimensions: data.dimensions,
+        monthly_rate: data.monthly_rate,
+        branch_id: data.branch_id,
+        description: data.description
+      }
+    });
+  },
+
+  async updateLockerSize(id: string, data: any) {
+    return await prisma.locker_sizes.update({ 
+      where: { id }, 
+      data 
+    });
+  },
+
+  async deleteLockerSize(id: string) {
+    return await prisma.locker_sizes.delete({ 
+      where: { id } 
+    });
   }
 };

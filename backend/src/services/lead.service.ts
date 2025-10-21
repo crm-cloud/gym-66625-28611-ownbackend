@@ -295,6 +295,94 @@ export class LeadService {
 
     return stats[0];
   }
+
+  /**
+   * Lead Notes Management
+   */
+  async createLeadNote(leadId: string, notes: string, createdBy: string) {
+    await this.getLeadById(leadId);
+
+    const note = await prisma.lead_notes.create({
+      data: {
+        lead_id: leadId,
+        notes,
+        created_by: createdBy
+      }
+    });
+
+    return note;
+  }
+
+  async getLeadNotes(leadId: string) {
+    return await prisma.lead_notes.findMany({
+      where: { lead_id: leadId },
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  async updateLeadNote(noteId: string, notes: string) {
+    return await prisma.lead_notes.update({
+      where: { id: noteId },
+      data: { notes, updated_at: new Date() }
+    });
+  }
+
+  async deleteLeadNote(noteId: string) {
+    await prisma.lead_notes.delete({
+      where: { id: noteId }
+    });
+  }
+
+  /**
+   * Lead Tasks Management
+   */
+  async createLeadTask(leadId: string, data: any, createdBy: string) {
+    await this.getLeadById(leadId);
+
+    const task = await prisma.lead_tasks.create({
+      data: {
+        lead_id: leadId,
+        title: data.title,
+        description: data.description,
+        due_date: data.due_date ? new Date(data.due_date) : null,
+        priority: data.priority || 'medium',
+        status: 'pending',
+        assigned_to: data.assigned_to,
+        created_by: createdBy
+      }
+    });
+
+    return task;
+  }
+
+  async getLeadTasks(leadId: string) {
+    return await prisma.lead_tasks.findMany({
+      where: { lead_id: leadId },
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  async updateLeadTask(taskId: string, data: any) {
+    const updateData: any = {};
+    if (data.title) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.due_date !== undefined) updateData.due_date = data.due_date ? new Date(data.due_date) : null;
+    if (data.priority) updateData.priority = data.priority;
+    if (data.status) updateData.status = data.status;
+    if (data.assigned_to !== undefined) updateData.assigned_to = data.assigned_to;
+    updateData.updated_at = new Date();
+
+    return await prisma.lead_tasks.update({
+      where: { id: taskId },
+      data: updateData
+    });
+  }
+
+  async deleteLeadTask(taskId: string) {
+    await prisma.lead_tasks.delete({
+      where: { id: taskId }
+    });
+  }
 }
 
 export const leadService = new LeadService();

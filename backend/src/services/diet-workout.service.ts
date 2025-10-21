@@ -87,5 +87,94 @@ export const dietWorkoutService = {
 
   async deleteWorkoutPlan(id: string) {
     return await prisma.workout_plans.delete({ where: { id } });
+  },
+
+  // Meals Management
+  async getMeals(dietPlanId: string) {
+    return await prisma.meals.findMany({
+      where: { diet_plan_id: dietPlanId },
+      orderBy: { meal_time: 'asc' }
+    });
+  },
+
+  async createMeal(data: any) {
+    return await prisma.meals.create({ 
+      data: {
+        diet_plan_id: data.diet_plan_id,
+        meal_time: data.meal_time,
+        meal_name: data.meal_name,
+        food_items: data.food_items,
+        calories: data.calories,
+        protein: data.protein,
+        carbs: data.carbs,
+        fats: data.fats,
+        instructions: data.instructions
+      }
+    });
+  },
+
+  async updateMeal(id: string, data: any) {
+    return await prisma.meals.update({ where: { id }, data });
+  },
+
+  async deleteMeal(id: string) {
+    return await prisma.meals.delete({ where: { id } });
+  },
+
+  // Exercises Management
+  async getExercises(workoutPlanId: string) {
+    return await prisma.exercises.findMany({
+      where: { workout_plan_id: workoutPlanId },
+      include: {
+        workout_sets: {
+          orderBy: { set_number: 'asc' }
+        }
+      },
+      orderBy: { order_index: 'asc' }
+    });
+  },
+
+  async createExercise(data: any) {
+    return await prisma.exercises.create({ 
+      data: {
+        workout_plan_id: data.workout_plan_id,
+        exercise_name: data.exercise_name,
+        description: data.description,
+        muscle_group: data.muscle_group,
+        equipment: data.equipment,
+        order_index: data.order_index || 0
+      }
+    });
+  },
+
+  async updateExercise(id: string, data: any) {
+    return await prisma.exercises.update({ where: { id }, data });
+  },
+
+  async deleteExercise(id: string) {
+    return await prisma.exercises.delete({ where: { id } });
+  },
+
+  // Workout Sets Management
+  async createWorkoutSet(data: any) {
+    return await prisma.workout_sets.create({
+      data: {
+        exercise_id: data.exercise_id,
+        set_number: data.set_number,
+        reps: data.reps,
+        weight: data.weight,
+        duration_seconds: data.duration_seconds,
+        rest_seconds: data.rest_seconds,
+        notes: data.notes
+      }
+    });
+  },
+
+  async updateWorkoutSet(id: string, data: any) {
+    return await prisma.workout_sets.update({ where: { id }, data });
+  },
+
+  async deleteWorkoutSet(id: string) {
+    return await prisma.workout_sets.delete({ where: { id } });
   }
 };
