@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,70 +9,43 @@ import { Building2, Users, MapPin, TrendingUp, MoreVertical, Plus } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useGyms, useDeleteGym } from '@/hooks/useGyms';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 interface Gym {
   id: string;
   name: string;
-  subscription_plan: string;
+  subscription_plan?: string;
   status: string;
-  max_branches: number;
-  max_trainers: number;
-  max_members: number;
-  billing_email: string;
+  max_branches?: number;
+  max_trainers?: number;
+  max_members?: number;
+  billing_email?: string;
   created_at: string;
 }
 
 export default function GymManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
-  const queryClient = useQueryClient();
 
   // Fetch gyms
-  const { data: gyms, isLoading } = useQuery({
-    queryKey: ['gyms'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Gym[];
-    }
-  });
+  const { data: gymsResponse, isLoading } = useGyms();
+  const gyms = gymsResponse?.gyms || [];
 
   // Fetch gym usage statistics
-  const { data: gymUsage } = useQuery({
-    queryKey: ['gym-usage'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gym_usage')
-        .select('*')
-        .order('month_year', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
+  const { data: gymUsage } = useApiQuery(['gym-usage'], '/api/gyms/usage');
 
-  // Delete/Deactivate gym mutation
-  const deleteGym = useMutation({
-    mutationFn: async (gymId: string) => {
-      const { error } = await supabase
-        .from('gyms')
-        .update({ status: 'inactive' })
-        .eq('id', gymId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
+  // Delete gym mutation
+  const deleteGym = useDeleteGym(selectedGym?.id || '');
+
+  const handleDeleteGym = async (gymId: string) => {
+    try {
+      await deleteGym.mutateAsync({});
       toast({ title: 'Gym deactivated successfully' });
-      queryClient.invalidateQueries({ queryKey: ['gyms'] });
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
-  });
+  };
 
   // Helper to get usage data for a gym
   const getUsageForGym = (gymId: string) => {
@@ -154,7 +125,7 @@ export default function GymManagement() {
                       <Building2 className="h-5 w-5" />
                       {gym.name}
                     </CardTitle>
-                    <CardDescription>{gym.billing_email}</CardDescription>
+                    <CardDescription>{gym.billing_email || 'No email'}</CardDescription>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -172,7 +143,7 @@ export default function GymManagement() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => deleteGym.mutate(gym.id)}
+                        onClick={() => handleDeleteGym(gym.id)}
                         className="text-destructive"
                       >
                         Deactivate
@@ -186,9 +157,11 @@ export default function GymManagement() {
                   <Badge variant={getStatusBadgeVariant(gym.status)}>
                     {gym.status}
                   </Badge>
-                  <Badge variant={getPlanBadgeVariant(gym.subscription_plan)}>
-                    {gym.subscription_plan}
-                  </Badge>
+                  {gym.subscription_plan && (
+                    <Badge variant={getPlanBadgeVariant(gym.subscription_plan)}>
+                      {gym.subscription_plan}
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -198,7 +171,7 @@ export default function GymManagement() {
                       Branches
                     </div>
                     <div className="text-2xl font-bold">
-                      {usage?.branch_count || 0} / {gym.max_branches}
+                      {usage?.branch_count || 0} / {gym.max_branches || 0}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -207,7 +180,7 @@ export default function GymManagement() {
                       Members
                     </div>
                     <div className="text-2xl font-bold">
-                      {usage?.member_count || 0} / {gym.max_members}
+                      {usage?.member_count || 0} / {gym.max_members || 0}
                     </div>
                   </div>
                 </div>
@@ -218,7 +191,7 @@ export default function GymManagement() {
                     Trainers
                   </div>
                   <div className="text-2xl font-bold">
-                    {usage?.trainer_count || 0} / {gym.max_trainers}
+                    {usage?.trainer_count || 0} / {gym.max_trainers || 0}
                   </div>
                 </div>
 

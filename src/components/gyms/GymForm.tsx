@@ -1,13 +1,14 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { useCreateGym, useUpdateGym } from '@/hooks/useGyms';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 const gymFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -27,21 +28,11 @@ interface GymFormProps {
 }
 
 export function GymForm({ gym, onSuccess }: GymFormProps) {
-  const queryClient = useQueryClient();
   
-  const { data: subscriptionPlans } = useQuery({
-    queryKey: ['subscription-plans'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
+  const { data: subscriptionPlans } = useApiQuery(
+    ['subscription-plans'],
+    '/api/subscription-plans'
+  );
 
   const form = useForm<GymFormData>({
     resolver: zodResolver(gymFormSchema),
@@ -56,62 +47,28 @@ export function GymForm({ gym, onSuccess }: GymFormProps) {
     }
   });
 
-  const createGym = useMutation({
-    mutationFn: async (data: GymFormData) => {
+  const createGymMutation = useCreateGym();
+  const updateGymMutation = useUpdateGym(gym?.id || '');
+
+  const onSubmit = async (data: GymFormData) => {
+    try {
       if (gym) {
-        const { error } = await supabase
-          .from('gyms')
-          .update({
-            name: data.name,
-            billing_email: data.billing_email,
-            subscription_plan: data.subscription_plan,
-            max_branches: data.max_branches,
-            max_trainers: data.max_trainers,
-            max_members: data.max_members,
-            status: data.status
-          })
-          .eq('id', gym.id);
-        
-        if (error) throw error;
-        return { gym_id: gym.id };
+        await updateGymMutation.mutateAsync(data);
       } else {
-        const { data: newGym, error } = await supabase
-          .from('gyms')
-          .insert([{
-            name: data.name,
-            billing_email: data.billing_email,
-            subscription_plan: data.subscription_plan,
-            max_branches: data.max_branches,
-            max_trainers: data.max_trainers,
-            max_members: data.max_members,
-            status: 'active'
-          }])
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return { gym_id: newGym.id };
+        await createGymMutation.mutateAsync(data);
       }
-    },
-    onSuccess: () => {
       toast({
         title: "Success",
         description: gym ? "Gym updated successfully" : "Gym created successfully"
       });
-      queryClient.invalidateQueries({ queryKey: ['gyms'] });
       onSuccess();
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive"
       });
     }
-  });
-
-  const onSubmit = (data: GymFormData) => {
-    createGym.mutate(data);
   };
 
   return (
@@ -255,8 +212,8 @@ export function GymForm({ gym, onSuccess }: GymFormProps) {
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="submit" disabled={createGym.isPending}>
-            {createGym.isPending ? 'Saving...' : gym ? 'Update Gym' : 'Create Gym'}
+          <Button type="submit" disabled={createGymMutation.isPending || updateGymMutation.isPending}>
+            {(createGymMutation.isPending || updateGymMutation.isPending) ? 'Saving...' : gym ? 'Update Gym' : 'Create Gym'}
           </Button>
         </div>
       </form>

@@ -18,6 +18,7 @@ import productRoutes from './routes/product.routes';
 import referralRoutes from './routes/referral.routes';
 import feedbackRoutes from './routes/feedback.routes';
 import settingsRoutes from './routes/settings.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -64,6 +65,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
