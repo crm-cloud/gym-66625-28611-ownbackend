@@ -79,9 +79,14 @@ export const MemberProgress = () => {
 
   const { mutate: recordMeasurement, isPending: isSaving } = useCreateMeasurement();
 
-  const handleSubmitMeasurement = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.weight) {
+      toast({ title: 'Weight is required', variant: 'destructive' });
+      return;
+    }
+
     const measurementData = {
       member_id: member?.id,
       measured_by: member?.user_id,
@@ -104,18 +109,8 @@ export const MemberProgress = () => {
           weight: '', bodyFat: '', muscleMass: '', chest: '', waist: '',
           hips: '', arms: '', thighs: '', notes: ''
         });
-      },
-      invalidateQueries: [['member-measurements', member?.id]]
-    }
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.weight) {
-      toast({ title: 'Weight is required', variant: 'destructive' });
-      return;
-    }
-    recordMeasurement(formData);
+      }
+    });
   };
 
   return (

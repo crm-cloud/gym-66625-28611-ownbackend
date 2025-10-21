@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FeedbackForm } from '@/components/feedback/FeedbackForm';
 import { FeedbackList } from '@/components/feedback/FeedbackList';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Plus, Star, TrendingUp } from 'lucide-react';
@@ -38,59 +38,6 @@ export const MemberFeedbackPage = () => {
       setShowFeedbackForm(false);
     } catch (error) {
       console.error('Error submitting feedback:', error);
-    }
-  };
-
-export const MemberFeedbackPage = () => {
-  const { toast } = useToast();
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
-  const { data: member, isLoading: memberLoading } = useMemberProfile();
-  
-  const { data: memberFeedback = [], isLoading: feedbackLoading } = useSupabaseQuery(
-    ['member-feedback', member?.id],
-    async () => {
-      if (!member?.id) return [];
-      const { data, error } = await supabase
-        .from('feedback')
-        .select('*')
-        .eq('member_id', member.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!member?.id }
-  );
-
-  const handleSubmitFeedback = async (data: any) => {
-    if (!member?.id) return;
-    
-    try {
-      const { error } = await supabase.from('feedback').insert({
-        member_id: member.id,
-        user_id: member.user_id,
-        branch_id: member.branch_id,
-        type: data.type || 'suggestion',
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        rating: data.rating,
-        status: 'pending'
-      });
-      
-      if (error) throw error;
-      
-      setShowFeedbackForm(false);
-      toast({
-        title: 'Feedback Submitted Successfully',
-        description: 'Thank you for your feedback! We\'ll review it and get back to you soon.'
-      });
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to submit feedback. Please try again.',
-        variant: 'destructive'
-      });
     }
   };
 
@@ -139,12 +86,12 @@ export const MemberFeedbackPage = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Feedback</CardTitle>
-            <div className="flex items-center gap-2">
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 mb-2">
               <MessageSquare className="w-4 h-4 text-primary" />
               <span className="text-2xl font-bold text-foreground">{memberFeedback.length}</span>
             </div>
-          </CardHeader>
-          <CardContent>
             <p className="text-xs text-muted-foreground">Feedback submissions</p>
           </CardContent>
         </Card>
@@ -152,7 +99,9 @@ export const MemberFeedbackPage = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Average Rating</CardTitle>
-            <div className="flex items-center gap-2">
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 mb-2">
               <Star className="w-4 h-4 text-yellow-500" />
               <span className="text-2xl font-bold text-foreground">
                 {memberFeedback.length > 0 
@@ -161,8 +110,6 @@ export const MemberFeedbackPage = () => {
                 }
               </span>
             </div>
-          </CardHeader>
-          <CardContent>
             <p className="text-xs text-muted-foreground">Stars average</p>
           </CardContent>
         </Card>
@@ -170,7 +117,9 @@ export const MemberFeedbackPage = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Response Rate</CardTitle>
-            <div className="flex items-center gap-2">
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-success" />
               <span className="text-2xl font-bold text-foreground">
                 {memberFeedback.length > 0 
@@ -179,8 +128,6 @@ export const MemberFeedbackPage = () => {
                 }%
               </span>
             </div>
-          </CardHeader>
-          <CardContent>
             <p className="text-xs text-muted-foreground">Admin responses</p>
           </CardContent>
         </Card>
