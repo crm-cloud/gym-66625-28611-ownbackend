@@ -1,10 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { Calendar, TrendingUp, Users, Building2, CreditCard, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface AdvancedMetrics {
   totalRevenue: number;
@@ -22,114 +21,49 @@ interface AdvancedMetrics {
 }
 
 export function SuperAdminAdvancedAnalytics() {
-  const { data: metrics, isLoading } = useQuery({
-    queryKey: ['super-admin-advanced-analytics'],
-    queryFn: async (): Promise<AdvancedMetrics> => {
-      // Fetch gyms data
-      const { data: gyms, error: gymsError } = await supabase
-        .from('gyms')
-        .select('*');
-      
-      if (gymsError) throw gymsError;
+  // Use analytics hook to fetch platform-wide metrics
+  const { data: dashboardStats, isLoading } = useAnalytics();
 
-      // Fetch branches data
-      const { data: branches, error: branchesError } = await supabase
-        .from('branches')
-        .select('id, gym_id, current_members')
-        .eq('status', 'active');
-      
-      if (branchesError) throw branchesError;
+  if (isLoading) {
+    return (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+        ))}
+      </div>
+    );
+  }
 
-      // Fetch system events
-      const { data: events, error: eventsError } = await supabase
-        .from('system_events')
-        .select('event_type')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-      
-      if (eventsError) throw eventsError;
+  if (!dashboardStats) return null;
 
-      // Fetch usage data
-      const { data: usage, error: usageError } = await supabase
-        .from('gym_usage')
-        .select('*')
-        .gte('month_year', new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString());
-      
-      if (usageError) throw usageError;
-
-      // Calculate metrics
-      const activeGyms = gyms?.filter(g => g.status === 'active') || [];
-      const totalMembers = branches?.reduce((sum, b) => sum + (b.current_members || 0), 0) || 0;
-      
-      // Calculate mock revenue
-      const totalRevenue = activeGyms.length * 99; // Mock $99 per gym
-
-      // Mock subscription distribution
-      const subscriptionCounts = { 'Basic': activeGyms.length };
-
-      const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00'];
-      const subscriptionDistribution = Object.entries(subscriptionCounts).map(([name, value], index) => ({
-        name,
-        value: value as number,
-        color: colors[index % colors.length]
-      }));
-
-      // Mock revenue by month data
-      const revenueByMonth = [
-        { month: 'Jan', revenue: totalRevenue * 0.8, growth: 5 },
-        { month: 'Feb', revenue: totalRevenue * 0.85, growth: 8 },
-        { month: 'Mar', revenue: totalRevenue * 0.9, growth: 12 },
-        { month: 'Apr', revenue: totalRevenue * 0.95, growth: 15 },
-        { month: 'May', revenue: totalRevenue * 0.98, growth: 18 },
-        { month: 'Jun', revenue: totalRevenue, growth: 22 },
-      ];
-
-      // Top performing gyms
-      const topPerformingGyms = activeGyms
-        .map(gym => ({
-          name: gym.name,
-          revenue: 99, // Mock revenue
-          members: branches?.filter(b => b.gym_id === gym.id).reduce((sum, b) => sum + (b.current_members || 0), 0) || 0,
-          branches: branches?.filter(b => b.gym_id === gym.id).length || 0
-        }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
-
-      // System events summary
-      const eventCounts = events?.reduce((acc: Record<string, number>, event) => {
-        acc[event.event_type] = (acc[event.event_type] || 0) + 1;
-        return acc;
-      }, {}) || {};
-
-      const systemEvents = [
-        { type: 'info' as const, count: eventCounts.info || 0 },
-        { type: 'warning' as const, count: eventCounts.warning || 0 },
-        { type: 'error' as const, count: eventCounts.error || 0 },
-      ];
-
-      // Determine system health
-      const errorCount = eventCounts.error || 0;
-      const warningCount = eventCounts.warning || 0;
-      const systemHealth: 'healthy' | 'warning' | 'critical' = 
-        errorCount > 5 ? 'critical' : 
-        warningCount > 10 ? 'warning' : 'healthy';
-
-      return {
-        totalRevenue,
-        revenueGrowth: 22, // Mock growth percentage
-        totalGyms: gyms?.length || 0,
-        activeGyms: activeGyms.length,
-        totalBranches: branches?.length || 0,
-        totalMembers,
-        memberGrowth: 15, // Mock growth percentage
-        systemHealth,
-        subscriptionDistribution,
-        revenueByMonth,
-        topPerformingGyms,
-        systemEvents,
-      };
-    },
-    refetchInterval: 30000 // Refresh every 30 seconds
-  });
+  // Transform analytics data to match the AdvancedMetrics interface
+  const metrics: AdvancedMetrics = {
+    totalRevenue: dashboardStats.monthlyRevenue || 0,
+    revenueGrowth: 22, // Mock growth percentage
+    totalGyms: dashboardStats.totalGyms || 0,
+    activeGyms: dashboardStats.activeGyms || 0,
+    totalBranches: dashboardStats.totalBranches || 0,
+    totalMembers: dashboardStats.totalMembers || 0,
+    memberGrowth: 15, // Mock growth percentage
+    systemHealth: 'healthy' as const,
+    subscriptionDistribution: [
+      { name: 'Basic', value: dashboardStats.activeGyms || 0, color: '#8884d8' }
+    ],
+    revenueByMonth: [
+      { month: 'Jan', revenue: (dashboardStats.monthlyRevenue || 0) * 0.8, growth: 5 },
+      { month: 'Feb', revenue: (dashboardStats.monthlyRevenue || 0) * 0.85, growth: 8 },
+      { month: 'Mar', revenue: (dashboardStats.monthlyRevenue || 0) * 0.9, growth: 12 },
+      { month: 'Apr', revenue: (dashboardStats.monthlyRevenue || 0) * 0.95, growth: 15 },
+      { month: 'May', revenue: (dashboardStats.monthlyRevenue || 0) * 0.98, growth: 18 },
+      { month: 'Jun', revenue: dashboardStats.monthlyRevenue || 0, growth: 22 },
+    ],
+    topPerformingGyms: [],
+    systemEvents: [
+      { type: 'info' as const, count: 0 },
+      { type: 'warning' as const, count: 0 },
+      { type: 'error' as const, count: 0 },
+    ],
+  };
 
   if (isLoading) {
     return (

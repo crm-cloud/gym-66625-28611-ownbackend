@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useCreateBranch, useUpdateBranch } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
 
 interface BranchFormData {
   name: string;
@@ -58,108 +57,17 @@ export function BranchForm({ branch, onSuccess }: BranchFormProps) {
     } : {})
   });
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { authState } = useAuth();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Get available managers (staff members in the gym)
-  const { data: managers = [] } = useQuery({
-    queryKey: ['managers', authState.user?.gym_id],
-    queryFn: async () => {
-      if (!authState.user?.gym_id) return [];
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, full_name')
-        .eq('gym_id', authState.user.gym_id)
-        .in('role', ['admin', 'manager', 'staff'])
-        .eq('is_active', true);
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!authState.user?.gym_id,
+  // Get available managers using REST API
+  const { teamMembers: managers = [] } = useTeamMembers({
+    role: 'manager',
+    is_active: true
   });
 
-  const createBranch = useMutation({
-    mutationFn: async (data: BranchFormData) => {
-      // Check subscription limits before creating new branch
-      if (!branch && authState.user?.gym_id) {
-        const { data: gym, error: gymError } = await supabase
-          .from('gyms')
-          .select('max_branches')
-          .eq('id', authState.user.gym_id)
-          .single();
-
-        if (gymError) throw gymError;
-
-        const { data: existingBranches, error: branchError } = await supabase
-          .from('branches')
-          .select('id')
-          .eq('gym_id', authState.user.gym_id)
-          .eq('status', 'active');
-
-        if (branchError) throw branchError;
-
-        if (existingBranches.length >= gym.max_branches) {
-          throw new Error(`Cannot create more branches. Your subscription allows a maximum of ${gym.max_branches} branches. Please upgrade your subscription to add more branches.`);
-        }
-      }
-
-      const branchData = {
-        name: data.name,
-        address: {
-          street: data.street,
-          city: data.city,
-          state: data.state,
-          zipCode: data.zipCode
-        },
-        contact: {
-          phone: data.phone,
-          email: data.email
-        },
-        capacity: data.capacity,
-        manager_id: data.managerId || null,
-        gym_id: authState.user?.gym_id,
-        hours: {},
-        status: 'active'
-      };
-
-      if (branch) {
-        const { error } = await supabase
-          .from('branches')
-          .update(branchData)
-          .eq('id', branch.id);
-        
-        if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('branches')
-            .insert(branchData);
-        
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: branch ? "Branch updated successfully" : "Branch created successfully"
-      });
-      queryClient.invalidateQueries({ queryKey: ['branches'] });
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate('/branches');
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
+  const createBranchMutation = useCreateBranch();
+  const updateBranchMutation = useUpdateBranch();
 
   const handleInputChange = (field: keyof BranchFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -192,7 +100,43 @@ export function BranchForm({ branch, onSuccess }: BranchFormProps) {
       return;
     }
 
-    createBranch.mutate(formData);
+    const branchData = {
+      name: formData.name,
+      address: {
+        street: formData.street,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode
+      },
+      contact: {
+        phone: formData.phone,
+        email: formData.email
+      },
+      capacity: formData.capacity,
+      manager_id: formData.managerId || null,
+      gym_id: authState.user?.gym_id,
+      hours: {},
+      status: 'active'
+    };
+
+    if (branch) {
+      updateBranchMutation.mutate({ 
+        branchId: branch.id, 
+        data: branchData 
+      }, {
+        onSuccess: () => {
+          if (onSuccess) onSuccess();
+          else navigate('/branches');
+        }
+      });
+    } else {
+      createBranchMutation.mutate(branchData, {
+        onSuccess: () => {
+          if (onSuccess) onSuccess();
+          else navigate('/branches');
+        }
+      });
+    }
   };
 
   const states = [
@@ -316,14 +260,14 @@ export function BranchForm({ branch, onSuccess }: BranchFormProps) {
             <SelectTrigger className={errors.managerId ? 'border-destructive' : ''}>
               <SelectValue placeholder="Select a manager" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">No manager assigned</SelectItem>
-              {managers.map((manager) => (
-                <SelectItem key={manager.user_id} value={manager.user_id}>
-                  {manager.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
+              <SelectContent>
+                <SelectItem value="">No manager assigned</SelectItem>
+                {managers.map((manager) => (
+                  <SelectItem key={manager.id} value={manager.id}>
+                    {manager.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
           </Select>
           {errors.managerId && (
             <p className="text-sm text-destructive">{errors.managerId}</p>
@@ -363,12 +307,12 @@ export function BranchForm({ branch, onSuccess }: BranchFormProps) {
           type="button"
           variant="outline"
           onClick={() => onSuccess ? onSuccess() : navigate('/branches')}
-          disabled={createBranch.isPending}
+          disabled={createBranchMutation.isPending || updateBranchMutation.isPending}
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={createBranch.isPending}>
-          {createBranch.isPending ? 'Saving...' : branch ? 'Update Branch' : 'Create Branch'}
+        <Button type="submit" disabled={createBranchMutation.isPending || updateBranchMutation.isPending}>
+          {(createBranchMutation.isPending || updateBranchMutation.isPending) ? 'Saving...' : branch ? 'Update Branch' : 'Create Branch'}
         </Button>
       </div>
     </form>

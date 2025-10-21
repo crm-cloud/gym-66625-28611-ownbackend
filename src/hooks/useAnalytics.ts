@@ -7,6 +7,12 @@ interface DashboardStats {
   classAttendance: number;
   memberRetention: number;
   growthRate: number;
+  // Super admin properties
+  totalGyms?: number;
+  activeGyms?: number;
+  totalBranches?: number;
+  totalTrainers?: number;
+  recentGyms?: any[];
 }
 
 interface RevenueAnalytics {
@@ -104,3 +110,6 @@ export const useClassPopularity = (params?: {
     endpoint
   );
 };
+
+// Export useAnalytics as an alias for useDashboardStats (used in some components)
+export const useAnalytics = useDashboardStats;

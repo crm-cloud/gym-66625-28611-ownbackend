@@ -4,8 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Search, Filter, X } from 'lucide-react';
 import { LockerFilters as LockerFiltersType } from '@/types/locker';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 interface LockerFiltersProps {
   filters: LockerFiltersType;
@@ -14,18 +13,11 @@ interface LockerFiltersProps {
 }
 
 export function LockerFilters({ filters, onFiltersChange, branches }: LockerFiltersProps) {
-  // Fetch locker sizes from database
-  const { data: lockerSizes = [] } = useQuery({
-    queryKey: ['locker_sizes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('locker_sizes')
-        .select('*')
-        .order('monthly_fee', { ascending: true });
-      if (error) throw error;
-      return data || [];
-    }
-  });
+  // Fetch locker sizes using REST API
+  const { data: lockerSizes = [] } = useApiQuery<any[]>(
+    ['locker_sizes'],
+    '/api/locker-sizes'
+  );
   const clearFilters = () => {
     onFiltersChange({});
   };

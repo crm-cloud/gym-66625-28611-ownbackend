@@ -32,7 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBranches } from '@/hooks/useBranches';
 import { useRBAC } from '@/hooks/useRBAC';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 interface TeamMember {
   id: string;
@@ -69,6 +69,7 @@ interface TeamMemberFormProps {
 export const TeamMemberForm = ({ open, onOpenChange, member, onSubmit, defaultRole }: TeamMemberFormProps) => {
   const { authState } = useAuth();
   const { branches } = useBranches();
+  const { teamMembers } = useTeamMembers();
   const { hasPermission } = useRBAC();
   const { toast } = useToast();
   const [avatarPreview, setAvatarPreview] = useState<string | null>(member?.avatar || null);
@@ -91,23 +92,10 @@ export const TeamMemberForm = ({ open, onOpenChange, member, onSubmit, defaultRo
 
   const handleSubmit = async (data: TeamMemberFormData) => {
     try {
-      // Check email uniqueness against database
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('email', data.email)
-        .maybeSingle();
+      // Check email uniqueness against in-memory team members
+      const existingUser = teamMembers.find(tm => tm.email === data.email && tm.id !== member?.id);
 
-      if (checkError) {
-        toast({
-          title: 'Error',
-          description: 'Failed to check email uniqueness',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (existingUser && existingUser.id !== member?.id) {
+      if (existingUser) {
         toast({
           title: 'Error',
           description: 'This email is already in use by another team member',

@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Locker, LockerStatus } from '@/types/locker';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 interface LockerFormProps {
   open: boolean;
@@ -24,18 +23,11 @@ export function LockerForm({
   onSubmit, 
   branches 
 }: LockerFormProps) {
-  // Fetch locker sizes from database
-  const { data: lockerSizes = [] } = useQuery({
-    queryKey: ['locker_sizes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('locker_sizes')
-        .select('*')
-        .order('monthly_fee', { ascending: true});
-      if (error) throw error;
-      return data || [];
-    }
-  });
+  // Fetch locker sizes using REST API
+  const { data: lockerSizes = [] } = useApiQuery<any[]>(
+    ['locker_sizes'],
+    '/api/locker-sizes'
+  );
 
   const [formData, setFormData] = useState({
     name: locker?.name || '',

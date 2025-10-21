@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranches } from '@/hooks/useBranches';
 import {
   Table,
   TableBody,
@@ -37,75 +36,14 @@ export function BranchListTable() {
   const { authState } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: branches = [], isLoading, error } = useQuery({
-    queryKey: ['admin-branches-table', authState.user?.gym_id],
-    queryFn: async () => {
-      if (!authState.user?.gym_id) return [];
-      
-      // First, fetch the branches
-      const { data: branchesData, error: branchesError } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('gym_id', authState.user.gym_id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (branchesError) {
-        console.error('Error fetching branches:', branchesError);
-        throw branchesError;
-      }
-
-      // Then fetch manager profiles in a separate query
-      const managerIds = branchesData
-        .map(branch => branch.manager_id)
-        .filter((id): id is string => !!id);
-
-      let managers = {};
-      
-      if (managerIds.length > 0) {
-        const { data: managersData, error: managersError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url')
-          .in('id', managerIds);
-          
-        if (managersError) {
-          console.error('Error fetching managers:', managersError);
-        } else {
-          // Create a map of manager_id -> manager data
-          managers = managersData.reduce((acc, manager) => ({
-            ...acc,
-            [manager.id]: manager
-          }), {});
-        }
-      }
-      
-      // Combine the data
-      return branchesData.map(branch => ({
-        ...branch,
-        manager: branch.manager_id ? managers[branch.manager_id] : null
-      })) || [];
-    },
-    enabled: !!authState.user?.gym_id,
-    retry: 2,
+  // Fetch branches using REST API
+  const { branches: branchesData = [], isLoading, error } = useBranches({ 
+    search: searchTerm,
+    isActive: true 
   });
 
-  const filteredBranches = React.useMemo(() => {
-    if (!branches || branches.length === 0) return [];
-    
-    const searchLower = searchTerm.toLowerCase();
-    return branches.filter(branch => {
-      const name = branch.name?.toLowerCase() || '';
-      const address = branch.address as any;
-      const city = address?.city?.toLowerCase() || '';
-      const state = address?.state?.toLowerCase() || '';
-      const managerName = branch.manager?.full_name?.toLowerCase() || '';
-      
-      return name.includes(searchLower) || 
-             city.includes(searchLower) || 
-             state.includes(searchLower) ||
-             managerName.includes(searchLower);
-    });
-  }, [branches, searchTerm]);
+  // Search is already handled by the API
+  const filteredBranches = branchesData;
 
   if (isLoading) {
     return (

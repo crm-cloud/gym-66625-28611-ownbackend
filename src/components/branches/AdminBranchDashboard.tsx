@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useGymById } from '@/hooks/useGyms';
+import { useBranches } from '@/hooks/useBranches';
 import { BranchCreationForm } from './BranchCreationForm';
 import { BranchListTable } from './BranchListTable';
 import { Building2, Plus, MapPin, Users, AlertTriangle, TrendingUp } from 'lucide-react';
@@ -16,42 +16,11 @@ export const AdminBranchDashboard = () => {
   const [showBranchForm, setShowBranchForm] = useState(false);
   const { authState } = useAuth();
 
-  // Get admin's gym info
-  const { data: gym, isLoading: gymLoading } = useQuery({
-    queryKey: ['admin-gym', authState.user?.gym_id],
-    queryFn: async () => {
-      if (!authState.user?.gym_id) return null;
-      
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('id', authState.user.gym_id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!authState.user?.gym_id,
-  });
+  // Get admin's gym info using REST API
+  const { data: gym, isLoading: gymLoading } = useGymById(authState.user?.gym_id || '');
 
-  // Get gym's branches
-  const { data: branches, isLoading: branchesLoading } = useQuery({
-    queryKey: ['admin-branches', authState.user?.gym_id],
-    queryFn: async () => {
-      if (!authState.user?.gym_id) return [];
-      
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('gym_id', authState.user.gym_id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!authState.user?.gym_id,
-  });
+  // Get gym's branches using REST API
+  const { branches, isLoading: branchesLoading } = useBranches({ isActive: true });
 
   if (gymLoading || authState.isLoading) {
     return (

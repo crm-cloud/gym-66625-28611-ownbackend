@@ -1,66 +1,25 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, DollarSign, MapPin, BarChart3, FileText, CreditCard, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Link } from 'react-router-dom';
 
 export const SuperAdminDashboard = () => {
-  // Fetch SaaS-level metrics
-  const { data: gyms, isLoading: gymsLoading } = useQuery({
-    queryKey: ['super-admin-gyms'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: totalUsage, isLoading: usageLoading } = useQuery({
-    queryKey: ['super-admin-usage'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gym_usage')
-        .select('*')
-        .eq('month_year', new Date().toISOString().slice(0, 7) + '-01');
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: subscriptionPlans, isLoading: plansLoading } = useQuery({
-    queryKey: ['subscription-plans'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true);
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const isLoading = gymsLoading || usageLoading || plansLoading;
+  // Fetch platform-level metrics using REST API
+  const { data: dashboardStats, isLoading } = useAnalytics();
+  const { data: subscriptionPlans = [] } = useSystemSettings('subscription');
 
   const { formatCurrency } = useCurrency();
 
-  const totalRevenue = gyms?.reduce((acc, gym) => {
-    const plan = subscriptionPlans?.find(p => p.name.toLowerCase() === gym.subscription_plan);
-    return acc + (plan?.price || 0);
-  }, 0) || 0;
-
-  const totalBranches = totalUsage?.reduce((acc, usage) => acc + usage.branch_count, 0) || 0;
-  const totalTrainers = totalUsage?.reduce((acc, usage) => acc + usage.trainer_count, 0) || 0;
-  const totalMembers = totalUsage?.reduce((acc, usage) => acc + usage.member_count, 0) || 0;
+  const totalRevenue = dashboardStats?.monthlyRevenue || 0;
+  const totalBranches = dashboardStats?.totalBranches || 0;
+  const totalTrainers = dashboardStats?.totalTrainers || 0;
+  const totalMembers = dashboardStats?.totalMembers || 0;
+  const gyms = dashboardStats?.recentGyms || [];
 
   if (isLoading) {
     return (
@@ -117,9 +76,9 @@ export const SuperAdminDashboard = () => {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{gyms?.length || 0}</div>
+              <div className="text-2xl font-bold">{dashboardStats?.totalGyms || 0}</div>
               <p className="text-xs text-muted-foreground">
-                {gyms?.filter(g => g.status === 'active').length} active
+                {dashboardStats?.activeGyms || 0} active
               </p>
             </CardContent>
           </Card>
@@ -134,7 +93,7 @@ export const SuperAdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
               <p className="text-xs text-muted-foreground">
-                From {gyms?.filter(g => g.status === 'active').length} subscriptions
+                From {dashboardStats?.activeGyms || 0} subscriptions
               </p>
             </CardContent>
           </Card>
