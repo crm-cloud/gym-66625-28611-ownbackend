@@ -58,19 +58,20 @@ export default function MemberReferralsPage() {
   // Fetch referrals
   const { data: referralsData, isLoading: referralsLoading } = useQuery({
     queryKey: ['user-referrals', authState.user?.id, page],
-    queryFn: () => fetchUserReferrals(authState.user!.id, page, 10),
+    queryFn: async () => {
+      const result = await fetchUserReferrals(authState.user!.id, page, 10);
+      return {
+        ...result,
+        totalPages: Math.ceil(result.total / 10)
+      };
+    },
     enabled: !!authState.user?.id,
   });
 
   // Fetch analytics
   const { data: analytics } = useQuery({
     queryKey: ['referral-analytics', authState.user?.id],
-    queryFn: () => {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setFullYear(startDate.getFullYear() - 1);
-      return fetchReferralAnalytics(authState.user!.id, startDate, endDate);
-    },
+    queryFn: () => fetchReferralAnalytics(authState.user!.id),
     enabled: !!authState.user?.id,
   });
 

@@ -21,7 +21,7 @@ import {
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
-import { PlatformReportService } from '@/services/platformReportService';
+import { ReportService } from '@/services';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 
@@ -33,7 +33,7 @@ export const PlatformReports = () => {
   // Fetch reports based on selected type
   const { data: revenueByAdmin, isLoading: adminRevenueLoading } = useQuery({
     queryKey: ['revenue-by-admin', dateRange?.from, dateRange?.to],
-    queryFn: () => PlatformReportService.getRevenueByAdmin(
+    queryFn: () => ReportService.getRevenueByAdmin(
       dateRange?.from?.toISOString(),
       dateRange?.to?.toISOString()
     ),
@@ -42,7 +42,7 @@ export const PlatformReports = () => {
 
   const { data: revenueByBranch, isLoading: branchRevenueLoading } = useQuery({
     queryKey: ['revenue-by-branch', dateRange?.from, dateRange?.to],
-    queryFn: () => PlatformReportService.getRevenueByBranch(
+    queryFn: () => ReportService.getRevenueByBranch(
       dateRange?.from?.toISOString(),
       dateRange?.to?.toISOString()
     ),
@@ -51,19 +51,19 @@ export const PlatformReports = () => {
 
   const { data: pendingInvoices, isLoading: pendingInvoicesLoading } = useQuery({
     queryKey: ['pending-invoices'],
-    queryFn: () => PlatformReportService.getPendingInvoices(),
+    queryFn: () => ReportService.getPendingInvoices(),
     enabled: selectedReportType === 'pending-invoices'
   });
 
   const { data: membershipSummary, isLoading: membershipLoading } = useQuery({
     queryKey: ['membership-summary'],
-    queryFn: () => PlatformReportService.getMembershipSummary(),
+    queryFn: () => ReportService.getMembershipSummary(),
     enabled: selectedReportType === 'membership-summary'
   });
 
   const { data: leadConversion, isLoading: leadConversionLoading } = useQuery({
     queryKey: ['lead-conversion'],
-    queryFn: () => PlatformReportService.getLeadConversionReport(),
+    queryFn: () => ReportService.getLeadConversionReport(),
     enabled: selectedReportType === 'lead-conversion'
   });
 
@@ -110,13 +110,19 @@ export const PlatformReports = () => {
 
       switch (format) {
         case 'pdf':
-          await PlatformReportService.exportToPDF(data, reportName);
+          await ReportService.exportToPDF(reportName, { 
+            date_from: dateRange?.from, 
+            date_to: dateRange?.to 
+          });
           break;
         case 'excel':
-          await PlatformReportService.exportToExcel(data, reportName);
+          await ReportService.exportToExcel(reportName, { 
+            date_from: dateRange?.from, 
+            date_to: dateRange?.to 
+          });
           break;
         case 'csv':
-          await PlatformReportService.exportToCSV(data, reportName);
+          await ReportService.exportToCSV(data, reportName);
           break;
       }
 

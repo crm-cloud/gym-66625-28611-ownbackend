@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { mockClassEnrollments } from '@/utils/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useMemberProfile } from '@/hooks/useMemberProfile';
-import { useGymClasses } from '@/hooks/useSupabaseQuery';
+import { useGymClasses } from '@/hooks/useClasses';
 import { useAuth } from '@/hooks/useAuth';
 
 export const MemberClassesPage = () => {

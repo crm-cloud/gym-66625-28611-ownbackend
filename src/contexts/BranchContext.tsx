@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from 'react';
-import { useBranches } from '@/hooks/useSupabaseQuery';
+import { useBranches } from '@/hooks/useBranches';
 
 interface BranchContextType {
   currentBranchId: string | null;
