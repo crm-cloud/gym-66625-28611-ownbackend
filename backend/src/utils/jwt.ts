@@ -18,7 +18,20 @@ export function generateAccessToken(payload: TokenPayload): string {
 }
 
 export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
+  // Add token rotation identifier
+  const tokenPayload = {
+    ...payload,
+    tokenId: generateTokenId(),
+    type: 'refresh',
+  };
+  return jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
+}
+
+/**
+ * Generate unique token ID for refresh token rotation
+ */
+function generateTokenId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
 
 export function verifyAccessToken(token: string): TokenPayload {

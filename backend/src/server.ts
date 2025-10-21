@@ -4,10 +4,16 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import passport from './config/passport';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './middleware/logger';
+import { transformResponse, addPaginationHelper } from './middleware/transformer';
+import { generalLimiter } from './middleware/rateLimiter';
+import { ipWhitelist, adminIpWhitelist } from './middleware/ipWhitelist';
 import { initializeStorage, UPLOAD_DIR } from './config/storage';
 import { initializeEmailService } from './config/email';
+import { swaggerDefinition } from './config/swagger';
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +64,9 @@ import analyticsEventsRoutes from './routes/analytics-events.routes';
 import teamRoutes from './routes/team.routes';
 import templatesRoutes from './routes/templates.routes';
 import userManagementRoutes from './routes/user-management.routes';
+// Phase 13: API Architecture & Auth Enhancements
+import mfaRoutes from './routes/mfa.routes';
+import oauthRoutes from './routes/oauth.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -95,8 +104,15 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Initialize Passport
+app.use(passport.initialize());
+
 // Request logging
 app.use(logger);
+
+// Response transformation middleware
+app.use(transformResponse);
+app.use(addPaginationHelper);
 
 // Serve static files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '..', UPLOAD_DIR)));
@@ -111,48 +127,79 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// API routes
+// API Documentation
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDefinition, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'GymFlow API Documentation',
+}));
+
+// API v1 routes with versioning
+const v1Router = express.Router();
+
+// Apply general rate limiter to all v1 routes
+v1Router.use(generalLimiter);
+
+// Public routes (no IP restrictions)
+v1Router.use('/auth', authRoutes);
+v1Router.use('/oauth', oauthRoutes);
+// Protected routes (authenticated users)
+v1Router.use('/members', memberRoutes);
+v1Router.use('/branches', branchRoutes);
+v1Router.use('/trainers', trainerRoutes);
+v1Router.use('/membership-plans', membershipRoutes);
+v1Router.use('/classes', classRoutes);
+v1Router.use('/products', productRoutes);
+v1Router.use('/orders', orderRoutes);
+v1Router.use('/attendance', attendanceRoutes);
+v1Router.use('/transactions', transactionRoutes);
+v1Router.use('/lockers', lockerRoutes);
+v1Router.use('/equipment', equipmentRoutes);
+v1Router.use('/plans', dietWorkoutRoutes);
+v1Router.use('/feedback', feedbackRoutes);
+v1Router.use('/announcements', announcementRoutes);
+v1Router.use('/referrals', referralRoutes);
+
+// MFA routes (protected)
+v1Router.use('/mfa', mfaRoutes);
+
+// Phase 6-8: User, Role, Payment, Subscription Management
+v1Router.use('/users', userRoutes);
+v1Router.use('/roles', ipWhitelist, roleRoutes); // IP whitelist for role management
+v1Router.use('/payments', paymentRoutes);
+v1Router.use('/subscriptions', subscriptionRoutes);
+v1Router.use('/invoices', invoiceRoutes);
+
+// Phase 9-10: Trainer Advanced & Multi-Tenancy
+v1Router.use('/assignments', assignmentRoutes);
+v1Router.use('/packages', packageRoutes);
+v1Router.use('/trainer-changes', trainerChangeRoutes);
+v1Router.use('/trainer-reviews', trainerReviewRoutes);
+v1Router.use('/gyms', gymRoutes);
+v1Router.use('/enrollments', enrollmentRoutes);
+v1Router.use('/leads', leadRoutes);
+
+// Phase 11-12: Member Progress & Task Management
+v1Router.use('/progress', memberProgressRoutes);
+v1Router.use('/tasks', taskRoutes);
+
+// Phase 1 Migration: Member Credits & Membership Freeze
+v1Router.use('/member-credits', memberCreditsRoutes);
+v1Router.use('/membership-freeze', membershipFreezeRoutes);
+v1Router.use('/member-goals', memberGoalsRoutes);
+v1Router.use('/analytics', analyticsEventsRoutes);
+v1Router.use('/team', teamRoutes);
+v1Router.use('/templates', templatesRoutes);
+
+// Admin routes with IP whitelisting
+v1Router.use('/user-management', adminIpWhitelist, userManagementRoutes);
+
+// Mount v1 router
+app.use('/api/v1', v1Router);
+
+// Legacy routes (redirect to v1 for backwards compatibility)
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
-app.use('/api/branches', branchRoutes);
-app.use('/api/trainers', trainerRoutes);
-app.use('/api/membership-plans', membershipRoutes);
-app.use('/api/classes', classRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/lockers', lockerRoutes);
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/plans', dietWorkoutRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/announcements', announcementRoutes);
-app.use('/api/referrals', referralRoutes);
-// Phase 6-8: User, Role, Payment, Subscription Management
 app.use('/api/users', userRoutes);
-app.use('/api/roles', roleRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/invoices', invoiceRoutes);
-// Phase 9-10: Trainer Advanced & Multi-Tenancy
-app.use('/api/assignments', assignmentRoutes);
-app.use('/api/packages', packageRoutes);
-app.use('/api/trainer-changes', trainerChangeRoutes);
-app.use('/api/trainer-reviews', trainerReviewRoutes);
-app.use('/api/gyms', gymRoutes);
-app.use('/api/enrollments', enrollmentRoutes);
-app.use('/api/leads', leadRoutes);
-// Phase 11-12: Member Progress & Task Management
-app.use('/api/progress', memberProgressRoutes);
-app.use('/api/tasks', taskRoutes);
-// Phase 1 Migration: Member Credits & Membership Freeze
-app.use('/api/member-credits', memberCreditsRoutes);
-app.use('/api/membership-freeze', membershipFreezeRoutes);
-app.use('/api/member-goals', memberGoalsRoutes);
-app.use('/api/analytics', analyticsEventsRoutes);
-app.use('/api/team', teamRoutes);
-app.use('/api/templates', templatesRoutes);
-app.use('/api/user-management', userManagementRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -168,12 +215,14 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Fitverse Backend API running on port ${PORT}`);
+  console.log(`🚀 GymFlow Backend API running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔐 CORS enabled for: ${allowedOrigins.join(', ')}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`\n✅ Server ready at http://localhost:${PORT}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/health\n`);
+  console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
+  console.log(`🔑 API v1: http://localhost:${PORT}/api/v1\n`);
 });
 
 // Graceful shutdown
