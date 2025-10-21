@@ -12,5 +12,13 @@ export { ReferralService, type Referral, type ReferralSettings, type ReferralAna
 export { AuthService, type LoginCredentials, type RegisterData, type AuthResponse } from './AuthService';
 export { UserManagementService, type CreateUserParams, type CreateUserResult } from './UserManagementService';
 
+// Phase 1 Migration Services
+export { MemberCreditsService } from './MemberCreditsService';
+export { MembershipFreezeService } from './MembershipFreezeService';
+export { MemberGoalsService } from './MemberGoalsService';
+export { AnalyticsEventsService } from './AnalyticsEventsService';
+export { TeamService } from './TeamService';
+export { TemplateService } from './TemplateService';
+
 // Re-export axios instance for direct access if needed
 export { api } from '@/lib/axios';
