@@ -3,74 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Utensils, Dumbbell, Calendar, User, TrendingUp } from 'lucide-react';
-import { useDietWorkout } from '@/hooks/useDietWorkout';
+import { useDietPlans, useWorkoutPlans } from '@/hooks/useDietWorkout';
 
 export const MemberDietWorkoutPage = () => {
   const { data: member, isLoading: memberLoading } = useMemberProfile();
   
-  const { data: dietPlans = [], isLoading: dietLoading } = useSupabaseQuery(
-    ['member-diet-plans', member?.user_id],
-    async () => {
-      if (!member?.user_id) return [];
-      
-      // Get member-specific plans
-      const { data: memberPlans, error: memberError } = await supabase
-        .from('member_diet_plans')
-        .select('*, diet_plans(*)')
-        .eq('user_id', member.user_id)
-        .eq('is_active', true);
-      
-      if (memberError) throw memberError;
-      
-      // Get global template plans if no member-specific plans
-      if (!memberPlans || memberPlans.length === 0) {
-        const { data: globalPlans, error: globalError } = await supabase
-          .from('diet_plans')
-          .select('*')
-          .eq('is_template', true)
-          .eq('status', 'active')
-          .eq('branch_id', member.branch_id);
-        
-        if (globalError) throw globalError;
-        return globalPlans || [];
-      }
-      
-      return memberPlans.map(mp => mp.diet_plans);
-    },
-    { enabled: !!member?.user_id }
-  );
+  const { data: dietPlans = [], isLoading: dietLoading } = useDietPlans({
+    memberId: member?.user_id
+  });
 
-  const { data: workoutPlans = [], isLoading: workoutLoading } = useSupabaseQuery(
-    ['member-workout-plans', member?.user_id],
-    async () => {
-      if (!member?.user_id) return [];
-      
-      // Get member-specific plans
-      const { data: memberPlans, error: memberError } = await supabase
-        .from('member_workout_plans')
-        .select('*, workout_plans(*)')
-        .eq('user_id', member.user_id)
-        .eq('is_active', true);
-      
-      if (memberError) throw memberError;
-      
-      // Get global template plans if no member-specific plans
-      if (!memberPlans || memberPlans.length === 0) {
-        const { data: globalPlans, error: globalError } = await supabase
-          .from('workout_plans')
-          .select('*')
-          .eq('is_template', true)
-          .eq('status', 'active')
-          .eq('branch_id', member.branch_id);
-        
-        if (globalError) throw globalError;
-        return globalPlans || [];
-      }
-      
-      return memberPlans.map(mp => mp.workout_plans);
-    },
-    { enabled: !!member?.user_id }
-  );
+  const { data: workoutPlans = [], isLoading: workoutLoading } = useWorkoutPlans({
+    memberId: member?.user_id
+  });
 
   if (memberLoading || dietLoading || workoutLoading) {
     return (

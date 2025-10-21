@@ -28,6 +28,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Snowflake, Calendar, DollarSign, FileText } from 'lucide-react';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
+import { api } from '@/lib/axios';
 
 const freezeSchema = z.object({
   reason: z.string().min(5, 'Reason must be at least 5 characters'),
@@ -84,72 +85,55 @@ export const MembershipFreezeDrawer = ({
       freezeEndDate.setDate(freezeStartDate.getDate() + data.durationDays);
 
       // 1. Create freeze request
-      const { data: freezeRequest, error: freezeError } = await supabase
-        .from('membership_freeze_requests')
-        .insert({
-          membership_id: member.membershipId,
-          user_id: authState.user?.id, // Changed from requested_by to user_id
-          reason: data.reason,
-          freeze_start_date: freezeStartDate.toISOString(),
-          freeze_end_date: freezeEndDate.toISOString(),
-          requested_days: data.durationDays, // Changed from duration_days to requested_days
-          freeze_fee: data.chargesFee ? (data.feeAmount || 0) : 0, // Changed from charge_fee/fee_amount
-          notes: data.notes,
-          status: 'approved', // Auto-approve for now
-          approved_at: new Date().toISOString(),
-          approved_by: authState.user?.id
-        } as const)
-        .select()
-        .single();
+      const freezeResponse = await api.post('/api/membership-freeze-requests', {
+        membership_id: member.membershipId,
+        user_id: authState.user?.id,
+        reason: data.reason,
+        freeze_start_date: freezeStartDate.toISOString(),
+        freeze_end_date: freezeEndDate.toISOString(),
+        requested_days: data.durationDays,
+        freeze_fee: data.chargesFee ? (data.feeAmount || 0) : 0,
+        notes: data.notes,
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: authState.user?.id
+      });
 
-      if (freezeError) throw freezeError;
+      const freezeRequest = freezeResponse.data;
 
       // 2. Update membership status
-      const { error: membershipError } = await supabase
-        .from('member_memberships')
-        .update({ 
-          status: 'frozen',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', member.membershipId);
-
-      if (membershipError) throw membershipError;
+      await api.patch(`/api/member-memberships/${member.membershipId}`, {
+        status: 'frozen',
+        updated_at: new Date().toISOString()
+      });
 
       let invoiceId = null;
 
       // 3. Create invoice for freeze fee if applicable
       if (data.chargesFee && data.feeAmount && data.feeAmount > 0) {
         const invoiceNumber = `FREEZE-${Date.now()}`;
-        const { data: invoice, error: invoiceError } = await supabase
-          .from('invoices')
-          .insert({
-            invoice_number: invoiceNumber,
-            customer_id: member.id,
-            customer_name: member.fullName,
-            date: new Date().toISOString().split('T')[0],
-            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            subtotal: data.feeAmount,
-            tax: 0,
-            discount: 0,
-            total: data.feeAmount,
-            status: 'draft' as 'draft',
-            notes: `Membership freeze fee - ${data.reason}`,
-            created_by: authState.user?.id
-          })
-          .select()
-          .single();
+        const invoiceResponse = await api.post('/api/invoices', {
+          invoice_number: invoiceNumber,
+          customer_id: member.id,
+          customer_name: member.fullName,
+          date: new Date().toISOString().split('T')[0],
+          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          subtotal: data.feeAmount,
+          tax: 0,
+          discount: 0,
+          total: data.feeAmount,
+          status: 'draft',
+          notes: `Membership freeze fee - ${data.reason}`,
+          created_by: authState.user?.id
+        });
 
-        if (invoiceError) throw invoiceError;
-        invoiceId = invoice.id;
+        invoiceId = invoiceResponse.data.id;
 
         // Update freeze request with invoice reference in notes
-        await supabase
-          .from('membership_freeze_requests')
-          .update({ 
-            notes: `${data.notes ? data.notes + '\n' : ''}Invoice: ${invoiceNumber}`,
-            admin_notes: `Invoice generated: ${invoiceNumber}`
-          })
-          .eq('id', freezeRequest.id);
+        await api.patch(`/api/membership-freeze-requests/${freezeRequest.id}`, {
+          notes: `${data.notes ? data.notes + '\n' : ''}Invoice: ${invoiceNumber}`,
+          admin_notes: `Invoice generated: ${invoiceNumber}`
+        });
       }
 
       return { freezeRequest, invoiceId };

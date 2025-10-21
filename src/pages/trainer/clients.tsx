@@ -17,7 +17,7 @@ export default function TrainerClientsPage() {
 
   const { data: assignments, isLoading } = useAssignments({
     trainerId: authState.user?.id,
-    status: ['scheduled', 'in_progress']
+    status: 'active'
   });
 
   const ptClients = useMemo(() => {

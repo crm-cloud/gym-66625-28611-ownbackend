@@ -7,6 +7,7 @@ import { ShoppingCart, Coins, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useProducts } from '@/hooks/useProducts';
+import { api } from '@/lib/axios';
 
 interface Product {
   id: string;
@@ -31,14 +32,8 @@ const MemberStore = () => {
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['store-products'],
     queryFn: async (): Promise<Product[]> => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('category', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
+      const response = await api.get('/api/products?is_active=true');
+      return response.data || [];
     }
   });
 
@@ -46,15 +41,8 @@ const MemberStore = () => {
     queryKey: ['member-credits', authState.user?.id],
     queryFn: async (): Promise<MemberCredits | null> => {
       if (!authState.user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from('member_credits')
-        .select('*')
-        .eq('user_id', authState.user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      const response = await api.get(`/api/member-credits?user_id=${authState.user.id}`);
+      return response.data?.[0] || null;
     },
     enabled: !!authState.user?.id
   });

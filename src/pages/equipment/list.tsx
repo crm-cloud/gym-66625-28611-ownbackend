@@ -20,6 +20,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/axios';
 
 interface Equipment {
   id: string;
@@ -80,25 +81,15 @@ export default function EquipmentListPage() {
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ['equipment'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Equipment[];
+      const response = await api.get('/api/equipment');
+      return response.data as Equipment[];
     },
   });
 
   // Delete equipment mutation
   const deleteMutation = useMutation({
     mutationFn: async (equipmentId: string) => {
-      const { error } = await supabase
-        .from('equipment')
-        .delete()
-        .eq('id', equipmentId);
-      
-      if (error) throw error;
+      await api.delete(`/api/equipment/${equipmentId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });

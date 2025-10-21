@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useTransactions } from '@/hooks/useTransactions';
+import { api } from '@/lib/axios';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -36,56 +37,33 @@ export const MemberBilling = () => {
       setLoading(true);
       try {
         // Fetch invoices
-        const invoiceQuery: any = await supabase
-          .from('invoices')
-          .select('*')
-          .eq('customer_id', member.user_id)
-          .order('created_at', { ascending: false });
-        
-        setInvoices(invoiceQuery.data || []);
+        const invoiceResponse = await api.get(`/api/invoices?customer_id=${member.user_id}`);
+        setInvoices(invoiceResponse.data || []);
 
         // Fetch payments
-        if (invoiceQuery.data && invoiceQuery.data.length > 0) {
-          const invoiceIds = invoiceQuery.data.map((inv: any) => inv.id);
-          const paymentQuery: any = await supabase
-            .from('payments')
-            .select('*')
-            .in('invoice_id', invoiceIds)
-            .order('payment_date', { ascending: false });
-          
-          setPayments(paymentQuery.data || []);
+        if (invoiceResponse.data && invoiceResponse.data.length > 0) {
+          const invoiceIds = invoiceResponse.data.map((inv: any) => inv.id);
+          const paymentResponse = await api.get(`/api/payments?invoice_ids=${invoiceIds.join(',')}`);
+          setPayments(paymentResponse.data || []);
         }
 
-        // Fetch active membership - simplified
-        const membershipQuery: any = await supabase
-          .from('member_memberships')
-          .select('*')
-          .eq('user_id', member.user_id)
-          .eq('status', 'active')
-          .maybeSingle();
+        // Fetch active membership
+        const membershipResponse = await api.get(`/api/member-memberships?user_id=${member.user_id}&status=active`);
         
-        if (membershipQuery.data) {
+        if (membershipResponse.data?.[0]) {
+          const membership = membershipResponse.data[0];
           // Fetch plan details separately
-          const planQuery: any = await supabase
-            .from('membership_plans')
-            .select('name, price')
-            .eq('id', membershipQuery.data.membership_plan_id)
-            .single();
+          const planResponse = await api.get(`/api/membership-plans/${membership.membership_plan_id}`);
           
           setActiveMembership({
-            ...membershipQuery.data,
-            membership_plans: planQuery.data
+            ...membership,
+            membership_plans: planResponse.data
           });
         }
 
         // Fetch rewards balance
-        const creditsQuery: any = await supabase
-          .from('member_credits')
-          .select('balance')
-          .eq('user_id', member.user_id)
-          .maybeSingle();
-        
-        setRewardsBalance(creditsQuery.data?.balance || 0);
+        const creditsResponse = await api.get(`/api/member-credits?user_id=${member.user_id}`);
+        setRewardsBalance(creditsResponse.data?.[0]?.balance || 0);
       } catch (error) {
         console.error('Error fetching billing data:', error);
       } finally {

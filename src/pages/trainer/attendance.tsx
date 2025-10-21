@@ -9,7 +9,7 @@ export default function TrainerAttendancePage() {
   const { authState } = useAuth();
 
   const { data: attendanceRecords, isLoading } = useAttendance({
-    userId: authState.user?.id,
+    memberId: authState.user?.id,
     startDate: startOfMonth(new Date()).toISOString(),
     endDate: endOfMonth(new Date()).toISOString()
   });

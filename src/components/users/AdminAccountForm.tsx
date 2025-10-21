@@ -14,6 +14,7 @@ import { User, Building2, CreditCard, Settings, MapPin, RefreshCw } from 'lucide
 import { useCreateAdminUser } from '@/hooks/useUserManagement';
 import { useGyms } from '@/hooks/useGyms';
 import { useEffect, useState } from 'react';
+import { api } from '@/lib/axios';
 
 const adminFormSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -85,14 +86,8 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
   const { data: subscriptionPlans } = useQuery({
     queryKey: ['subscription-plans-active'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get('/api/gym-subscriptions?is_active=true');
+      return response.data;
     }
   });
 
@@ -100,14 +95,8 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
   const { data: existingGyms } = useQuery({
     queryKey: ['gyms'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('id, name, status')
-        .eq('status', 'active')
-        .order('name');
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get('/api/gyms?status=active');
+      return response.data.gyms || [];
     },
   });
 
@@ -117,16 +106,8 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
     queryKey: ['gym-branches', selectedGymId],
     queryFn: async () => {
       if (!selectedGymId) return [];
-      
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name, status')
-        .eq('gym_id', selectedGymId)
-        .eq('status', 'active')
-        .order('name');
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get(`/api/branches?gym_id=${selectedGymId}&status=active`);
+      return response.data.branches || [];
     },
     enabled: !!selectedGymId && !createNewGym,
   });
@@ -244,15 +225,9 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
           requestBody.existing_branch_id = data.existing_branch_id;
         }
         
-        // Call edge function with properly formatted body
-        const { data: result, error: createError } = await supabase.functions.invoke('create-admin-user', {
-          body: requestBody
-        });
-        
-        if (createError) {
-          console.error('Edge function error:', createError);
-          throw new Error(createError.message || 'Failed to create admin user');
-        }
+        // Call backend API to create admin user
+        const response = await api.post('/api/users/admin', requestBody);
+        const result = response.data;
         
         if (!result?.success) {
           console.error('Admin creation failed:', result?.error);
@@ -265,14 +240,12 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
           : 'your assigned gym';
           
         try {
-          await supabase.functions.invoke('send-admin-welcome-email', {
-            body: {
-              adminId: result.user_id,
-              adminEmail: data.email,
-              adminName: data.full_name,
-              gymName: gymNameForEmail,
-              temporaryPassword: tempPassword,
-            }
+          await api.post('/api/users/admin/welcome-email', {
+            adminId: result.user_id,
+            adminEmail: data.email,
+            adminName: data.full_name,
+            gymName: gymNameForEmail,
+            temporaryPassword: tempPassword,
           });
         } catch (emailError) {
           console.warn('Welcome email failed (non-critical):', emailError);

@@ -10,7 +10,7 @@ export const MemberAnnouncements = () => {
   
   const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({
     branchId: member?.branch_id,
-    targetRole: 'member'
+    type: 'member'
   });
 
   if (memberLoading || announcementsLoading) {

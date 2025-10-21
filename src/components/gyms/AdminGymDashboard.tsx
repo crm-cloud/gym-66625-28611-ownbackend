@@ -11,6 +11,7 @@ import { Building2, Plus, Users, MapPin, Settings, AlertTriangle } from 'lucide-
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGyms } from '@/hooks/useGyms';
+import { api } from '@/lib/axios';
 
 export const AdminGymDashboard = () => {
   const [showGymForm, setShowGymForm] = useState(false);
@@ -25,15 +26,8 @@ export const AdminGymDashboard = () => {
     queryKey: ['admin-gym', authState.user?.gym_id],
     queryFn: async () => {
       if (!authState.user?.gym_id) return null;
-      
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('id', authState.user.gym_id)
-        .single();
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get(`/api/gyms/${authState.user.gym_id}`);
+      return response.data;
     },
     enabled: !!authState.user?.gym_id,
   });
@@ -43,16 +37,8 @@ export const AdminGymDashboard = () => {
     queryKey: ['admin-branches', authState.user?.gym_id],
     queryFn: async () => {
       if (!authState.user?.gym_id) return [];
-      
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('gym_id', authState.user.gym_id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get(`/api/branches?gym_id=${authState.user.gym_id}&status=active`);
+      return response.data.branches || [];
     },
     enabled: !!authState.user?.gym_id,
   });
@@ -62,42 +48,19 @@ export const AdminGymDashboard = () => {
     queryKey: ['subscription-plan', gym?.subscription_plan],
     queryFn: async () => {
       if (!gym?.subscription_plan) return null;
-      
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('name', gym.subscription_plan)
-        .eq('is_active', true)
-        .single();
-      
-      if (error) throw error;
-      return data;
+      const response = await api.get(`/api/gym-subscriptions?name=${gym.subscription_plan}&is_active=true`);
+      return response.data?.[0] || null;
     },
     enabled: !!gym?.subscription_plan,
   });
 
   const createGym = useMutation({
     mutationFn: async (data: any) => {
-      const { data: newGym, error } = await supabase
-        .from('gyms')
-        .insert([{
-          ...data,
-          created_by: authState.user?.id
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      // Update admin's profile to link to the new gym
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ gym_id: newGym.id })
-        .eq('user_id', authState.user?.id);
-      
-      if (profileError) throw profileError;
-      
-      return newGym;
+      const response = await api.post('/api/gyms', {
+        ...data,
+        created_by: authState.user?.id
+      });
+      return response.data;
     },
     onSuccess: () => {
       toast({
