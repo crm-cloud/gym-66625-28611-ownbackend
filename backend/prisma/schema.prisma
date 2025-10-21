@@ -1,4 +1,7 @@
-// Prisma Schema for FitVerse Backend
+// ============================================================================
+// FITVERSE COMPLETE PRISMA SCHEMA
+// Aligned with backend/database-schema-complete.sql
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -9,28 +12,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ===== CORE USER MODELS =====
+// ============================================================================
+// CORE USER MODELS
+// ============================================================================
 
 model profiles {
-  user_id        String    @id @default(uuid())
-  email          String    @unique
-  full_name      String?
-  phone          String?
-  date_of_birth  DateTime?
-  gender         String?
-  address        Json?
-  avatar_url     String?
-  password_hash  String
-  email_verified Boolean   @default(false)
-  is_active      Boolean   @default(true)
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  user_id                String    @id @default(uuid())
+  email                  String    @unique
+  password_hash          String?
+  full_name              String?
+  phone                  String?
+  avatar_url             String?
+  date_of_birth          DateTime? @db.Date
+  gender                 String?
+  address                String?
+  city                   String?
+  state                  String?
+  pincode                String?
+  emergency_contact_name String?
+  emergency_contact_phone String?
+  email_verified         Boolean   @default(false)
+  is_active              Boolean   @default(true)
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
 
   // Relations
-  user_roles       user_roles[]
-  members          members[]
-  trainer_profiles trainer_profiles[]
-  feedback         feedback[]
+  user_roles                           user_roles[]
+  members                              members[]
+  trainers                             trainers[]
+  feedback_responses                   feedback[]                      @relation("feedback_responder")
+  announcements                        announcements[]
+  notifications                        notifications[]
+  tasks_created                        tasks[]                         @relation("task_creator")
+  tasks_assigned                       tasks[]                         @relation("task_assignee")
+  tasks_completed                      tasks[]                         @relation("task_completer")
+  task_comments                        task_comments[]
+  body_measurements                    body_measurements[]
+  reports                              reports[]
+  leads                                leads[]
+  equipment_maintenance                equipment_maintenance[]
+  email_verification_tokens            email_verification_tokens[]
+  password_reset_tokens                password_reset_tokens[]
+  trainer_change_requests_approved     trainer_change_requests[]       @relation("change_approver")
+  branches_managed                     branches[]                      @relation("branch_manager")
+  orders_served                        orders[]                        @relation("order_server")
 
   @@map("profiles")
 }
@@ -48,7 +73,9 @@ model user_roles {
   @@map("user_roles")
 }
 
-// ===== GYM & BRANCH MODELS =====
+// ============================================================================
+// GYM & BRANCH MODELS
+// ============================================================================
 
 model gyms {
   id              String   @id @default(uuid())
@@ -97,17 +124,33 @@ model branches {
   updated_at   DateTime  @updatedAt
 
   // Relations
-  gym              gyms               @relation(fields: [gym_id], references: [id], onDelete: Cascade)
-  members          members[]
-  trainer_profiles trainer_profiles[]
-  gym_classes      gym_classes[]
-  equipment        equipment[]
-  lockers          lockers[]
+  gym                   gyms                    @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  manager               profiles?               @relation("branch_manager", fields: [manager_id], references: [user_id], onDelete: SetNull)
+  members               members[]
+  trainers              trainers[]
+  classes               classes[]
+  equipment             equipment[]
+  lockers               lockers[]
+  announcements         announcements[]
+  feedback              feedback[]
+  tasks                 tasks[]
+  attendance            attendance[]
+  leads                 leads[]
+  challenges            challenges[]
+  campaigns             campaigns[]
+  reports               reports[]
+  ai_insights           ai_insights[]
+  attendance_devices    attendance_devices[]
+  invoices              invoices[]
+  products              products[]
+  orders                orders[]
 
   @@map("branches")
 }
 
-// ===== MEMBER MODELS =====
+// ============================================================================
+// MEMBER MODELS
+// ============================================================================
 
 model members {
   id                      String    @id @default(uuid())
@@ -129,38 +172,50 @@ model members {
   updated_at              DateTime  @updatedAt
 
   // Relations
-  profile              profiles?              @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
-  branch               branches               @relation(fields: [branch_id], references: [id], onDelete: Cascade)
-  referrer             members?               @relation("MemberReferrals", fields: [referred_by], references: [id], onDelete: SetNull)
-  member_memberships   member_memberships[]
-  invoices             invoices[]
-  transactions         transactions[]
-  attendance           attendance[]
-  member_measurements  member_measurements[]
-  trainer_assignments  trainer_assignments[]
-  class_bookings       class_bookings[]
-  locker_assignments   locker_assignments[]
-  feedback             feedback[]
-  referrals_given      referrals[]            @relation("referrer")
-  referrals_received   referrals[]            @relation("referred")
-  referred_members     members[]              @relation("MemberReferrals")
-  subscriptions        subscriptions[]
+  profile                 profiles?               @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  branch                  branches                @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  referrer                members?                @relation("MemberReferrals", fields: [referred_by], references: [id], onDelete: SetNull)
+  subscriptions           subscriptions[]
+  member_memberships      member_memberships[]
+  invoices                invoices[]
+  transactions            transactions[]
+  attendance              attendance[]
+  member_measurements     member_measurements[]
+  trainer_assignments     trainer_assignments[]
+  class_bookings          class_bookings[]
+  locker_assignments      locker_assignments[]
+  feedback                feedback[]
+  referrals_given         referrals[]             @relation("referrer")
+  referred_members        members[]               @relation("MemberReferrals")
+  orders                  orders[]
+  body_measurements       body_measurements[]
+  workout_plans           workout_plans[]
+  diet_plans              diet_plans[]
+  member_progress_photos  member_progress_photos[]
+  user_achievements       user_achievements[]
+  member_points           member_points[]
+  challenge_participants  challenge_participants[]
+  trainer_reviews         trainer_reviews[]
+  trainer_change_requests trainer_change_requests[]
+  training_packages       training_packages[]
+  leads_converted         leads[]                 @relation("converted_lead")
+  lockers_assigned        lockers[]
 
   @@map("members")
 }
 
 model membership_plans {
-  id             String   @id @default(uuid())
-  gym_id         String?
-  name           String
-  description    String?
-  duration_days  Int
-  price          Decimal  @db.Decimal(10, 2)
-  admission_fee  Decimal  @db.Decimal(10, 2) @default(0)
-  features       Json?
-  is_active      Boolean  @default(true)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  gym_id             String?
+  name               String
+  description        String?
+  duration_days      Int
+  price              Decimal  @db.Decimal(10, 2)
+  admission_fee      Decimal  @db.Decimal(10, 2) @default(0)
+  features           Json?
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Relations
   gym                gyms?                @relation(fields: [gym_id], references: [id], onDelete: Cascade)
@@ -171,167 +226,295 @@ model membership_plans {
 }
 
 model subscriptions {
-  id                   String    @id @default(uuid())
-  member_id            String
-  plan_id              String
-  start_date           DateTime  @db.Date
-  end_date             DateTime  @db.Date
-  amount_paid          Decimal   @db.Decimal(10, 2)
-  payment_id           String?
-  status               String    @default("active")
-  auto_renew           Boolean   @default(false)
-  cancelled_at         DateTime?
-  cancellation_reason  String?
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  member_id           String
+  plan_id             String
+  start_date          DateTime  @db.Date
+  end_date            DateTime  @db.Date
+  amount_paid         Decimal   @db.Decimal(10, 2)
+  payment_id          String?
+  status              String    @default("active")
+  auto_renew          Boolean   @default(false)
+  cancelled_at        DateTime?
+  cancellation_reason String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
 
   // Relations
-  member members          @relation(fields: [member_id], references: [id], onDelete: Cascade)
-  plan   membership_plans @relation(fields: [plan_id], references: [id], onDelete: Restrict)
+  member   members          @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  plan     membership_plans @relation(fields: [plan_id], references: [id], onDelete: Restrict)
+  invoices invoices[]
+  payments payments[]
 
   @@map("subscriptions")
 }
 
 model member_memberships {
-  id                String    @id @default(uuid())
-  member_id         String
+  id                 String   @id @default(uuid())
+  member_id          String
   membership_plan_id String
-  start_date        DateTime
-  end_date          DateTime
-  status            String    @default("active")
-  auto_renew        Boolean   @default(false)
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  start_date         DateTime
+  end_date           DateTime
+  status             String   @default("active")
+  auto_renew         Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Relations
-  member          members         @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  member          members          @relation(fields: [member_id], references: [id], onDelete: Cascade)
   membership_plan membership_plans @relation(fields: [membership_plan_id], references: [id])
 
   @@map("member_memberships")
 }
 
-// ===== TRAINER MODELS =====
+// ============================================================================
+// TRAINER MODELS
+// ============================================================================
 
-model trainer_profiles {
-  id              String   @id @default(uuid())
-  user_id         String?  @unique
-  branch_id       String?
-  specializations String[]
+model trainers {
+  id               String   @id @default(uuid())
+  user_id          String?  @unique
+  branch_id        String?
+  specializations  String[]
   experience_years Int?
-  certifications  String[]
-  bio             String?
-  hourly_rate     Decimal? @db.Decimal(10, 2)
-  rating          Decimal? @db.Decimal(3, 2) @default(0)
-  total_reviews   Int?     @default(0)
-  total_clients   Int?     @default(0)
-  is_active       Boolean  @default(true)
-  availability    Json?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  certifications   String[]
+  bio              String?
+  hourly_rate      Decimal? @db.Decimal(10, 2)
+  rating           Decimal? @db.Decimal(3, 2) @default(0)
+  total_reviews    Int?     @default(0)
+  total_clients    Int?     @default(0)
+  is_active        Boolean  @default(true)
+  availability     Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   // Relations
-  profile              profiles?             @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
-  branch               branches?             @relation(fields: [branch_id], references: [id], onDelete: Cascade)
-  gym_classes          gym_classes[]
-  trainer_assignments  trainer_assignments[]
+  profile                              profiles?                 @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  branch                               branches?                 @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  classes                              classes[]
+  trainer_assignments                  trainer_assignments[]
+  trainer_certifications               trainer_certifications[]
+  trainer_availability                 trainer_availability[]
+  training_packages                    training_packages[]
+  trainer_reviews                      trainer_reviews[]
+  trainer_change_requests_current      trainer_change_requests[] @relation("current_trainer")
+  trainer_change_requests_requested    trainer_change_requests[] @relation("requested_trainer")
+  workout_plans                        workout_plans[]
+  diet_plans                           diet_plans[]
 
   @@map("trainers")
 }
 
-model trainer_assignments {
-  id         String   @id @default(uuid())
-  trainer_id String
-  member_id  String
-  start_date DateTime
-  end_date   DateTime?
-  status     String   @default("active")
-  notes      String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+model trainer_certifications {
+  id                    String    @id @default(uuid())
+  trainer_id            String
+  certification_name    String
+  issuing_organization  String?
+  issue_date            DateTime? @db.Date
+  expiry_date           DateTime? @db.Date
+  certificate_url       String?
+  created_at            DateTime  @default(now())
 
   // Relations
-  trainer trainer_profiles @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
-  member  members          @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer trainers @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+
+  @@map("trainer_certifications")
+}
+
+model trainer_availability {
+  id            String   @id @default(uuid())
+  trainer_id    String
+  day_of_week   Int
+  start_time    DateTime @db.Time(6)
+  end_time      DateTime @db.Time(6)
+  is_available  Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  // Relations
+  trainer trainers @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+
+  @@unique([trainer_id, day_of_week, start_time])
+  @@map("trainer_availability")
+}
+
+model training_packages {
+  id                 String   @id @default(uuid())
+  member_id          String
+  trainer_id         String
+  package_name       String
+  total_sessions     Int
+  sessions_completed Int      @default(0)
+  sessions_remaining Int?
+  price              Decimal  @db.Decimal(10, 2)
+  start_date         DateTime @db.Date
+  end_date           DateTime @db.Date
+  status             String   @default("active")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  member              members               @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer             trainers              @relation(fields: [trainer_id], references: [id], onDelete: Restrict)
+  trainer_assignments trainer_assignments[]
+
+  @@map("training_packages")
+}
+
+model trainer_assignments {
+  id               String    @id @default(uuid())
+  member_id        String
+  trainer_id       String
+  package_id       String?
+  session_date     DateTime
+  duration_minutes Int?      @default(60)
+  status           String    @default("scheduled")
+  notes            String?
+  completed_at     DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  // Relations
+  member  members            @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer trainers           @relation(fields: [trainer_id], references: [id], onDelete: Restrict)
+  package training_packages? @relation(fields: [package_id], references: [id], onDelete: SetNull)
 
   @@map("trainer_assignments")
 }
 
-// ===== CLASS MODELS =====
+model trainer_reviews {
+  id         String   @id @default(uuid())
+  trainer_id String
+  member_id  String
+  rating     Int
+  review     String?
+  created_at DateTime @default(now())
 
-model gym_classes {
-  id          String   @id @default(uuid())
-  branch_id   String
-  trainer_id  String
-  name        String
-  description String?
-  start_time  DateTime
-  end_time    DateTime
-  capacity    Int      @default(20)
-  status      String   @default("scheduled")
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  // Relations
+  trainer trainers @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+  member  members  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([trainer_id, member_id])
+  @@map("trainer_reviews")
+}
+
+model trainer_change_requests {
+  id                   String    @id @default(uuid())
+  member_id            String
+  current_trainer_id   String?
+  requested_trainer_id String?
+  reason               String?
+  status               String    @default("pending")
+  approved_by          String?
+  approved_at          DateTime?
+  created_at           DateTime  @default(now())
+
+  // Relations
+  member            members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  current_trainer   trainers? @relation("current_trainer", fields: [current_trainer_id], references: [id], onDelete: SetNull)
+  requested_trainer trainers? @relation("requested_trainer", fields: [requested_trainer_id], references: [id], onDelete: SetNull)
+  approver          profiles? @relation("change_approver", fields: [approved_by], references: [user_id], onDelete: SetNull)
+
+  @@map("trainer_change_requests")
+}
+
+// ============================================================================
+// CLASS MODELS
+// ============================================================================
+
+model classes {
+  id                String   @id @default(uuid())
+  branch_id         String
+  trainer_id        String?
+  name              String
+  description       String?
+  class_type        String?
+  max_capacity      Int
+  current_bookings  Int?     @default(0)
+  duration_minutes  Int
+  price             Decimal? @db.Decimal(10, 2) @default(0)
+  scheduled_date    DateTime @db.Date
+  start_time        DateTime @db.Time(6)
+  end_time          DateTime @db.Time(6)
+  status            String   @default("scheduled")
+  recurring         Boolean  @default(false)
+  recurring_pattern String?
+  image_url         String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   // Relations
   branch         branches         @relation(fields: [branch_id], references: [id], onDelete: Cascade)
-  trainer        trainer_profiles @relation(fields: [trainer_id], references: [id])
+  trainer        trainers?        @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
   class_bookings class_bookings[]
 
-  @@map("gym_classes")
+  @@map("classes")
 }
 
 model class_bookings {
-  id             String   @id @default(uuid())
-  class_id       String
-  member_id      String
-  status         String   @default("confirmed")
-  booked_at      DateTime @default(now())
-  checked_in_at  DateTime?
-  cancelled_at   DateTime?
+  id                  String    @id @default(uuid())
+  class_id            String
+  member_id           String
+  booking_date        DateTime  @default(now())
+  status              String    @default("confirmed")
+  attended            Boolean   @default(false)
+  payment_id          String?
   cancellation_reason String?
+  cancelled_at        DateTime?
+  created_at          DateTime  @default(now())
 
   // Relations
-  gym_class gym_classes @relation(fields: [class_id], references: [id], onDelete: Cascade)
-  member    members     @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  class  classes @relation(fields: [class_id], references: [id], onDelete: Cascade)
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
 
   @@unique([class_id, member_id])
   @@map("class_bookings")
 }
 
-// ===== FINANCE MODELS =====
+// ============================================================================
+// FINANCE MODELS
+// ============================================================================
 
 model invoices {
-  id          String   @id @default(uuid())
-  member_id   String
-  invoice_number String @unique
-  amount      Decimal  @db.Decimal(10, 2)
-  tax         Decimal  @db.Decimal(10, 2) @default(0)
-  total       Decimal  @db.Decimal(10, 2)
-  status      String   @default("pending")
-  due_date    DateTime
-  paid_date   DateTime?
-  items       Json?
-  notes       String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id              String    @id @default(uuid())
+  invoice_number  String    @unique
+  member_id       String
+  branch_id       String?
+  subscription_id String?
+  amount          Decimal   @db.Decimal(10, 2)
+  tax_amount      Decimal   @db.Decimal(10, 2) @default(0)
+  discount_amount Decimal   @db.Decimal(10, 2) @default(0)
+  total_amount    Decimal   @db.Decimal(10, 2)
+  issue_date      DateTime  @db.Date
+  due_date        DateTime? @db.Date
+  paid_date       DateTime? @db.Date
+  status          String    @default("pending")
+  payment_id      String?
+  notes           String?
+  line_items      Json?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
 
   // Relations
   member       members        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  branch       branches?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  subscription subscriptions? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  payment      payments?      @relation(fields: [payment_id], references: [id], onDelete: SetNull)
   transactions transactions[]
 
   @@map("invoices")
 }
 
 model transactions {
-  id             String   @id @default(uuid())
-  member_id      String
-  invoice_id     String?
-  amount         Decimal  @db.Decimal(10, 2)
-  type           String
-  payment_method String?
-  status         String   @default("completed")
-  description    String?
+  id               String   @id @default(uuid())
+  member_id        String
+  invoice_id       String?
+  amount           Decimal  @db.Decimal(10, 2)
+  type             String
+  payment_method   String?
+  status           String   @default("completed")
+  description      String?
   transaction_date DateTime @default(now())
-  created_at     DateTime @default(now())
+  created_at       DateTime @default(now())
 
   // Relations
   member  members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
@@ -340,44 +523,139 @@ model transactions {
   @@map("transactions")
 }
 
-// ===== EQUIPMENT MODELS =====
-
-model equipment {
-  id           String   @id @default(uuid())
-  branch_id    String
-  name         String
-  category     String
-  status       String   @default("operational")
-  purchase_date DateTime?
-  last_maintenance DateTime?
-  next_maintenance DateTime?
-  notes        String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+model payment_gateways {
+  id             String   @id @default(uuid())
+  gateway_name   String
+  gateway_type   String
+  api_key        String?
+  api_secret     String?
+  webhook_secret String?
+  is_active      Boolean  @default(true)
+  config         Json?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   // Relations
-  branch branches @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  payments payments[]
+
+  @@map("payment_gateways")
+}
+
+model payments {
+  id              String   @id @default(uuid())
+  member_id       String?
+  subscription_id String?
+  order_id        String?
+  invoice_id      String?
+  amount          Decimal  @db.Decimal(10, 2)
+  payment_type    String
+  payment_method  String?
+  gateway_id      String?
+  transaction_id  String?
+  status          String   @default("pending")
+  payment_date    DateTime @default(now())
+  description     String?
+  metadata        Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  member       members?          @relation(fields: [member_id], references: [id], onDelete: SetNull)
+  subscription subscriptions?   @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  gateway      payment_gateways? @relation(fields: [gateway_id], references: [id], onDelete: SetNull)
+  payment_logs payment_logs[]
+  invoices     invoices[]
+
+  @@map("payments")
+}
+
+model payment_logs {
+  id            String   @id @default(uuid())
+  payment_id    String?
+  event_type    String
+  request_data  Json?
+  response_data Json?
+  status_code   Int?
+  error_message String?
+  created_at    DateTime @default(now())
+
+  // Relations
+  payment payments? @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_logs")
+}
+
+// ============================================================================
+// EQUIPMENT MODELS
+// ============================================================================
+
+model equipment {
+  id                    String    @id @default(uuid())
+  branch_id             String
+  name                  String
+  category              String?
+  manufacturer          String?
+  model                 String?
+  serial_number         String?
+  purchase_date         DateTime? @db.Date
+  purchase_price        Decimal?  @db.Decimal(10, 2)
+  warranty_expiry       DateTime? @db.Date
+  status                String    @default("available")
+  last_maintenance_date DateTime? @db.Date
+  next_maintenance_date DateTime? @db.Date
+  location              String?
+  notes                 String?
+  image_url             String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  // Relations
+  branch                branches                @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  equipment_maintenance equipment_maintenance[]
 
   @@map("equipment")
 }
 
-// ===== LOCKER MODELS =====
+model equipment_maintenance {
+  id                    String    @id @default(uuid())
+  equipment_id          String
+  maintenance_date      DateTime  @db.Date
+  maintenance_type      String?
+  description           String?
+  cost                  Decimal?  @db.Decimal(10, 2)
+  performed_by          String?
+  next_maintenance_date DateTime? @db.Date
+  created_at            DateTime  @default(now())
+
+  // Relations
+  equipment  equipment @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
+  technician profiles? @relation(fields: [performed_by], references: [user_id], onDelete: SetNull)
+
+  @@map("equipment_maintenance")
+}
+
+// ============================================================================
+// LOCKER MODELS
+// ============================================================================
 
 model lockers {
-  id          String   @id @default(uuid())
-  branch_id   String
-  number      String
-  name        String?
-  status      String   @default("available")
-  monthly_fee Decimal  @db.Decimal(10, 2) @default(0)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id             String    @id @default(uuid())
+  branch_id      String
+  locker_number  String
+  location       String?
+  status         String    @default("available")
+  assigned_to    String?
+  assigned_date  DateTime? @db.Date
+  monthly_rent   Decimal?  @db.Decimal(10, 2)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   // Relations
   branch             branches             @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  member             members?             @relation(fields: [assigned_to], references: [id], onDelete: SetNull)
   locker_assignments locker_assignments[]
 
-  @@unique([branch_id, number])
+  @@unique([branch_id, locker_number])
   @@map("lockers")
 }
 
@@ -385,8 +663,8 @@ model locker_assignments {
   id         String   @id @default(uuid())
   locker_id  String
   member_id  String
-  start_date DateTime
-  end_date   DateTime
+  start_date DateTime @db.Date
+  end_date   DateTime @db.Date
   status     String   @default("active")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -398,22 +676,48 @@ model locker_assignments {
   @@map("locker_assignments")
 }
 
-// ===== ATTENDANCE MODELS =====
+// ============================================================================
+// ATTENDANCE MODELS
+// ============================================================================
 
 model attendance {
-  id         String   @id @default(uuid())
-  member_id  String
-  check_in   DateTime @default(now())
-  check_out  DateTime?
-  created_at DateTime @default(now())
+  id             String    @id @default(uuid())
+  member_id      String
+  branch_id      String
+  check_in_time  DateTime
+  check_out_time DateTime?
+  device_id      String?
+  created_at     DateTime  @default(now())
 
   // Relations
-  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  member members  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  branch branches @relation(fields: [branch_id], references: [id], onDelete: Cascade)
 
   @@map("attendance")
 }
 
-// ===== MEASUREMENT MODELS =====
+model attendance_devices {
+  id          String    @id @default(uuid())
+  branch_id   String
+  device_name String
+  device_type String?
+  device_id   String?   @unique
+  ip_address  String?
+  location    String?
+  is_active   Boolean   @default(true)
+  last_sync   DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  // Relations
+  branch branches @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@map("attendance_devices")
+}
+
+// ============================================================================
+// MEASUREMENT MODELS
+// ============================================================================
 
 model member_measurements {
   id            String   @id @default(uuid())
@@ -434,75 +738,567 @@ model member_measurements {
   @@map("member_measurements")
 }
 
-// ===== REFERRAL MODELS =====
-
-model referrals {
-  id               String   @id @default(uuid())
-  referrer_id      String
-  referred_id      String
-  referral_code    String
-  status           String   @default("pending")
-  reward_amount    Decimal? @db.Decimal(10, 2)
-  reward_status    String?
-  created_at       DateTime @default(now())
-  completed_at     DateTime?
+model body_measurements {
+  id                   String   @id @default(uuid())
+  member_id            String
+  weight               Decimal? @db.Decimal(5, 2)
+  height               Decimal? @db.Decimal(5, 2)
+  chest                Decimal? @db.Decimal(5, 2)
+  waist                Decimal? @db.Decimal(5, 2)
+  hips                 Decimal? @db.Decimal(5, 2)
+  biceps               Decimal? @db.Decimal(5, 2)
+  thighs               Decimal? @db.Decimal(5, 2)
+  body_fat_percentage  Decimal? @db.Decimal(5, 2)
+  muscle_mass          Decimal? @db.Decimal(5, 2)
+  bmi                  Decimal? @db.Decimal(5, 2)
+  notes                String?
+  measured_by          String?
+  measurement_date     DateTime @db.Date
+  created_at           DateTime @default(now())
 
   // Relations
-  referrer members @relation("referrer", fields: [referrer_id], references: [id], onDelete: Cascade)
-  referred members @relation("referred", fields: [referred_id], references: [id], onDelete: Cascade)
+  member    members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  measurer  profiles? @relation(fields: [measured_by], references: [user_id], onDelete: SetNull)
+
+  @@map("body_measurements")
+}
+
+model member_progress_photos {
+  id         String   @id @default(uuid())
+  member_id  String
+  photo_url  String
+  photo_type String?
+  notes      String?
+  created_at DateTime @default(now())
+
+  // Relations
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("member_progress_photos")
+}
+
+// ============================================================================
+// REFERRAL MODELS
+// ============================================================================
+
+model referrals {
+  id                 String    @id @default(uuid())
+  referrer_id        String
+  referred_member_id String?
+  referral_code      String
+  referred_name      String?
+  referred_phone     String?
+  referred_email     String?
+  status             String    @default("pending")
+  reward_amount      Decimal?  @db.Decimal(10, 2)
+  reward_claimed     Boolean   @default(false)
+  reward_claimed_at  DateTime?
+  created_at         DateTime  @default(now())
+
+  // Relations
+  referrer members  @relation("referrer", fields: [referrer_id], references: [id], onDelete: Cascade)
 
   @@map("referrals")
 }
 
-// ===== FEEDBACK MODELS =====
+// ============================================================================
+// FEEDBACK MODELS
+// ============================================================================
 
 model feedback {
-  id         String   @id @default(uuid())
-  member_id  String
-  user_id    String
-  branch_id  String?
-  rating     Int
-  category   String
-  message    String
-  status     String   @default("pending")
-  response   String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id           String    @id @default(uuid())
+  member_id    String
+  branch_id    String?
+  category     String    @default("general")
+  rating       Int?
+  subject      String?
+  message      String
+  status       String    @default("pending")
+  response     String?
+  responded_by String?
+  responded_at DateTime?
+  created_at   DateTime  @default(now())
 
   // Relations
-  member members  @relation(fields: [member_id], references: [id], onDelete: Cascade)
-  user   profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  member    members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  branch    branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  responder profiles? @relation("feedback_responder", fields: [responded_by], references: [user_id], onDelete: SetNull)
 
   @@map("feedback")
 }
 
-// ===== PRODUCTS MODELS =====
+// ============================================================================
+// PRODUCTS MODELS
+// ============================================================================
 
 model products {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  category    String
-  price       Decimal  @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  image_url   String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  branch_id          String?
+  name               String
+  description        String?
+  category           String?
+  sku                String?  @unique
+  price              Decimal  @db.Decimal(10, 2)
+  cost_price         Decimal? @db.Decimal(10, 2)
+  stock_quantity     Int      @default(0)
+  low_stock_threshold Int?    @default(10)
+  barcode            String?
+  image_url          String?
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  branch      branches?     @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  order_items order_items[]
 
   @@map("products")
 }
 
-// ===== SETTINGS MODELS =====
+model orders {
+  id              String   @id @default(uuid())
+  order_number    String   @unique
+  member_id       String?
+  branch_id       String
+  total_amount    Decimal  @db.Decimal(10, 2)
+  discount_amount Decimal  @db.Decimal(10, 2) @default(0)
+  tax_amount      Decimal  @db.Decimal(10, 2) @default(0)
+  final_amount    Decimal  @db.Decimal(10, 2)
+  payment_method  String?
+  payment_status  String   @default("pending")
+  order_status    String   @default("pending")
+  served_by       String?
+  order_date      DateTime @default(now())
+  notes           String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  member      members?      @relation(fields: [member_id], references: [id], onDelete: SetNull)
+  branch      branches      @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  server      profiles?     @relation("order_server", fields: [served_by], references: [user_id], onDelete: SetNull)
+  order_items order_items[]
+
+  @@map("orders")
+}
+
+model order_items {
+  id         String   @id @default(uuid())
+  order_id   String
+  product_id String
+  quantity   Int
+  unit_price Decimal  @db.Decimal(10, 2)
+  discount   Decimal  @db.Decimal(10, 2) @default(0)
+  subtotal   Decimal  @db.Decimal(10, 2)
+  created_at DateTime @default(now())
+
+  // Relations
+  order   orders   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product products @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@map("order_items")
+}
+
+// ============================================================================
+// LEADS & CRM MODELS
+// ============================================================================
+
+model leads {
+  id                      String    @id @default(uuid())
+  branch_id               String?
+  full_name               String
+  email                   String?
+  phone                   String
+  source                  String?
+  status                  String    @default("new")
+  interested_in           String?
+  budget_range            String?
+  preferred_contact_time  String?
+  assigned_to             String?
+  follow_up_date          DateTime? @db.Date
+  notes                   String?
+  converted_to_member_id  String?
+  converted_at            DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  // Relations
+  branch            branches?         @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  assignee          profiles?         @relation(fields: [assigned_to], references: [user_id], onDelete: SetNull)
+  converted_member  members?          @relation("converted_lead", fields: [converted_to_member_id], references: [id], onDelete: SetNull)
+  lead_activities   lead_activities[]
+
+  @@map("leads")
+}
+
+model lead_activities {
+  id            String   @id @default(uuid())
+  lead_id       String
+  activity_type String
+  notes         String?
+  performed_by  String?
+  created_at    DateTime @default(now())
+
+  // Relations
+  lead      leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  performer profiles? @relation(fields: [performed_by], references: [user_id], onDelete: SetNull)
+
+  @@map("lead_activities")
+}
+
+// ============================================================================
+// COMMUNICATION MODELS
+// ============================================================================
+
+model announcements {
+  id              String    @id @default(uuid())
+  branch_id       String?
+  title           String
+  content         String
+  target_audience String?   @default("all")
+  priority        String?   @default("normal")
+  is_published    Boolean   @default(false)
+  published_at    DateTime?
+  expires_at      DateTime?
+  created_by      String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  // Relations
+  branch  branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  creator profiles? @relation(fields: [created_by], references: [user_id], onDelete: SetNull)
+
+  @@map("announcements")
+}
+
+model notifications {
+  id         String   @id @default(uuid())
+  user_id    String
+  title      String
+  message    String
+  type       String   @default("system")
+  is_read    Boolean  @default(false)
+  link       String?
+  metadata   Json?
+  created_at DateTime @default(now())
+
+  // Relations
+  user profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model email_logs {
+  id              String    @id @default(uuid())
+  recipient_email String
+  subject         String?
+  body            String?
+  template_id     String?
+  status          String    @default("pending")
+  error_message   String?
+  sent_at         DateTime?
+  created_at      DateTime  @default(now())
+
+  @@map("email_logs")
+}
+
+model sms_logs {
+  id              String    @id @default(uuid())
+  recipient_phone String
+  message         String
+  status          String    @default("pending")
+  error_message   String?
+  sent_at         DateTime?
+  created_at      DateTime  @default(now())
+
+  @@map("sms_logs")
+}
+
+// ============================================================================
+// TASKS & WORKFLOW MODELS
+// ============================================================================
+
+model tasks {
+  id                String    @id @default(uuid())
+  title             String
+  description       String?
+  task_type         String?
+  priority          String    @default("medium")
+  status            String    @default("pending")
+  assigned_to       String?
+  created_by        String?
+  branch_id         String
+  due_date          DateTime?
+  completed_at      DateTime?
+  completed_by      String?
+  completion_notes  String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relations
+  branch        branches        @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  assignee      profiles?       @relation("task_assignee", fields: [assigned_to], references: [user_id], onDelete: SetNull)
+  creator       profiles?       @relation("task_creator", fields: [created_by], references: [user_id], onDelete: SetNull)
+  completer     profiles?       @relation("task_completer", fields: [completed_by], references: [user_id], onDelete: SetNull)
+  task_comments task_comments[]
+
+  @@map("tasks")
+}
+
+model task_comments {
+  id         String   @id @default(uuid())
+  task_id    String
+  user_id    String
+  comment    String
+  created_at DateTime @default(now())
+
+  // Relations
+  task tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  user profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("task_comments")
+}
+
+// ============================================================================
+// WORKOUT & DIET PLANS
+// ============================================================================
+
+model workout_plans {
+  id             String    @id @default(uuid())
+  member_id      String
+  trainer_id     String?
+  plan_name      String
+  description    String?
+  goal           String?
+  duration_weeks Int?
+  start_date     DateTime? @db.Date
+  end_date       DateTime? @db.Date
+  exercises      Json?
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relations
+  member  members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer trainers? @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+
+  @@map("workout_plans")
+}
+
+model diet_plans {
+  id             String    @id @default(uuid())
+  member_id      String
+  trainer_id     String?
+  plan_name      String
+  description    String?
+  goal           String?
+  calorie_target Int?
+  protein_target Int?
+  carbs_target   Int?
+  fat_target     Int?
+  start_date     DateTime? @db.Date
+  end_date       DateTime? @db.Date
+  meals          Json?
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relations
+  member  members   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer trainers? @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+
+  @@map("diet_plans")
+}
+
+// ============================================================================
+// GAMIFICATION MODELS
+// ============================================================================
+
+model achievements {
+  id                String              @id @default(uuid())
+  name              String
+  description       String?
+  icon              String?
+  badge_url         String?
+  criteria          Json?
+  points            Int                 @default(0)
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now())
+
+  // Relations
+  user_achievements user_achievements[]
+
+  @@map("achievements")
+}
+
+model user_achievements {
+  id             String   @id @default(uuid())
+  member_id      String
+  achievement_id String
+  earned_at      DateTime @default(now())
+
+  // Relations
+  member      members      @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  achievement achievements @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
+
+  @@unique([member_id, achievement_id])
+  @@map("user_achievements")
+}
+
+model member_points {
+  id         String   @id @default(uuid())
+  member_id  String
+  points     Int      @default(0)
+  reason     String?
+  created_at DateTime @default(now())
+
+  // Relations
+  member members @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("member_points")
+}
+
+// ============================================================================
+// CHALLENGES & CAMPAIGNS
+// ============================================================================
+
+model challenges {
+  id                     String                   @id @default(uuid())
+  branch_id              String?
+  name                   String
+  description            String?
+  challenge_type         String?
+  start_date             DateTime                 @db.Date
+  end_date               DateTime                 @db.Date
+  goal                   Json?
+  reward                 String?
+  is_active              Boolean                  @default(true)
+  created_at             DateTime                 @default(now())
+
+  // Relations
+  branch                 branches?                @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  challenge_participants challenge_participants[]
+
+  @@map("challenges")
+}
+
+model challenge_participants {
+  id           String    @id @default(uuid())
+  challenge_id String
+  member_id    String
+  progress     Json?
+  completed    Boolean   @default(false)
+  completed_at DateTime?
+  joined_at    DateTime  @default(now())
+
+  // Relations
+  challenge challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  member    members    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([challenge_id, member_id])
+  @@map("challenge_participants")
+}
+
+model campaigns {
+  id                  String    @id @default(uuid())
+  branch_id           String?
+  name                String
+  description         String?
+  campaign_type       String?
+  target_audience     String?
+  start_date          DateTime  @db.Date
+  end_date            DateTime  @db.Date
+  discount_percentage Decimal?  @db.Decimal(5, 2)
+  discount_amount     Decimal?  @db.Decimal(10, 2)
+  is_active           Boolean   @default(true)
+  created_at          DateTime  @default(now())
+
+  // Relations
+  branch branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@map("campaigns")
+}
+
+// ============================================================================
+// REPORTS & ANALYTICS
+// ============================================================================
+
+model reports {
+  id           String   @id @default(uuid())
+  branch_id    String?
+  report_type  String
+  report_name  String
+  generated_by String?
+  report_data  Json?
+  file_url     String?
+  generated_at DateTime @default(now())
+
+  // Relations
+  branch    branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  generator profiles? @relation(fields: [generated_by], references: [user_id], onDelete: SetNull)
+
+  @@map("reports")
+}
+
+model ai_insights {
+  id           String   @id @default(uuid())
+  branch_id    String?
+  insight_type String
+  title        String
+  description  String?
+  priority     String?  @default("medium")
+  data         Json?
+  is_read      Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  // Relations
+  branch branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@map("ai_insights")
+}
+
+// ============================================================================
+// AUTHENTICATION MODELS
+// ============================================================================
+
+model email_verification_tokens {
+  id         String   @id @default(uuid())
+  user_id    String   @unique
+  token      String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  // Relations
+  user profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model password_reset_tokens {
+  id         String   @id @default(uuid())
+  user_id    String   @unique
+  token      String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  // Relations
+  user profiles @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
 
 model system_settings {
-  id         String   @id @default(uuid())
-  key        String   @unique
-  value      Json
-  category   String
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  category    String
   description String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   @@map("system_settings")
 }
