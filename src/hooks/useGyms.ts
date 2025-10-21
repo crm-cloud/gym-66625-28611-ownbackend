@@ -1,18 +1,22 @@
 import { useApiQuery, useApiMutation, buildEndpoint } from './useApiQuery';
 
-interface Gym {
+export interface Gym {
   id: string;
   name: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  phone: string;
-  email: string;
-  max_branches: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  phone?: string;
+  email?: string;
+  billing_email?: string;
+  subscription_plan?: string;
+  max_branches?: number;
+  max_trainers?: number;
+  max_members?: number;
   status: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 interface GymStats {

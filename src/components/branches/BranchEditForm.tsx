@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Building2, MapPin, Phone, Users } from 'lucide-react';
+import { useUpdateBranch } from '@/hooks/useBranches';
 
 const branchEditSchema = z.object({
   name: z.string().min(2, 'Branch name must be at least 2 characters'),
@@ -34,7 +33,6 @@ interface BranchEditFormProps {
 
 export function BranchEditForm({ branch, onSuccess, onCancel }: BranchEditFormProps) {
   const { authState } = useAuth();
-  const queryClient = useQueryClient();
   
   const form = useForm<BranchEditData>({
     resolver: zodResolver(branchEditSchema),
@@ -51,64 +49,42 @@ export function BranchEditForm({ branch, onSuccess, onCancel }: BranchEditFormPr
     mode: 'onChange'
   });
 
-  const updateBranch = useMutation({
-    mutationFn: async (data: BranchEditData) => {
-      if (!branch.id) {
-        throw new Error('Branch ID is required');
-      }
+  const updateBranchMutation = useUpdateBranch();
 
-      const branchData = {
-        name: data.name.trim(),
-        code: data.code?.toUpperCase() || branch.code,
-        address: {
-          street: data.street.trim(),
-          city: data.city.trim(),
-          state: data.state.trim(),
-          zipCode: data.zipCode.trim(),
-          country: branch.address?.country || 'US'
-        },
-        contact: {
-          phone: data.phone.trim(),
-          email: branch.contact?.email || `${data.code?.toLowerCase() || branch.code?.toLowerCase()}@gym.com`
-        },
-        capacity: Number(data.capacity),
-        updated_at: new Date().toISOString()
-      };
-
-      const { data: updatedBranch, error } = await supabase
-        .from('branches')
-        .update(branchData)
-        .eq('id', branch.id)
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error('Error updating branch:', error);
-        throw new Error(error.message || 'Failed to update branch');
-      }
-
-      return updatedBranch;
-    },
-    onSuccess: () => {
+  const onSubmit = async (data: BranchEditData) => {
+    if (!branch.id) {
       toast({
-        title: "Success",
-        description: "Branch updated successfully!"
+        title: 'Error',
+        description: 'Branch ID is required',
+        variant: 'destructive'
       });
-      queryClient.invalidateQueries({ queryKey: ['branches'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-branches'] });
-      onSuccess();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      return;
     }
-  });
 
-  const onSubmit = (data: BranchEditData) => {
-    updateBranch.mutate(data);
+    const branchData = {
+      name: data.name.trim(),
+      code: data.code?.toUpperCase() || branch.code,
+      address: {
+        street: data.street.trim(),
+        city: data.city.trim(),
+        state: data.state.trim(),
+        zipCode: data.zipCode.trim(),
+        country: branch.address?.country || 'US'
+      },
+      contact: {
+        phone: data.phone.trim(),
+        email: branch.contact?.email || `${data.code?.toLowerCase() || branch.code?.toLowerCase()}@gym.com`
+      },
+      capacity: Number(data.capacity)
+    };
+
+    try {
+      await updateBranchMutation.mutateAsync({ branchId: branch.id, data: branchData });
+      onSuccess();
+    } catch (error) {
+      // Error is handled by the mutation
+      console.error('Branch update error:', error);
+    }
   };
 
   const states = [
@@ -310,15 +286,15 @@ export function BranchEditForm({ branch, onSuccess, onCancel }: BranchEditFormPr
               type="button" 
               variant="outline" 
               onClick={onCancel}
-              disabled={updateBranch.isPending}
+              disabled={updateBranchMutation.isPending}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={updateBranch.isPending}
+              disabled={updateBranchMutation.isPending}
             >
-              {updateBranch.isPending ? 'Updating...' : 'Update Branch'}
+              {updateBranchMutation.isPending ? 'Updating...' : 'Update Branch'}
             </Button>
           </motion.div>
         </form>

@@ -9,20 +9,8 @@ import { Building2, Users, MapPin, TrendingUp, MoreVertical, Plus } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { useGyms, useDeleteGym } from '@/hooks/useGyms';
+import { useGyms, useDeleteGym, type Gym } from '@/hooks/useGyms';
 import { useApiQuery } from '@/hooks/useApiQuery';
-
-interface Gym {
-  id: string;
-  name: string;
-  subscription_plan?: string;
-  status: string;
-  max_branches?: number;
-  max_trainers?: number;
-  max_members?: number;
-  billing_email?: string;
-  created_at: string;
-}
 
 export default function GymManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);

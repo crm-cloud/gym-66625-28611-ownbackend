@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useMemberProfile } from '@/hooks/useMemberProfile';
-import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useMemberMeasurements, useCreateMeasurement } from '@/hooks/useMeasurements';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -37,24 +36,7 @@ export const MemberProgress = () => {
   
   const { data: member, isLoading: memberLoading } = useMemberProfile();
   
-  const { data: measurements, isLoading: measurementsLoading } = useSupabaseQuery(
-    ['member-measurements', member?.id],
-    async () => {
-      if (!member?.id) throw new Error('Member not found');
-      
-      const { data, error } = await supabase
-        .from('member_measurements')
-        .select('*')
-        .eq('member_id', member.id)
-        .order('measured_date', { ascending: true });
-      
-      if (error) throw error;
-      return data || [];
-    },
-    {
-      enabled: !!member?.id
-    }
-  );
+  const { data: measurements, isLoading: measurementsLoading } = useMemberMeasurements(member?.id);
 
   if (memberLoading || measurementsLoading) {
     return (
@@ -95,27 +77,28 @@ export const MemberProgress = () => {
     ? (latestMeasurement.body_fat_percentage || 0) - (firstMeasurement.body_fat_percentage || 0)
     : 0;
 
-  const { mutate: recordMeasurement, isPending: isSaving } = useSupabaseMutation(
-    async (data: any) => {
-      const { error } = await supabase.from('member_measurements').insert({
-        member_id: member?.id,
-        measured_by: member?.user_id,
-        measured_date: new Date().toISOString().split('T')[0],
-        weight: data.weight ? parseFloat(data.weight) : null,
-        body_fat_percentage: data.bodyFat ? parseFloat(data.bodyFat) : null,
-        muscle_mass: data.muscleMass ? parseFloat(data.muscleMass) : null,
-        chest: data.chest ? parseFloat(data.chest) : null,
-        waist: data.waist ? parseFloat(data.waist) : null,
-        hips: data.hips ? parseFloat(data.hips) : null,
-        arms: data.arms ? parseFloat(data.arms) : null,
-        thighs: data.thighs ? parseFloat(data.thighs) : null,
-        notes: data.notes || null
-      });
-      if (error) throw error;
-    },
-    {
+  const { mutate: recordMeasurement, isPending: isSaving } = useCreateMeasurement();
+
+  const handleSubmitMeasurement = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const measurementData = {
+      member_id: member?.id,
+      measured_by: member?.user_id,
+      measured_date: new Date().toISOString().split('T')[0],
+      weight: formData.weight ? parseFloat(formData.weight) : null,
+      body_fat_percentage: formData.bodyFat ? parseFloat(formData.bodyFat) : null,
+      muscle_mass: formData.muscleMass ? parseFloat(formData.muscleMass) : null,
+      chest: formData.chest ? parseFloat(formData.chest) : null,
+      waist: formData.waist ? parseFloat(formData.waist) : null,
+      hips: formData.hips ? parseFloat(formData.hips) : null,
+      arms: formData.arms ? parseFloat(formData.arms) : null,
+      thighs: formData.thighs ? parseFloat(formData.thighs) : null,
+      notes: formData.notes || null
+    };
+
+    recordMeasurement(measurementData, {
       onSuccess: () => {
-        toast({ title: 'Measurement recorded successfully!' });
         setOpen(false);
         setFormData({
           weight: '', bodyFat: '', muscleMass: '', chest: '', waist: '',

@@ -1,15 +1,45 @@
-
 import { useState } from 'react';
 import { FeedbackForm } from '@/components/feedback/FeedbackForm';
 import { FeedbackList } from '@/components/feedback/FeedbackList';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Plus, Star, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMemberProfile } from '@/hooks/useMemberProfile';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useFeedback, useCreateFeedback } from '@/hooks/useFeedback';
+
+export const MemberFeedbackPage = () => {
+  const { toast } = useToast();
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const { data: member, isLoading: memberLoading } = useMemberProfile();
+  
+  const { data: memberFeedback = [], isLoading: feedbackLoading } = useFeedback({ memberId: member?.id });
+
+  const createFeedbackMutation = useCreateFeedback();
+
+  const handleSubmitFeedback = async (data: any) => {
+    if (!member?.id) return;
+    
+    const feedbackData = {
+      member_id: member.id,
+      user_id: member.user_id,
+      branch_id: member.branch_id,
+      type: data.type || 'suggestion',
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      rating: data.rating,
+      status: 'pending'
+    };
+
+    try {
+      await createFeedbackMutation.mutateAsync(feedbackData);
+      setShowFeedbackForm(false);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    }
+  };
 
 export const MemberFeedbackPage = () => {
   const { toast } = useToast();
