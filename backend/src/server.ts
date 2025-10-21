@@ -50,6 +50,9 @@ import leadRoutes from './routes/lead.routes';
 // Phase 11-12: Member Progress & Task Management
 import memberProgressRoutes from './routes/member-progress.routes';
 import taskRoutes from './routes/task.routes';
+// Phase 1 Migration: Member Credits & Membership Freeze
+import memberCreditsRoutes from './routes/member-credits.routes';
+import membershipFreezeRoutes from './routes/membership-freeze.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -137,6 +140,9 @@ app.use('/api/leads', leadRoutes);
 // Phase 11-12: Member Progress & Task Management
 app.use('/api/progress', memberProgressRoutes);
 app.use('/api/tasks', taskRoutes);
+// Phase 1 Migration: Member Credits & Membership Freeze
+app.use('/api/member-credits', memberCreditsRoutes);
+app.use('/api/membership-freeze', membershipFreezeRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
