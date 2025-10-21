@@ -202,9 +202,8 @@ export function AdminAccountForm({ onSuccess }: AdminAccountFormProps) {
   const createAdminAccount = useMutation({
     mutationFn: async (data: AdminFormData) => {
       try {
-        // Generate temporary password
-        const { generateTempPassword } = await import('@/services/userManagement');
-        const tempPassword = generateTempPassword();
+        // Generate temporary password using crypto
+        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + '!';
         
         // Build request body, only including defined values
         const requestBody: any = {

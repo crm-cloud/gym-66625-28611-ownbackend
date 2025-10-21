@@ -57,6 +57,7 @@ import memberGoalsRoutes from './routes/member-goals.routes';
 import analyticsEventsRoutes from './routes/analytics-events.routes';
 import teamRoutes from './routes/team.routes';
 import templatesRoutes from './routes/templates.routes';
+import userManagementRoutes from './routes/user-management.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -151,6 +152,7 @@ app.use('/api/member-goals', memberGoalsRoutes);
 app.use('/api/analytics', analyticsEventsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/templates', templatesRoutes);
+app.use('/api/user-management', userManagementRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

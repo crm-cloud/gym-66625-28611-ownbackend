@@ -1,0 +1,1020 @@
+// ============================================================================
+// FITVERSE COMPLETE PRISMA SCHEMA
+// Comprehensive schema including ALL Supabase tables
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model profiles {
+  user_id        String             @id @default(uuid())
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+  email          String             @unique
+  password_hash  String
+  full_name      String
+  phone          String?
+  date_of_birth  DateTime?          @db.Date
+  address        Json?
+  email_verified Boolean            @default(false)
+  is_active      Boolean            @default(true)
+  gym_id         String?
+  branch_id      String?
+  role           user_roles[]
+  member         members?
+  trainer        trainers?
+  tasks          tasks[]            @relation("task_assignee")
+  created_tasks  tasks[]            @relation("task_creator")
+  leads          leads[]
+  shifts         shifts[]
+  email_logs     email_logs[]
+  sms_logs       sms_logs[]
+  invoices       invoices[]
+  credit_transactions credit_transactions[]
+  discount_codes discount_codes[]
+
+  @@map("profiles")
+}
+
+model user_roles {
+  user_id String
+  role    String
+  profile profiles @relation(fields: [user_id], references: [user_id])
+
+  @@id([user_id, role])
+  @@map("user_roles")
+}
+
+model gyms {
+  id          String      @id @default(uuid())
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  name        String
+  address     Json?
+  phone       String?
+  email       String?
+  website     String?
+  logo_url    String?
+  branches    branches[]
+
+  @@map("gyms")
+}
+
+model branches {
+  id             String            @id @default(uuid())
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+  gym_id         String
+  name           String
+  address        Json?
+  phone          String?
+  email          String?
+  opening_hours  Json?
+  gym            gyms              @relation(fields: [gym_id], references: [id])
+  members        members[]
+  classes        classes[]
+  equipment      equipment[]
+  lockers        lockers[]
+  shifts         shifts[]
+  discount_codes discount_codes[]
+
+  @@map("branches")
+}
+
+model members {
+  id                 String              @id @default(uuid())
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  full_name          String
+  phone              String?
+  email              String?
+  date_of_birth      DateTime?           @db.Date
+  gender             String?
+  address            Json?
+  profile_picture    String?
+  emergency_contact  Json?
+  medical_info       Json?
+  user_id            String?             @unique
+  gym_id             String?
+  branch_id          String?
+  membership_status  String?
+  profiles           profiles?           @relation(fields: [user_id], references: [user_id])
+  branch             branches?           @relation(fields: [branch_id], references: [id])
+  member_memberships member_memberships[]
+  trainer_reviews    trainer_reviews[]
+  leads              leads[]
+
+  @@map("members")
+}
+
+model membership_plans {
+  id                String              @id @default(uuid())
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  name              String
+  description       String?
+  duration_days   Int?
+  price             Decimal             @db.Decimal(10, 2)
+  features          Json?
+  is_active         Boolean             @default(true)
+  member_memberships member_memberships[]
+
+  @@map("membership_plans")
+}
+
+model subscriptions {
+  id                  String              @id @default(uuid())
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+  member_membership_id String
+  start_date          DateTime            @db.Date
+  end_date            DateTime            @db.Date
+  price               Decimal             @db.Decimal(10, 2)
+  payment_status      String?
+  auto_renew          Boolean             @default(false)
+  member_memberships  member_memberships  @relation(fields: [member_membership_id], references: [id])
+
+  @@map("subscriptions")
+}
+
+model member_memberships {
+  id               String           @id @default(uuid())
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  member_id        String
+  membership_plan_id String
+  start_date       DateTime         @db.Date
+  end_date         DateTime         @db.Date
+  price            Decimal          @db.Decimal(10, 2)
+  payment_status   String?
+  member           members          @relation(fields: [member_id], references: [id])
+  membership_plan  membership_plans @relation(fields: [membership_plan_id], references: [id])
+  subscriptions    subscriptions[]
+
+  @@map("member_memberships")
+}
+
+model trainers {
+  id                  String                  @id @default(uuid())
+  created_at          DateTime                @default(now())
+  updated_at          DateTime                @updatedAt
+  profile_id          String                  @unique
+  specialization      String?
+  bio                 String?
+  certifications      Json?
+  availability        Json?
+  hourly_rate         Decimal?                @db.Decimal(10, 2)
+  profile             profiles                @relation(fields: [profile_id], references: [user_id])
+  trainer_certifications trainer_certifications[]
+  trainer_availability trainer_availability[]
+  training_packages     training_packages[]
+  trainer_assignments   trainer_assignments[]
+  trainer_reviews       trainer_reviews[]
+  trainer_change_requests trainer_change_requests[]
+
+  @@map("trainers")
+}
+
+model trainer_certifications {
+  id          String   @id @default(uuid())
+  trainer_id  String
+  name        String
+  expiry_date DateTime @db.Date
+  trainer     trainers @relation(fields: [trainer_id], references: [id])
+
+  @@map("trainer_certifications")
+}
+
+model trainer_availability {
+  id         String   @id @default(uuid())
+  trainer_id String
+  day_of_week String
+  start_time DateTime @db.Time(6)
+  end_time   DateTime @db.Time(6)
+  trainer    trainers @relation(fields: [trainer_id], references: [id])
+
+  @@map("trainer_availability")
+}
+
+model training_packages {
+  id          String    @id @default(uuid())
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  trainer_id  String
+  name        String
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  duration    Int?
+  trainer     trainers  @relation(fields: [trainer_id], references: [id])
+
+  @@map("training_packages")
+}
+
+model trainer_assignments {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  trainer_id  String
+  member_id   String
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+  status      String?
+  notes       String?
+  trainer     trainers @relation(fields: [trainer_id], references: [id])
+
+  @@map("trainer_assignments")
+}
+
+model trainer_reviews {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  trainer_id  String
+  member_id   String
+  rating      Int
+  comment     String?
+  trainer     trainers @relation(fields: [trainer_id], references: [id])
+  member      members  @relation(fields: [member_id], references: [id])
+
+  @@map("trainer_reviews")
+}
+
+model trainer_change_requests {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  trainer_id  String
+  reason      String?
+  status      String?
+  trainer     trainers @relation(fields: [trainer_id], references: [id])
+
+  @@map("trainer_change_requests")
+}
+
+model classes {
+  id          String    @id @default(uuid())
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  branch_id   String
+  name        String
+  description String?
+  schedule    Json?
+  capacity    Int?
+  trainer_id  String?
+  branch      branches  @relation(fields: [branch_id], references: [id])
+  class_bookings class_bookings[]
+
+  @@map("classes")
+}
+
+model class_bookings {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  class_id    String
+  member_id   String
+  booking_date DateTime @db.Date
+  status      String?
+  class       classes  @relation(fields: [class_id], references: [id])
+
+  @@map("class_bookings")
+}
+
+model invoices {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String
+  invoice_date DateTime @db.Date
+  due_date    DateTime @db.Date
+  total_amount Decimal  @db.Decimal(10, 2)
+  status      String?
+  profile     profiles @relation(fields: [profile_id], references: [user_id])
+
+  @@map("invoices")
+}
+
+model transactions {
+  id               String   @id @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  invoice_id       String?
+  payment_gateway_id String?
+  amount           Decimal  @db.Decimal(10, 2)
+  transaction_date DateTime @db.Date
+  status           String?
+
+  @@map("transactions")
+}
+
+model payment_gateways {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  config      Json?
+
+  @@map("payment_gateways")
+}
+
+model payments {
+  id               String   @id @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  invoice_id       String?
+  payment_date     DateTime @db.Date
+  amount           Decimal  @db.Decimal(10, 2)
+  payment_method   String?
+  transaction_id   String?
+  payment_gateway_id String?
+  status           String?
+
+  @@map("payments")
+}
+
+model payment_logs {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String
+  log_date    DateTime @db.Date
+  log_type    String?
+  log_data    Json?
+  profile     profiles @relation(fields: [profile_id], references: [user_id])
+
+  @@map("payment_logs")
+}
+
+model equipment {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  branch_id   String
+  name        String
+  description String?
+  quantity    Int?
+  condition   String?
+  branch      branches @relation(fields: [branch_id], references: [id])
+
+  @@map("equipment")
+}
+
+model equipment_maintenance {
+  id             String   @id @default(uuid())
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  equipment_id   String
+  maintenance_date DateTime @db.Date
+  description    String?
+  cost           Decimal  @db.Decimal(10, 2)
+
+  @@map("equipment_maintenance")
+}
+
+model lockers {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  branch_id   String
+  locker_number String
+  size        String?
+  status      String?
+  branch      branches @relation(fields: [branch_id], references: [id])
+
+  @@map("lockers")
+}
+
+model locker_assignments {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  locker_id   String
+  member_id   String
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+
+  @@map("locker_assignments")
+}
+
+model attendance {
+  id           String   @id @default(uuid())
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  member_id    String
+  check_in_time DateTime
+  check_out_time DateTime?
+  device_id    String?
+
+  @@map("attendance")
+}
+
+model attendance_devices {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  location    String?
+  device_type String?
+
+  @@map("attendance_devices")
+}
+
+model member_measurements {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  measurement_date DateTime @db.Date
+  weight        Decimal? @db.Decimal(10, 2)
+  height        Decimal? @db.Decimal(10, 2)
+
+  @@map("member_measurements")
+}
+
+model body_measurements {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  measurement_date DateTime @db.Date
+  chest         Decimal? @db.Decimal(10, 2)
+  waist         Decimal? @db.Decimal(10, 2)
+  hips          Decimal? @db.Decimal(10, 2)
+
+  @@map("body_measurements")
+}
+
+model member_progress_photos {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  photo_url   String
+  upload_date DateTime @db.Date
+
+  @@map("member_progress_photos")
+}
+
+model referrals {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  referrer_id String
+  referred_id String
+  referral_date DateTime @db.Date
+  status      String?
+
+  @@map("referrals")
+}
+
+model feedback {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  feedback_date DateTime @db.Date
+  rating      Int?
+  comment     String?
+
+  @@map("feedback")
+}
+
+model products {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  stock_quantity Int?
+  category    String?
+
+  @@map("products")
+}
+
+model orders {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  order_date  DateTime @db.Date
+  total_amount Decimal  @db.Decimal(10, 2)
+  status      String?
+
+  @@map("orders")
+}
+
+model order_items {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  order_id    String
+  product_id  String
+  quantity    Int?
+  price       Decimal  @db.Decimal(10, 2)
+
+  @@map("order_items")
+}
+
+model leads {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String?
+  member_id   String?
+  first_name  String
+  last_name   String?
+  email       String?
+  phone       String?
+  source      String?
+  status      String?
+  notes       String?
+  profile     profiles? @relation(fields: [profile_id], references: [user_id])
+  member      members?  @relation(fields: [member_id], references: [id])
+  lead_notes  lead_notes[]
+
+  @@map("leads")
+}
+
+model lead_activities {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  lead_id     String
+  activity_type String?
+  activity_date DateTime @db.Date
+  notes       String?
+
+  @@map("lead_activities")
+}
+
+model announcements {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  title       String
+  content     String?
+  publish_date DateTime @db.Date
+  expiry_date DateTime? @db.Date
+  audience    String?
+
+  @@map("announcements")
+}
+
+model notifications {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  message     String?
+  notification_date DateTime @db.Date
+  is_read     Boolean?
+
+  @@map("notifications")
+}
+
+model email_logs {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String?
+  email_type  String?
+  subject     String?
+  body        String?
+  sent_date   DateTime
+  status      String?
+  profile     profiles? @relation(fields: [profile_id], references: [user_id])
+
+  @@map("email_logs")
+}
+
+model sms_logs {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String?
+  phone_number String?
+  message     String?
+  sent_date   DateTime
+  status      String?
+  profile     profiles? @relation(fields: [profile_id], references: [user_id])
+
+  @@map("sms_logs")
+}
+
+model tasks {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  title       String
+  description String?
+  due_date    DateTime? @db.Date
+  status      String?
+  assignee_id String?
+  creator_id  String?
+  profile_assignee profiles? @relation("task_assignee", fields: [assignee_id], references: [user_id])
+  profile_creator profiles? @relation("task_creator", fields: [creator_id], references: [user_id])
+  task_comments task_comments[]
+
+  @@map("tasks")
+}
+
+model task_comments {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  task_id     String
+  comment     String?
+  comment_date DateTime
+  task        tasks @relation(fields: [task_id], references: [id])
+
+  @@map("task_comments")
+}
+
+model workout_plans {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  exercises   Json?
+  duration    Int?
+
+  @@map("workout_plans")
+}
+
+model diet_plans {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  meals       Json?
+  calories    Int?
+
+  @@map("diet_plans")
+}
+
+model achievements {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  points      Int?
+  criteria    String?
+
+  @@map("achievements")
+}
+
+model user_achievements {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  achievement_id String
+  achieved_date DateTime @db.Date
+
+  @@map("user_achievements")
+}
+
+model member_points {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  member_id   String
+  points      Int?
+  activity    String?
+  activity_date DateTime @db.Date
+
+  @@map("member_points")
+}
+
+model challenges {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+  reward      String?
+
+  @@map("challenges")
+}
+
+model challenge_participants {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  challenge_id String
+  member_id   String
+  join_date   DateTime @db.Date
+  progress    String?
+
+  @@map("challenge_participants")
+}
+
+model campaigns {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+  target_audience String?
+  content     String?
+
+  @@map("campaigns")
+}
+
+model reports {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  name        String
+  description String?
+  report_date DateTime @db.Date
+  data        Json?
+
+  @@map("reports")
+}
+
+model ai_insights {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  insight_date DateTime @db.Date
+  data_type   String?
+  data        Json?
+
+  @@map("ai_insights")
+}
+
+model email_verification_tokens {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String?
+  token       String
+  expiry_date DateTime
+
+  @@map("email_verification_tokens")
+}
+
+model password_reset_tokens {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  profile_id  String?
+  token       String
+  expiry_date DateTime
+
+  @@map("password_reset_tokens")
+}
+
+model system_settings {
+  id          String   @id @default(uuid())
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  setting_name String
+  setting_value String?
+  description String?
+
+  @@map("system_settings")
+}
+
+// Additional models from Supabase not yet in schema
+
+model member_credits {
+  id          String   @id @default(uuid())
+  user_id     String   @unique
+  balance     Int      @default(0)
+  total_earned Int     @default(0)
+  total_spent Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("member_credits")
+}
+
+model credit_transactions {
+  id              String   @id @default(uuid())
+  user_id         String?
+  transaction_type String
+  amount          Int
+  description     String?
+  reference_id    String?
+  created_at      DateTime @default(now())
+  created_by      String?
+  profile         profiles? @relation(fields: [user_id], references: [user_id])
+
+  @@map("credit_transactions")
+}
+
+model member_goals {
+  id                  String    @id @default(uuid())
+  member_id           String
+  goal_type           String
+  target_value        Decimal?  @db.Decimal(10, 2)
+  current_value       Decimal?  @db.Decimal(10, 2) @default(0)
+  start_date          DateTime  @db.Date
+  target_date         DateTime  @db.Date
+  status              String    @default("active")
+  notes               String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  created_by          String?
+
+  @@map("member_goals")
+}
+
+model progress_entries {
+  id         String   @id @default(uuid())
+  goal_id    String
+  value      Decimal  @db.Decimal(10, 2)
+  notes      String?
+  entry_date DateTime @db.Date
+  created_at DateTime @default(now())
+
+  @@map("progress_entries")
+}
+
+model referral_bonuses {
+  id              String    @id @default(uuid())
+  user_id         String
+  referral_id     String
+  bonus_type      String
+  bonus_amount    Decimal   @db.Decimal(10, 2)
+  status          String    @default("pending")
+  paid_at         DateTime?
+  created_at      DateTime  @default(now())
+
+  @@map("referral_bonuses")
+}
+
+model membership_freeze_requests {
+  id                   String    @id @default(uuid())
+  membership_id        String
+  freeze_start_date    DateTime  @db.Date
+  freeze_end_date      DateTime  @db.Date
+  reason               String?
+  status               String    @default("pending")
+  approved_by          String?
+  processed_by         String?
+  processed_at         DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  created_by           String?
+
+  @@map("membership_freeze_requests")
+}
+
+model locker_sizes {
+  id          String   @id @default(uuid())
+  size_name   String   @unique
+  dimensions  String?
+  monthly_rate Decimal @db.Decimal(10, 2)
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  @@map("locker_sizes")
+}
+
+model meals {
+  id              String   @id @default(uuid())
+  diet_plan_id    String
+  meal_name       String
+  meal_type       String
+  foods           Json?
+  calories        Int?
+  protein         Int?
+  carbs           Int?
+  fats            Int?
+  meal_time       DateTime? @db.Time(6)
+  notes           String?
+  created_at      DateTime  @default(now())
+
+  @@map("meals")
+}
+
+model exercises {
+  id                  String   @id @default(uuid())
+  workout_plan_id     String
+  exercise_name       String
+  sets                Int?
+  reps                String?
+  duration_minutes    Int?
+  rest_seconds        Int?
+  equipment           String?
+  instructions        String?
+  video_url           String?
+  created_at          DateTime @default(now())
+
+  @@map("exercises")
+}
+
+model shifts {
+  id              String    @id @default(uuid())
+  branch_id       String
+  user_id         String
+  shift_date      DateTime  @db.Date
+  start_time      DateTime  @db.Time(6)
+  end_time        DateTime  @db.Time(6)
+  shift_type      String?
+  status          String    @default("scheduled")
+  notes           String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  branch          branches @relation(fields: [branch_id], references: [id])
+  profile         profiles @relation(fields: [user_id], references: [user_id])
+
+  @@map("shifts")
+}
+
+model email_templates {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String
+  body        String
+  template_type String
+  variables   Json?
+  is_active   Boolean  @default(true)
+  created_by  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model sms_templates {
+  id          String   @id @default(uuid())
+  name        String
+  message     String
+  template_type String
+  variables   Json?
+  is_active   Boolean  @default(true)
+  created_by  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("sms_templates")
+}
+
+model analytics_events {
+  id              String   @id @default(uuid())
+  event_name      String
+  event_category  String
+  user_id         String?
+  branch_id       String?
+  session_id      String?
+  properties      Json?
+  created_at      DateTime @default(now())
+
+  @@map("analytics_events")
+}
+
+model lead_notes {
+  id          String   @id @default(uuid())
+  lead_id     String
+  note        String
+  created_by  String?
+  created_at  DateTime @default(now())
+  lead        leads @relation(fields: [lead_id], references: [id])
+
+  @@map("lead_notes")
+}
+
+model discount_codes {
+  id                   String    @id @default(uuid())
+  code                 String    @unique
+  description          String?
+  discount_type        String
+  discount_value       Decimal   @db.Decimal(10, 2)
+  min_purchase_amount  Decimal?  @db.Decimal(10, 2)
+  max_discount_amount  Decimal?  @db.Decimal(10, 2)
+  usage_limit          Int?
+  usage_count          Int       @default(0)
+  valid_from           DateTime? @db.Date
+  valid_until          DateTime? @db.Date
+  applicable_to        Json?
+  is_active            Boolean   @default(true)
+  branch_id            String?
+  created_by           String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  branch             branches? @relation(fields: [branch_id], references: [id])
+  profile         profiles? @relation(fields: [created_by], references: [user_id])
+
+  @@map("discount_codes")
+}
+
