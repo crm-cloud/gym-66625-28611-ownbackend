@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePaymentGateway } from '@/hooks/usePaymentGateway';
 import { useCurrency } from '@/hooks/useCurrency';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Tag, Gift } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 interface CheckoutItem {
   type: 'membership' | 'training' | 'product' | 'invoice';
@@ -50,14 +50,13 @@ export const UnifiedCheckoutModal = ({ open, onClose, items, onSuccess }: Unifie
     const fetchRewards = async () => {
       if (!authState.user?.id) return;
       
-      const { data } = await supabase
-        .from('member_credits')
-        .select('balance')
-        .eq('user_id', authState.user.id)
-        .maybeSingle();
-      
-      if (data) {
-        setAvailableRewards(data.balance);
+      try {
+        const { data } = await api.get(`/api/members/${authState.user.id}/credits`);
+        if (data?.balance) {
+          setAvailableRewards(data.balance);
+        }
+      } catch (error) {
+        console.error('Error fetching rewards:', error);
       }
     };
     
@@ -76,16 +75,14 @@ export const UnifiedCheckoutModal = ({ open, onClose, items, onSuccess }: Unifie
     
     setDiscountValidating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-discount-code', {
-        body: {
-          code: discountCode,
-          userId: authState.user?.id,
-          purchaseType: items[0]?.type || 'membership',
-          amount: subtotal,
-        },
+      const { data } = await api.post('/api/discounts/validate', {
+        code: discountCode,
+        userId: authState.user?.id,
+        purchaseType: items[0]?.type || 'membership',
+        amount: subtotal,
       });
 
-      if (error || !data?.valid) {
+      if (!data?.valid) {
         toast({ 
           title: 'Invalid Code', 
           description: data?.error || 'Discount code is invalid', 

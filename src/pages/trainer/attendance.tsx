@@ -2,32 +2,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { useAttendance } from '@/hooks/useAttendance';
 
 export default function TrainerAttendancePage() {
   const { authState } = useAuth();
 
-  const { data: attendanceRecords, isLoading } = useSupabaseQuery(
-    ['trainer-attendance', authState.user?.id],
-    async () => {
-      const { data, error } = await supabase
-        .from('attendance_records')
-        .select(`
-          *,
-          branches (name)
-        `)
-        .eq('user_id', authState.user?.id)
-        .gte('check_in_time', startOfMonth(new Date()).toISOString())
-        .lte('check_in_time', endOfMonth(new Date()).toISOString())
-        .order('check_in_time', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!authState.user?.id }
-  );
+  const { data: attendanceRecords, isLoading } = useAttendance({
+    userId: authState.user?.id,
+    startDate: startOfMonth(new Date()).toISOString(),
+    endDate: endOfMonth(new Date()).toISOString()
+  });
 
   const stats = {
     totalDays: attendanceRecords?.filter(r => r.status === 'checked-out').length || 0,

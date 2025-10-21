@@ -9,38 +9,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, Search, MessageSquare, Calendar, Activity, TrendingUp } from 'lucide-react';
 import { PermissionGate } from '@/components/PermissionGate';
 import { useAuth } from '@/hooks/useAuth';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useAssignments } from '@/hooks/useAssignments';
 
 export default function TrainerClientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { authState } = useAuth();
 
-  const { data: assignments, isLoading } = useSupabaseQuery(
-    ['trainer-assignments', authState.user?.id],
-    async () => {
-      const { data, error } = await supabase
-        .from('trainer_assignments')
-        .select(`
-          *,
-          members (
-            id,
-            full_name,
-            email,
-            user_id,
-            member_goals (title),
-            member_measurements (measured_date)
-          )
-        `)
-        .eq('trainer_id', authState.user?.id)
-        .in('status', ['scheduled', 'in_progress'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!authState.user?.id }
-  );
+  const { data: assignments, isLoading } = useAssignments({
+    trainerId: authState.user?.id,
+    status: ['scheduled', 'in_progress']
+  });
 
   const ptClients = useMemo(() => {
     return assignments?.filter(a => a.assignment_type === 'personal_training') || [];

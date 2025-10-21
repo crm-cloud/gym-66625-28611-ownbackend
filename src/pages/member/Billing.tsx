@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
 import { useMemberProfile } from '@/hooks/useMemberProfile';
 import { UnifiedCheckoutModal } from '@/components/checkout/UnifiedCheckoutModal';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useInvoices } from '@/hooks/useInvoices';
+import { useTransactions } from '@/hooks/useTransactions';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {

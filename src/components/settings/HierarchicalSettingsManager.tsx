@@ -11,8 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useSystemSettings, useBulkUpdateSettings } from '@/hooks/useSystemSettings';
+import { api } from '@/lib/axios';
 
 interface SettingsLevel {
   level: 'super_admin' | 'branch';
@@ -63,64 +63,30 @@ export function HierarchicalSettingsManager({ level }: Props) {
   const { data: branches } = useQuery({
     queryKey: ['branches-for-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('status', 'active')
-        .order('name');
-      
-      if (error) throw error;
-      return data;
+      const { data } = await api.get('/api/branches?status=active');
+      return data.branches;
     },
     enabled: level.level === 'super_admin'
   });
 
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ['hierarchical-settings', level.level, level.branchId],
-    queryFn: async (): Promise<SettingsData> => {
-      // Get super admin settings first (default/fallback)
-      const { data: superData, error: superError } = await supabase
-        .from('system_settings')
-        .select('*')
-        .in('category', ['email', 'sms', 'whatsapp'])
-        .is('branch_id', null);
-      
-      if (superError) throw superError;
-      const superAdminSettings = ((superData ?? []) as unknown) as Array<{ category: string; key: string; value: any }>;
-
-      let branchSettings: any[] = [];
-
-      // Merge settings with inheritance logic
-      const mergeSettings = (category: string) => {
-        const superSettings = superAdminSettings?.filter(s => s.category === category) || [];
-        const branchOverrides = branchSettings.filter(s => s.category === category) || [];
-        
-        const merged: any = {};
-        
-        // Start with super admin settings
-        superSettings.forEach(setting => {
-          merged[setting.key] = setting.value;
-        });
-        
-        // Override with branch settings if they exist
-        branchOverrides.forEach(setting => {
-          merged[setting.key] = setting.value;
-        });
-        
-        // Determine if settings are inherited
-        const inherited = level.level === 'branch' && branchOverrides.length === 0;
-        
-        return { ...merged, inherited };
-      };
-
-      return {
-        email: mergeSettings('email'),
-        sms: mergeSettings('sms'),
-        whatsapp: mergeSettings('whatsapp'),
-      };
+  const { data: settingsData, isLoading } = useSystemSettings();
+  
+  const settings = settingsData?.reduce((acc, setting) => {
+    if (!['email', 'sms', 'whatsapp'].includes(setting.category)) return acc;
+    
+    if (!acc[setting.category]) {
+      acc[setting.category] = { inherited: false };
     }
-  });
+    acc[setting.category][setting.key] = setting.value;
+    return acc;
+  }, {} as any) || {
+    email: { inherited: false },
+    sms: { inherited: false },
+    whatsapp: { inherited: false }
+  };
 
+  const bulkUpdate = useBulkUpdateSettings();
+  
   const saveSettings = useMutation({
     mutationFn: async (updatedSettings: SettingsData) => {
       const settingsToSave = [];
@@ -140,20 +106,7 @@ export function HierarchicalSettingsManager({ level }: Props) {
         }
       }
       
-      // Delete existing settings for these categories
-      const { error: deleteError } = await supabase
-        .from('system_settings')
-        .delete()
-        .in('category', ['email', 'sms', 'whatsapp']);
-      if (deleteError) throw deleteError;
-      
-      // Insert new settings
-      const { error: insertError } = await supabase
-        .from('system_settings')
-        .insert(settingsToSave);
-        
-      if (insertError) throw insertError;
-      
+      await bulkUpdate.mutateAsync(settingsToSave);
       return updatedSettings;
     },
     onSuccess: () => {

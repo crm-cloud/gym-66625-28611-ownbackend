@@ -4,13 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { BranchCreationForm } from '@/components/branches/BranchCreationForm';
 import { BranchForm } from '@/components/branches/BranchForm';
 import { Building2, Plus, Users, MapPin, Settings, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useGyms } from '@/hooks/useGyms';
 
 export const AdminGymDashboard = () => {
   const [showGymForm, setShowGymForm] = useState(false);

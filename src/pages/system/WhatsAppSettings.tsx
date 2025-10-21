@@ -8,12 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MessageSquare, Plus, Edit, Trash2, Send, ArrowLeft } from 'lucide-react';
 import { WhatsAppTemplateEditor } from '@/components/templates/WhatsAppTemplateEditor';
-import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
+import { api } from '@/lib/axios';
 
-type WhatsAppTemplate = Database['public']['Tables']['whatsapp_templates']['Row'];
+type WhatsAppTemplate = any;
 
 export default function WhatsAppSettings() {
   const { toast } = useToast();
@@ -25,12 +24,7 @@ export default function WhatsAppSettings() {
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['whatsapp_templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('whatsapp_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const { data } = await api.get('/api/whatsapp/templates');
       return data || [];
     }
   });
@@ -39,18 +33,9 @@ export default function WhatsAppSettings() {
   const saveMutation = useMutation({
     mutationFn: async (templateData: any) => {
       if (templateData.id) {
-        // Update existing
-        const { error } = await supabase
-          .from('whatsapp_templates')
-          .update(templateData)
-          .eq('id', templateData.id);
-        if (error) throw error;
+        await api.patch(`/api/whatsapp/templates/${templateData.id}`, templateData);
       } else {
-        // Create new
-        const { error } = await supabase
-          .from('whatsapp_templates')
-          .insert([templateData]);
-        if (error) throw error;
+        await api.post('/api/whatsapp/templates', templateData);
       }
     },
     onSuccess: () => {
@@ -74,12 +59,7 @@ export default function WhatsAppSettings() {
   // Delete template mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('whatsapp_templates')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      await api.delete(`/api/whatsapp/templates/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
@@ -100,12 +80,7 @@ export default function WhatsAppSettings() {
   // Toggle template active status
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('whatsapp_templates')
-        .update({ is_active })
-        .eq('id', id);
-      
-      if (error) throw error;
+      await api.patch(`/api/whatsapp/templates/${id}`, { is_active });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });

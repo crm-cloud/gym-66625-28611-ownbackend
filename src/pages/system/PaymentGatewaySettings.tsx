@@ -7,26 +7,23 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Shield, Webhook, Info, Check, Copy, Save } from 'lucide-react';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import type { PaymentGatewayConfig } from '@/types/payment-gateway';
+import { api } from '@/lib/axios';
 
 export default function PaymentGatewaySettings() {
   const [activeProvider, setActiveProvider] = useState<'razorpay' | 'payu' | 'ccavenue' | 'phonepe'>('razorpay');
   const [formData, setFormData] = useState<Partial<PaymentGatewayConfig>>({});
+  const queryClient = useQueryClient();
 
-  const { data: configs, refetch } = useSupabaseQuery(
-    ['payment_gateway_configs'],
-    async () => {
-      const { data, error } = await supabase
-        .from('payment_gateway_configs')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+  const { data: configs } = useQuery({
+    queryKey: ['payment_gateway_configs'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/payment-gateway/configs');
       return (data || []) as PaymentGatewayConfig[];
     }
-  );
+  });
 
   const currentConfig = configs?.find(c => c.provider === activeProvider);
 
@@ -34,40 +31,36 @@ export default function PaymentGatewaySettings() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
-    try {
-      const saveData = {
-        ...formData,
-        provider: activeProvider,
-      };
-
+  const saveMutation = useMutation({
+    mutationFn: async (saveData: any) => {
       if (currentConfig) {
-        const { error } = await supabase
-          .from('payment_gateway_configs')
-          .update(saveData)
-          .eq('id', currentConfig.id);
-        if (error) throw error;
+        await api.patch(`/api/payment-gateway/configs/${currentConfig.id}`, saveData);
       } else {
-        const { error } = await supabase
-          .from('payment_gateway_configs')
-          .insert(saveData);
-        if (error) throw error;
+        await api.post('/api/payment-gateway/configs', saveData);
       }
-
+    },
+    onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Payment gateway settings saved successfully',
       });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['payment_gateway_configs'] });
       setFormData({});
-    } catch (error: any) {
-      console.error('Save error:', error);
+    },
+    onError: (error: any) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to save settings',
         variant: 'destructive',
       });
     }
+  });
+
+  const handleSave = () => {
+    saveMutation.mutate({
+      ...formData,
+      provider: activeProvider,
+    });
   };
 
   const webhookUrl = `${window.location.origin}/functions/v1/payment-webhook?provider=${activeProvider}`;

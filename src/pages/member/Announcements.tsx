@@ -1,46 +1,17 @@
 import { useMemberProfile } from '@/hooks/useMemberProfile';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Megaphone, Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAnnouncements } from '@/hooks/useAnnouncements';
 
 export const MemberAnnouncements = () => {
   const { data: member, isLoading: memberLoading } = useMemberProfile();
   
-  const { data: announcements, isLoading: announcementsLoading } = useSupabaseQuery(
-    ['member-announcements', member?.branch_id],
-    async () => {
-      const { data, error } = await supabase
-        .from('announcements')
-        .select('*')
-        .eq('is_active', true)
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Filter announcements that target this member
-      return (data || []).filter(announcement => {
-        const isBranchMatch = !announcement.branch_ids || 
-                             announcement.branch_ids.length === 0 ||
-                             announcement.branch_ids.includes(member?.branch_id);
-        
-        const isRoleMatch = !announcement.target_roles || 
-                           announcement.target_roles.length === 0 ||
-                           announcement.target_roles.includes('member');
-        
-        const isNotExpired = !announcement.expires_at || 
-                            new Date(announcement.expires_at) > new Date();
-        
-        return isBranchMatch && isRoleMatch && isNotExpired;
-      });
-    },
-    {
-      enabled: !!member?.branch_id
-    }
-  );
+  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({
+    branchId: member?.branch_id,
+    targetRole: 'member'
+  });
 
   if (memberLoading || announcementsLoading) {
     return (

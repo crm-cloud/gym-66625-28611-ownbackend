@@ -2,7 +2,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { User, Building2, CreditCard, Settings, MapPin, RefreshCw } from 'lucide-react';
+import { useCreateAdminUser } from '@/hooks/useUserManagement';
+import { useGyms } from '@/hooks/useGyms';
 import { useEffect, useState } from 'react';
 
 const adminFormSchema = z.object({

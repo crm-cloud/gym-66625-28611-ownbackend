@@ -25,9 +25,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Snowflake, Calendar, DollarSign, FileText } from 'lucide-react';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 const freezeSchema = z.object({
   reason: z.string().min(5, 'Reason must be at least 5 characters'),

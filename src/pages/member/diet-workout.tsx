@@ -1,10 +1,9 @@
 import { useMemberProfile } from '@/hooks/useMemberProfile';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Utensils, Dumbbell, Calendar, User, TrendingUp } from 'lucide-react';
+import { useDietWorkout } from '@/hooks/useDietWorkout';
 
 export const MemberDietWorkoutPage = () => {
   const { data: member, isLoading: memberLoading } = useMemberProfile();
