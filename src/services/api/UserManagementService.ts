@@ -11,6 +11,7 @@ export interface CreateUserParams {
   branch_id?: string;
   date_of_birth?: string;
   address?: string;
+  is_active?: boolean;
 }
 
 export interface CreateUserResult {
@@ -24,6 +25,37 @@ export interface CreateUserResult {
  * Handles user creation and management operations via backend API
  */
 class UserManagementServiceClass {
+  /**
+   * Get all users with filters
+   */
+  async getUsers(params?: {
+    role?: string;
+    branch_id?: string;
+    is_active?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { data } = await api.get('/api/v1/user-management', { params });
+    return data.data;
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(id: string) {
+    const { data } = await api.get(`/api/v1/user-management/${id}`);
+    return data.data;
+  }
+
+  /**
+   * Get user statistics
+   */
+  async getUserStats() {
+    const { data } = await api.get('/api/v1/user-management/stats');
+    return data.data;
+  }
+
   /**
    * Create a new user account
    */

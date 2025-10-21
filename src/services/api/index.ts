@@ -11,6 +11,8 @@ export { ReportService, type RevenueByAdminReport, type RevenueByBranchReport, t
 export { ReferralService, type Referral, type ReferralSettings, type ReferralAnalytics, type BonusHistory } from './ReferralService';
 export { AuthService, type LoginCredentials, type RegisterData, type AuthResponse } from './AuthService';
 export { UserManagementService, type CreateUserParams, type CreateUserResult } from './UserManagementService';
+export { TrainerChangeService } from './TrainerChangeService';
+export { TrainerReviewService } from './TrainerReviewService';
 
 // Phase 1 Migration Services
 export { MemberCreditsService } from './MemberCreditsService';

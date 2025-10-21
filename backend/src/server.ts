@@ -67,6 +67,7 @@ import userManagementRoutes from './routes/user-management.routes';
 // Phase 13: API Architecture & Auth Enhancements
 import mfaRoutes from './routes/mfa.routes';
 import oauthRoutes from './routes/oauth.routes';
+import aiPlanGeneratorRoutes from './routes/ai-plan-generator.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -161,6 +162,9 @@ v1Router.use('/referrals', referralRoutes);
 
 // MFA routes (protected)
 v1Router.use('/mfa', mfaRoutes);
+
+// AI Plan Generator
+v1Router.use('/ai-plans', aiPlanGeneratorRoutes);
 
 // Phase 6-8: User, Role, Payment, Subscription Management
 v1Router.use('/users', userRoutes);
