@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { prisma } from '../lib/prisma';
+import prisma from './database.js';
 
 /**
  * Passport configuration for OAuth strategies

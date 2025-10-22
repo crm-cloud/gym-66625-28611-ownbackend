@@ -1,4 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+
+/**
+ * Wraps async route handlers to automatically catch errors and forward them to the error handler
+ */
+export const asyncHandler = (fn: RequestHandler) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
 
 export class ApiError extends Error {
   statusCode: number;

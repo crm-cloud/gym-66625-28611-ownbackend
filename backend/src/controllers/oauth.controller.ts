@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
-import { prisma } from '../lib/prisma';
+import { prisma } from '../lib/prisma.js';
 import { ApiError } from '../middleware/errorHandler';
 
 /**

@@ -1,49 +1,42 @@
-import { db } from '../config/database';
-import { getFileUrl, deleteFile, getFilePath } from '../config/storage';
+import { prisma } from '../lib/prisma.js';
+import { getFileUrl, deleteFile, getFilePath } from '../config/storage.js';
 
 export class MemberProgressService {
   // Measurement History
   async createMeasurement(data: any) {
-    const [measurement] = await db('member_measurements')
-      .insert({
+    return await prisma.memberMeasurements.create({
+      data: {
         ...data,
-        created_at: new Date(),
-      })
-      .returning('*');
-    return measurement;
+        measuredDate: new Date(),
+      },
+    });
   }
 
   async getMemberMeasurements(memberId: string, limit?: number) {
-    let query = db('member_measurements')
-      .where('member_id', memberId)
-      .orderBy('measured_date', 'desc');
-    
-    if (limit) {
-      query = query.limit(limit);
-    }
-    
-    return await query;
+    return await prisma.memberMeasurements.findMany({
+      where: { memberId },
+      orderBy: { measuredDate: 'desc' },
+      take: limit,
+    });
   }
 
   async getMeasurementById(id: string) {
-    return await db('member_measurements')
-      .where('id', id)
-      .first();
+    return await prisma.memberMeasurements.findUnique({
+      where: { id },
+    });
   }
 
   async updateMeasurement(id: string, data: any) {
-    const [updated] = await db('member_measurements')
-      .where('id', id)
-      .update({
+    return await prisma.memberMeasurements.update({
+      where: { id },
+      data: {
         ...data,
-        updated_at: new Date(),
-      })
-      .returning('*');
-    return updated;
+        updatedAt: new Date(),
+      },
+    });
   }
 
   async deleteMeasurement(id: string) {
-    // Get measurement to delete associated images
     const measurement = await this.getMeasurementById(id);
     
     if (measurement?.images) {
@@ -59,48 +52,44 @@ export class MemberProgressService {
       }
     }
     
-    await db('member_measurements').where('id', id).delete();
+    await prisma.memberMeasurements.delete({
+      where: { id },
+    });
   }
 
   // Member Goals
   async createGoal(data: any) {
-    const [goal] = await db('member_goals')
-      .insert({
+    return await prisma.memberGoals.create({
+      data: {
         ...data,
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning('*');
-    return goal;
+      },
+    });
   }
 
   async getMemberGoals(memberId: string, status?: string) {
-    let query = db('member_goals')
-      .where('member_id', memberId)
-      .orderBy('created_at', 'desc');
-    
-    if (status) {
-      query = query.where('status', status);
-    }
-    
-    return await query;
+    return await prisma.memberGoals.findMany({
+      where: {
+        memberId,
+        ...(status && { status }),
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async getGoalById(id: string) {
-    return await db('member_goals')
-      .where('id', id)
-      .first();
+    return await prisma.memberGoals.findUnique({
+      where: { id },
+    });
   }
 
   async updateGoal(id: string, data: any) {
-    const [updated] = await db('member_goals')
-      .where('id', id)
-      .update({
+    return await prisma.memberGoals.update({
+      where: { id },
+      data: {
         ...data,
-        updated_at: new Date(),
-      })
-      .returning('*');
-    return updated;
+        updatedAt: new Date(),
+      },
+    });
   }
 
   async updateGoalProgress(id: string, currentValue: number) {
@@ -111,108 +100,110 @@ export class MemberProgressService {
     }
     
     // Check if goal is completed
-    let status = goal.status;
-    if (goal.target_value && currentValue >= goal.target_value) {
-      status = 'completed';
-    }
+    const status = (goal.targetValue && currentValue >= goal.targetValue)
+      ? 'completed'
+      : goal.status;
     
-    const [updated] = await db('member_goals')
-      .where('id', id)
-      .update({
-        current_value: currentValue,
+    return await prisma.memberGoals.update({
+      where: { id },
+      data: {
+        currentValue,
         status,
-        updated_at: new Date(),
-      })
-      .returning('*');
-    return updated;
+        updatedAt: new Date(),
+      },
+    });
   }
 
   async deleteGoal(id: string) {
-    await db('member_goals').where('id', id).delete();
+    await prisma.memberGoals.delete({
+      where: { id },
+    });
   }
 
   // Progress Summary
   async getProgressSummary(memberId: string) {
-    const latestMeasurement = await db('member_measurements')
-      .where('member_id', memberId)
-      .orderBy('measured_date', 'desc')
-      .first();
-    
-    const firstMeasurement = await db('member_measurements')
-      .where('member_id', memberId)
-      .orderBy('measured_date', 'asc')
-      .first();
-    
-    const activeGoals = await db('member_goals')
-      .where('member_id', memberId)
-      .where('status', 'active')
-      .count('* as count')
-      .first();
-    
-    const completedGoals = await db('member_goals')
-      .where('member_id', memberId)
-      .where('status', 'completed')
-      .count('* as count')
-      .first();
-    
-    const totalAttendance = await db('attendance_records')
-      .where('member_id', memberId)
-      .count('* as count')
-      .first();
-    
-    const thisMonthAttendance = await db('attendance_records')
-      .where('member_id', memberId)
-      .where('check_in_time', '>=', new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-      .count('* as count')
-      .first();
-    
-    const lastVisit = await db('attendance_records')
-      .where('member_id', memberId)
-      .orderBy('check_in_time', 'desc')
-      .first();
-    
+    const [latestMeasurement, firstMeasurement, activeGoals, completedGoals, totalAttendance, thisMonthAttendance, lastVisit] = await Promise.all([
+      prisma.memberMeasurements.findFirst({
+        where: { memberId },
+        orderBy: { measuredDate: 'desc' },
+      }),
+      prisma.memberMeasurements.findFirst({
+        where: { memberId },
+        orderBy: { measuredDate: 'asc' },
+      }),
+      prisma.memberGoals.count({
+        where: { 
+          memberId,
+          status: 'active',
+        },
+      }),
+      prisma.memberGoals.count({
+        where: { 
+          memberId,
+          status: 'completed',
+        },
+      }),
+      prisma.attendanceRecords.count({
+        where: { memberId },
+      }),
+      prisma.attendanceRecords.count({
+        where: { 
+          memberId,
+          checkInTime: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+      }),
+      prisma.attendanceRecords.findFirst({
+        where: { memberId },
+        orderBy: { checkInTime: 'desc' },
+      }),
+    ]);
+
     return {
       current_weight: latestMeasurement?.weight,
       weight_change: latestMeasurement && firstMeasurement 
         ? latestMeasurement.weight - firstMeasurement.weight 
         : null,
-      current_body_fat: latestMeasurement?.body_fat_percentage,
+      current_body_fat: latestMeasurement?.bodyFatPercentage,
       body_fat_change: latestMeasurement && firstMeasurement
-        ? latestMeasurement.body_fat_percentage - firstMeasurement.body_fat_percentage
+        ? latestMeasurement.bodyFatPercentage - firstMeasurement.bodyFatPercentage
         : null,
-      active_goals_count: activeGoals?.count || 0,
-      completed_goals_count: completedGoals?.count || 0,
-      total_visits: totalAttendance?.count || 0,
-      visits_this_month: thisMonthAttendance?.count || 0,
-      last_visit: lastVisit?.check_in_time,
+      active_goals_count: activeGoals || 0,
+      completed_goals_count: completedGoals || 0,
+      total_visits: totalAttendance || 0,
+      visits_this_month: thisMonthAttendance || 0,
+      last_visit: lastVisit?.checkInTime,
     };
   }
 
   // Progress Photos
   async saveProgressPhoto(data: { member_id: string; photo_url: string; photo_type: string; notes?: string }) {
-    const [photo] = await db('member_progress_photos')
-      .insert({
-        ...data,
-        created_at: new Date(),
-      })
-      .returning('*');
-    return photo;
+    return await prisma.memberProgressPhotos.create({
+      data: {
+        memberId: data.member_id,
+        photoUrl: data.photo_url,
+        photoType: data.photo_type,
+        notes: data.notes,
+      },
+    });
   }
 
   async getMemberProgressPhotos(memberId: string) {
-    return await db('member_progress_photos')
-      .where('member_id', memberId)
-      .orderBy('created_at', 'desc');
+    return await prisma.memberProgressPhotos.findMany({
+      where: { memberId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async deleteProgressPhoto(id: string) {
-    const photo = await db('member_progress_photos')
-      .where('id', id)
-      .first();
+    const photo = await prisma.memberProgressPhotos.findUnique({
+      where: { id },
+    });
     
-    if (photo?.photo_url) {
+    if (photo?.photoUrl) {
       try {
-        const filename = photo.photo_url.split('/').pop();
+        const filename = photo.photoUrl.split('/').pop();
         if (filename) {
           await deleteFile(getFilePath('attachments', filename));
         }
@@ -221,7 +212,9 @@ export class MemberProgressService {
       }
     }
     
-    await db('member_progress_photos').where('id', id).delete();
+    await prisma.memberProgressPhotos.delete({
+      where: { id },
+    });
   }
 }
 

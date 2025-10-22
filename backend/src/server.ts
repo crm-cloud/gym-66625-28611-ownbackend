@@ -3,8 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import swaggerUi from 'swagger-ui-express';
+
+// Get the current module's directory in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import passport from './config/passport';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './middleware/logger';
@@ -116,7 +121,7 @@ app.use(transformResponse);
 app.use(addPaginationHelper);
 
 // Serve static files (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '..', UPLOAD_DIR)));
+app.use('/uploads', express.static(join(__dirname, '..', UPLOAD_DIR)));
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
