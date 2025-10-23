@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use backend URL from environment or default to localhost
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000') + '/api/v1';
 
 export const api = axios.create({
   baseURL: BACKEND_URL,
@@ -13,10 +13,19 @@ export const api = axios.create({
 
 // Request interceptor for auth tokens
 api.interceptors.request.use((config) => {
+  // Skip adding auth header for login/register endpoints
+  const publicEndpoints = ['/auth/login', '/auth/register'];
+  if (publicEndpoints.some(endpoint => config.url?.includes(endpoint))) {
+    return config;
+  }
+
   // Add JWT token if available
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    // If no token and not a public endpoint, reject the request
+    return Promise.reject(new Error('No authentication token found'));
   }
   return config;
 });

@@ -1396,7 +1396,7 @@ model orders {
   id                           String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   branch_id                    String                       @db.Uuid
   member_id                    String                       @db.Uuid
-  order_number                 String                       @unique @default(dbgenerated("('ORD'::text || nextval('orders_order_number_seq'::regclass))")) @db.Text
+  order_number                 String                       @unique @default(dbgenerated("concat('ORD', to_char(now()::timestamp, 'YYYYMMDDHH24MISS'), floor(random() * 1000)::int)")) @db.VarChar(50)
   order_date                   DateTime?                    @default(now()) @db.Timestamptz()
   total_amount                 Decimal                      @db.Decimal(10, 2)
   status                       order_status?                @default(pending)
@@ -1494,13 +1494,13 @@ model payments {
   gateway_type        payment_gateway_type
   payment_method      payment_method
   status              payment_transaction_status?  @default(pending)
-  invoice_id          String?                      @db.VarChar(50)
+  invoice_id          String?                      @db.Uuid
   membership_id       String?                      @db.VarChar(50)
   pos_order_id        String?                      @db.VarChar(50)
   training_package_id String?                      @db.VarChar(50)
   gateway_response    Json?                        @db.JsonB
   failure_reason      String?                      @db.Text
-  initiated_by        String?                      @db.VarChar(50)
+  initiated_by        String?                      @db.Uuid
   completed_at        DateTime?                    @db.Timestamp(6)
   created_at          DateTime?                    @default(now()) @db.Timestamp(6)
   updated_at          DateTime?                    @updatedAt @db.Timestamp(6)

@@ -95,28 +95,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await api.post('/api/auth/login', {
+      const response = await api.post('/auth/login', {
         email: credentials.email,
         password: credentials.password
       });
 
-      const { token, user: userData } = response.data;
+      const { access_token, refresh_token, user: userData } = response.data;
 
-      if (!token || !userData) {
+      if (!access_token || !userData) {
         throw new Error('Invalid response from server');
       }
 
-      // Store JWT token
-      localStorage.setItem('token', token);
+      // Store JWT token with consistent key
+      localStorage.setItem('access_token', access_token);
       
       // Set default auth header for future requests
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
       // Map backend user data to frontend User type
       const user: User = {
-        id: userData.id,
+        id: userData.user_id,
         email: userData.email,
-        name: userData.name || userData.full_name,
+        name: userData.full_name,
         role: userData.role as UserRole,
         teamRole: userData.teamRole || userData.team_role,
         avatar: userData.avatar,

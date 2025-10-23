@@ -8,9 +8,14 @@ const SELECTED_BRANCH_KEY = 'selected_branch_id';
 export const useBranches = (filters?: { search?: string; isActive?: boolean }) => {
   const [selectedBranch, setSelectedBranchState] = useState<any>(null);
   const queryClient = useQueryClient();
+  
+  // By default, the query is enabled
+  // The parent component can control this with the 'enabled' option if needed
+  const enabled = true;
 
   const queryResult = useQuery({
     queryKey: ['branches', filters?.search ?? '', filters?.isActive ?? 'all'],
+    enabled, // Only enable the query if not on login page
     queryFn: async () => {
       const params: any = {};
       
@@ -21,11 +26,26 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
         params.is_active = filters.isActive;
       }
 
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.error('No authentication token found. User needs to log in.');
+        // Return empty data instead of throwing to prevent UI errors
+        return [];
+      }
+
       try {
-        const response = await api.get('/api/branches', { params });
+        const response = await api.get('/branches', { params });
         return response.data;
       } catch (error) {
         console.error('Error fetching branches:', error);
+        if (error.response?.status === 401) {
+          console.error('Authentication failed. Redirecting to login...');
+          // Clear invalid token and redirect to login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = '/login';
+        }
         throw error;
       }
     },
