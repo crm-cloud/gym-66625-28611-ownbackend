@@ -33,60 +33,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    // Check if user has valid tokens on mount
-    const checkAuth = async () => {
-      const accessToken = localStorage.getItem('access_token');
-      const refreshToken = localStorage.getItem('refresh_token');
+    // Check if user has a valid session on mount
+    const checkSession = async () => {
+      const token = localStorage.getItem('token');
 
-      if (!accessToken || !refreshToken) {
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
+      if (!token) {
+        setAuthState(prev => ({
+          ...prev,
           isLoading: false,
-          error: null
-        });
+          isAuthenticated: false
+        }));
         return;
       }
 
       try {
-        // Verify token and get user profile
-        const response = await api.get('/api/users/me');
+        // Set the auth header for subsequent requests
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Validate token and get user profile
+        const response = await api.get('/api/auth/me');
         const userData = response.data;
 
         setAuthState({
           user: {
-            id: userData.user_id || userData.id,
+            id: userData.id,
             email: userData.email,
-            name: userData.full_name,
+            name: userData.name || userData.full_name,
             role: userData.role as UserRole,
-            teamRole: userData.team_role,
-            avatar: userData.avatar_url,
+            teamRole: userData.teamRole || userData.team_role,
+            avatar: userData.avatar,
             phone: userData.phone,
-            joinDate: userData.created_at?.split('T')[0],
-            branchId: userData.branch_id,
-            branchName: userData.branch_name,
-            gym_id: userData.gym_id,
-            gymName: userData.gym_name
+            joinDate: userData.createdAt?.split('T')[0] || userData.created_at?.split('T')[0],
+            branchId: userData.branchId || userData.branch_id,
+            branchName: userData.branchName || userData.branch_name,
+            gym_id: userData.gymId || userData.gym_id,
+            gymName: userData.gymName || userData.gym_name
           },
           isAuthenticated: true,
           isLoading: false,
           error: null
         });
       } catch (error: any) {
-        console.error('Token validation failed:', error);
-        // Clear invalid tokens
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        console.error('Session validation failed:', error);
+        // Clear invalid token
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+        
         setAuthState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
-          error: null
+          error: 'Your session has expired. Please log in again.'
         });
       }
     };
 
-    checkAuth();
+    checkSession();
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -98,24 +100,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password: credentials.password
       });
 
-      const { user: userData, access_token, refresh_token } = response.data;
+      const { token, user: userData } = response.data;
 
-      if (!userData || !access_token || !refresh_token) {
+      if (!token || !userData) {
         throw new Error('Invalid response from server');
       }
 
-      // Store tokens
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
+      // Store JWT token
+      localStorage.setItem('token', token);
+      
+      // Set default auth header for future requests
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       // Map backend user data to frontend User type
       const user: User = {
-        id: userData.userId || userData.user_id || userData.id,
+        id: userData.id,
         email: userData.email,
-        name: userData.fullName || userData.full_name || userData.name,
+        name: userData.name || userData.full_name,
         role: userData.role as UserRole,
         teamRole: userData.teamRole || userData.team_role,
-        avatar: userData.avatarUrl || userData.avatar_url || userData.avatar,
+        avatar: userData.avatar,
         phone: userData.phone,
         joinDate: userData.createdAt?.split('T')[0] || userData.created_at?.split('T')[0],
         branchId: userData.branchId || userData.branch_id,
@@ -136,14 +140,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: `Logged in as ${user.name}`,
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Login failed';
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
       
-      setAuthState({
+      setAuthState(prev => ({
+        ...prev,
         user: null,
         isAuthenticated: false,
         isLoading: false,
         error: errorMessage
-      });
+      }));
       
       toast({
         title: "Login failed",
@@ -156,44 +161,85 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userData: any): Promise<void> => {
+    setAuthState(prev => ({ ...prev, isLoading: true }));
+    
     try {
-      const response = await api.post('/api/auth/signup', {
+      const response = await api.post('/api/auth/register', {
         email,
         password,
-        full_name: userData.full_name || userData.name,
+        name: userData.name || userData.full_name,
         role: userData.role || 'member',
         ...userData
       });
 
+      // After successful registration, log the user in automatically
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        
+        setAuthState({
+          user: {
+            id: response.data.user.id,
+            email: response.data.user.email,
+            name: response.data.user.name || response.data.user.full_name,
+            role: response.data.user.role,
+            teamRole: response.data.user.teamRole,
+            avatar: response.data.user.avatar,
+            phone: response.data.user.phone,
+            joinDate: new Date().toISOString().split('T')[0],
+            branchId: response.data.user.branchId,
+            branchName: response.data.user.branchName,
+            gym_id: response.data.user.gymId,
+            gymName: response.data.user.gymName
+          },
+          isAuthenticated: true,
+          isLoading: false,
+          error: null
+        });
+      }
+
       toast({
         title: "Account created",
-        description: response.data.message || "You can now log in with your credentials.",
+        description: response.data.message || "You have been successfully registered and logged in.",
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Sign up failed';
+      const errorMessage = error.response?.data?.message || error.message || 'Sign up failed';
+      
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage
+      }));
       
       toast({
         title: "Sign up failed",
         description: errorMessage,
         variant: "destructive"
       });
+      
       throw error;
     }
   };
 
   const logout = async () => {
+    const token = localStorage.getItem('token');
+    
     try {
-      // Call backend logout endpoint to invalidate refresh token
-      await api.post('/api/auth/logout', {
-        refresh_token: localStorage.getItem('refresh_token')
-      });
+      // Call backend logout endpoint to invalidate the token
+      if (token) {
+        await api.post('/api/auth/logout', {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
     } catch (error) {
       console.error('Logout API error:', error);
       // Continue with local cleanup even if API call fails
     } finally {
-      // Clear tokens
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      // Clear token and auth header
+      localStorage.removeItem('token');
+      delete api.defaults.headers.common['Authorization'];
       
       // Reset auth state
       setAuthState({

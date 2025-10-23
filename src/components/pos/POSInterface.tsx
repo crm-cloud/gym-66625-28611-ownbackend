@@ -33,7 +33,7 @@ export const POSInterface = () => {
   const { authState } = useAuth();
   const { toast } = useToast();
 
-  // Fetch products and members from Supabase
+  // Fetch products and members from the API
   const { data: products = [], isLoading: productsLoading } = useProducts({ 
     category: selectedCategory,
     search: searchTerm 

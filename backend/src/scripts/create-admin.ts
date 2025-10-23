@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import prisma from '../config/database';
+import prisma from '../config/database.js';
 
 async function createAdmin() {
   try {
@@ -9,28 +9,27 @@ async function createAdmin() {
 
     console.log('🔐 Creating admin user...');
 
-    // Create profile
+    // Create user profile
     const profile = await prisma.profiles.create({
       data: {
         email,
-        full_name: 'System Administrator',
+        full_name: 'Super Administrator',
         password_hash: passwordHash,
         email_verified: true,
         is_active: true,
       }
     });
 
-    console.log('✅ Profile created:', profile.email);
-
-    // Add admin role
+    // Assign super_admin role
     await prisma.user_roles.create({
       data: {
         user_id: profile.user_id,
-        role: 'admin',
+        role: 'super_admin',
       }
     });
 
-    console.log('✅ Admin role assigned');
+
+    console.log('✅ Super Admin role assigned');
     console.log('\n📧 Login Credentials:');
     console.log('   Email:', email);
     console.log('   Password:', password);

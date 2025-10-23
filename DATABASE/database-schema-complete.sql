@@ -1,6 +1,6 @@
 -- ============================================================================
 -- FITVERSE COMPLETE DATABASE SCHEMA
--- Self-Hosted PostgreSQL Compatible (No Supabase Dependencies)
+-- PostgreSQL Database Schema for FitVerse Application
 -- ============================================================================
 
 -- Enable UUID extension

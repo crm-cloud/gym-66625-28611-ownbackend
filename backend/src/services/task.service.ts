@@ -1,4 +1,4 @@
-import { prisma } from '../config/database.js';
+import prisma from '../config/database';
 import { getFileUrl, deleteFile, getFilePath } from '../config/storage.js';
 import { Prisma } from '@prisma/client';
 

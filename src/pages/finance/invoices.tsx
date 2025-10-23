@@ -111,7 +111,7 @@ customerName: r.customer_name,
   };
 
   const handleCreateInvoice = async (invoiceData: any) => {
-    // Optional: you can wire this to supabase inserts for manual creation
+    // TODO: Implement invoice creation logic
     toast({ title: 'Not Implemented', description: 'Creation from this page is not wired yet.' });
   };
 

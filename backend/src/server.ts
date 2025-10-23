@@ -11,7 +11,8 @@ import swaggerUi from 'swagger-ui-express';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import passport from './config/passport';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler as customErrorHandler } from './middleware/errorHandler';
+import { errorHandler, formatResponse } from './middleware/responseFormatter';
 import { logger } from './middleware/logger';
 import { transformResponse, addPaginationHelper } from './middleware/transformer';
 import { generalLimiter } from './middleware/rateLimiter';
@@ -19,6 +20,7 @@ import { ipWhitelist, adminIpWhitelist } from './middleware/ipWhitelist';
 import { initializeStorage, UPLOAD_DIR } from './config/storage';
 import { initializeEmailService } from './config/email';
 import { swaggerDefinition } from './config/swagger';
+import { toCamelCase } from './utils/caseConverter';
 
 // Load environment variables
 dotenv.config();
@@ -219,7 +221,11 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Global error handler
+// Response formatting
+app.use(formatResponse);
+
+// Error handling
+app.use(customErrorHandler);
 app.use(errorHandler);
 
 // Start server
