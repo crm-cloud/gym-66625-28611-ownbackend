@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '../config/database';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { ApiError } from '../middleware/errorHandler';
+import { hashPassword, verifyPassword, updatePasswordHash } from '../utils/crypto-utils';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -37,8 +37,8 @@ class AuthController {
         throw new ApiError('Email already registered', 400);
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(validatedData.password, 10);
+      // Hash password using crypto
+      const passwordHash = hashPassword(validatedData.password);
 
       // Create user
       const user = await prisma.profiles.create({
@@ -112,7 +112,7 @@ class AuthController {
       }
 
       // Verify password
-      const isValidPassword = await bcrypt.compare(validatedData.password, user.password_hash);
+      const isValidPassword = verifyPassword(validatedData.password, user.password_hash);
       
       if (!isValidPassword) {
         throw new ApiError('Invalid credentials', 401);
@@ -260,10 +260,43 @@ class AuthController {
 
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const validatedData = resetPasswordSchema.parse(req.body);
+      const { token, password } = req.body;
+
+      if (!token) {
+        throw new ApiError('Reset token is required', 400);
+      }
+
+      if (!password) {
+        throw new ApiError('New password is required', 400);
+      }
+
+      // TODO: Implement proper token verification logic
+      // For now, we'll assume the token is the user's email
+      // In a real app, this would verify a JWT or database-stored token
+      const email = token;
       
-      // TODO: Verify reset token
-      // For now, just return success
+      const user = await prisma.profiles.findUnique({
+        where: { email }
+      });
+
+      if (!user) {
+        // Don't reveal that the email doesn't exist
+        return res.json({ message: 'If the email exists, a password reset link has been sent' });
+      }
+
+      // Hash the new password using crypto
+      const newPasswordHash = hashPassword(password);
+
+      // Update the user's password
+      await prisma.profiles.update({
+        where: { user_id: user.user_id },
+        data: { 
+          password_hash: newPasswordHash,
+          // Invalidate any existing sessions/tokens if needed
+          updated_at: new Date()
+        }
+      });
+
       res.json({ message: 'Password reset successful' });
     } catch (error) {
       next(error);
@@ -287,33 +320,29 @@ class AuthController {
 
   async changePassword(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.user) {
-        throw new ApiError('Not authenticated', 401);
-      }
+      const { currentPassword, newPassword } = req.body;
 
-      const { current_password, new_password } = req.body;
-
-      if (!current_password || !new_password) {
-        throw new ApiError('Current and new password required', 400);
+      if (!currentPassword || !newPassword) {
+        throw new ApiError('Current and new password are required', 400);
       }
 
       const user = await prisma.profiles.findUnique({
         where: { user_id: req.user.userId }
       });
 
-      if (!user) {
+      if (!user || !user.password_hash) {
         throw new ApiError('User not found', 404);
       }
 
       // Verify current password
-      const isValid = await bcrypt.compare(current_password, user.password_hash);
+      const isValidPassword = verifyPassword(currentPassword, user.password_hash);
       
-      if (!isValid) {
+      if (!isValidPassword) {
         throw new ApiError('Current password is incorrect', 400);
       }
 
-      // Hash new password
-      const newPasswordHash = await bcrypt.hash(new_password, 10);
+      // Hash new password using crypto
+      const newPasswordHash = hashPassword(newPassword);
 
       // Update password
       await prisma.profiles.update({
@@ -321,7 +350,7 @@ class AuthController {
         data: { password_hash: newPasswordHash }
       });
 
-      res.json({ message: 'Password changed successfully' });
+      res.json({ message: 'Password updated successfully' });
     } catch (error) {
       next(error);
     }

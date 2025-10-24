@@ -1,30 +1,37 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET is required in production environment');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-key';
 const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 
-export interface TokenPayload {
+export interface TokenPayload extends jwt.JwtPayload {
   userId: string;
   email: string;
   role?: string;
   teamRole?: string;
   branchId?: string;
   gymId?: string;
+  tokenId?: string;
+  type?: string;
 }
 
-export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_ACCESS_EXPIRY });
+export function generateAccessToken(payload: Omit<TokenPayload, 'exp' | 'iat' | 'jti'>): string {
+  const options: SignOptions = { expiresIn: JWT_ACCESS_EXPIRY as string | number };
+  return jwt.sign(payload, JWT_SECRET, options);
 }
 
-export function generateRefreshToken(payload: TokenPayload): string {
-  // Add token rotation identifier
+export function generateRefreshToken(payload: Omit<TokenPayload, 'exp' | 'iat' | 'jti'>): string {
   const tokenPayload = {
     ...payload,
     tokenId: generateTokenId(),
     type: 'refresh',
   };
-  return jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
+  const options: SignOptions = { expiresIn: JWT_REFRESH_EXPIRY as string | number };
+  return jwt.sign(tokenPayload, JWT_SECRET, options);
 }
 
 /**
@@ -39,5 +46,9 @@ export function verifyAccessToken(token: string): TokenPayload {
 }
 
 export function verifyRefreshToken(token: string): TokenPayload {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+  if (payload.type !== 'refresh') {
+    throw new Error('Invalid token type');
+  }
+  return payload;
 }

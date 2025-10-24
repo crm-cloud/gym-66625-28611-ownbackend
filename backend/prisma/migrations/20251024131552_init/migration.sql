@@ -853,7 +853,7 @@ CREATE TABLE "public"."orders" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "branch_id" UUID NOT NULL,
     "member_id" UUID NOT NULL,
-    "order_number" TEXT NOT NULL DEFAULT ('ORD'::text || nextval('orders_order_number_seq'::regclass)),
+    "order_number" VARCHAR(50) NOT NULL DEFAULT concat('ORD', to_char(now()::timestamp, 'YYYYMMDDHH24MISS'), floor(random() * 1000)::int),
     "order_date" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     "total_amount" DECIMAL(10,2) NOT NULL,
     "status" "public"."order_status" DEFAULT 'pending',
@@ -927,13 +927,13 @@ CREATE TABLE "public"."payments" (
     "gateway_type" "public"."payment_gateway_type" NOT NULL,
     "payment_method" "public"."payment_method" NOT NULL,
     "status" "public"."payment_transaction_status" DEFAULT 'pending',
-    "invoice_id" VARCHAR(50),
+    "invoice_id" UUID,
     "membership_id" VARCHAR(50),
     "pos_order_id" VARCHAR(50),
     "training_package_id" VARCHAR(50),
     "gateway_response" JSONB,
     "failure_reason" TEXT,
-    "initiated_by" VARCHAR(50),
+    "initiated_by" UUID,
     "completed_at" TIMESTAMP(6),
     "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6),
@@ -1438,8 +1438,12 @@ CREATE TABLE "public"."user_notifications" (
 CREATE TABLE "public"."user_roles" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
-    "role_id" UUID NOT NULL,
+    "role" "public"."user_role" NOT NULL,
     "branch_id" UUID,
+    "gym_id" UUID,
+    "team_role" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "rolesId" UUID,
 
     CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id")
 );
@@ -2020,13 +2024,13 @@ CREATE INDEX "idx_user_notifications_member" ON "public"."user_notifications"("u
 CREATE INDEX "idx_user_notifications_unread" ON "public"."user_notifications"("user_id", "is_read");
 
 -- CreateIndex
-CREATE INDEX "idx_user_roles_role" ON "public"."user_roles"("role_id");
+CREATE INDEX "idx_user_roles_role" ON "public"."user_roles"("role");
 
 -- CreateIndex
 CREATE INDEX "idx_user_roles_user_id" ON "public"."user_roles"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "user_roles_user_id_role_id_branch_id_key" ON "public"."user_roles"("user_id", "role_id", "branch_id");
+CREATE UNIQUE INDEX "user_roles_user_id_role_branch_id_key" ON "public"."user_roles"("user_id", "role", "branch_id");
 
 -- CreateIndex
 CREATE INDEX "idx_payment_logs" ON "public"."payment_logs"("payment_id");
@@ -2530,13 +2534,16 @@ ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_recorded_by_fke
 ALTER TABLE "public"."user_notifications" ADD CONSTRAINT "user_notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("user_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "public"."branches"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_gym_id_fkey" FOREIGN KEY ("gym_id") REFERENCES "public"."gyms"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."user_roles" ADD CONSTRAINT "user_roles_rolesId_fkey" FOREIGN KEY ("rolesId") REFERENCES "public"."roles"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."whatsapp_templates" ADD CONSTRAINT "whatsapp_templates_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "public"."branches"("id") ON DELETE SET NULL ON UPDATE CASCADE;

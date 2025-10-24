@@ -22,9 +22,9 @@ enum assignment_status {
 }
 
 enum attendance_status {
-  checked_in @map("checked-in")
+  checked_in  @map("checked-in")
   checked_out @map("checked-out")
-  no_show @map("no-show") // Assuming DB uses hyphen based on @map
+  no_show     @map("no-show") // Assuming DB uses hyphen based on @map
   late
 
   @@schema("public")
@@ -50,7 +50,7 @@ enum class_difficulty {
   beginner
   intermediate
   advanced
-  all_levels @map("all_levels")
+  all_levels   @map("all_levels")
 
   @@schema("public")
 }
@@ -65,9 +65,9 @@ enum discount_type {
 enum email_template_type {
   welcome
   payment_reminder @map("payment_reminder")
-  class_booking @map("class_booking")
+  class_booking    @map("class_booking")
   promotion
-  password_reset @map("password_reset")
+  password_reset   @map("password_reset")
   custom
 
   @@schema("public")
@@ -320,7 +320,7 @@ enum team_member_status {
 
 enum session_type {
   personal_training @map("personal_training")
-  group_class @map("group_class")
+  group_class       @map("group_class")
   consultation
   single
   package
@@ -338,10 +338,10 @@ enum certification_level {
 }
 
 enum trainer_change_reason {
-  scheduling_conflict @map("scheduling_conflict")
+  scheduling_conflict  @map("scheduling_conflict")
   personality_mismatch @map("personality_mismatch")
-  specialty_change @map("specialty_change")
-  performance_issue @map("performance_issue")
+  specialty_change     @map("specialty_change")
+  performance_issue    @map("performance_issue")
   other
 
   @@schema("public")
@@ -406,10 +406,10 @@ enum notification_type {
   message
   reminder
   achievement
-  payment_success @map("payment_success")
-  payment_failed @map("payment_failed")
+  payment_success  @map("payment_success")
+  payment_failed   @map("payment_failed")
   payment_reminder @map("payment_reminder")
-  receipt_ready @map("receipt_ready")
+  receipt_ready    @map("receipt_ready")
 
   @@schema("public")
 }
@@ -494,8 +494,8 @@ enum payment_processing_status {
 
 enum email_log_type {
   payment_success @map("payment_success")
-  payment_failed @map("payment_failed")
-  payment_link @map("payment_link")
+  payment_failed  @map("payment_failed")
+  payment_link    @map("payment_link")
   invoice
 
   @@schema("public")
@@ -513,8 +513,8 @@ enum delivery_status {
 
 enum sms_log_type {
   payment_success @map("payment_success")
-  payment_failed @map("payment_failed")
-  payment_link @map("payment_link")
+  payment_failed  @map("payment_failed")
+  payment_link    @map("payment_link")
   reminder
 
   @@schema("public")
@@ -619,19 +619,19 @@ model announcements {
 }
 
 model attendance_records {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String            @db.Uuid
-  branch_id        String            @db.Uuid
-  check_in_time    DateTime          @db.Timestamptz()
-  check_out_time   DateTime?         @db.Timestamptz()
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String             @db.Uuid
+  branch_id        String             @db.Uuid
+  check_in_time    DateTime           @db.Timestamptz()
+  check_out_time   DateTime?          @db.Timestamptz()
   duration_minutes Int?
   status           attendance_status? @default(checked_in)
-  attendance_type  String?           @default("gym_access") @db.Text
-  class_id         String?           @db.Uuid
-  notes            String?           @db.Text
-  profiles         profiles          @relation(fields: [user_id], references: [user_id])
-  branches         branches          @relation(fields: [branch_id], references: [id])
-  gym_classes      gym_classes?      @relation(fields: [class_id], references: [id])
+  attendance_type  String?            @default("gym_access") @db.Text
+  class_id         String?            @db.Uuid
+  notes            String?            @db.Text
+  profiles         profiles           @relation(fields: [user_id], references: [user_id])
+  branches         branches           @relation(fields: [branch_id], references: [id])
+  gym_classes      gym_classes?       @relation(fields: [class_id], references: [id])
 
   @@map("attendance_records")
   @@schema("public")
@@ -673,75 +673,75 @@ model branch_analytics {
 }
 
 model branches {
-  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                  String                      @db.VarChar(255)
-  address               String?                     @db.Text
-  city                  String?                     @db.VarChar(100)
-  state                 String?                     @db.VarChar(100)
-  country               String?                     @db.VarChar(100)
-  postal_code           String?                     @db.VarChar(20)
-  phone                 String?                     @db.VarChar(20)
-  email                 String?                     @db.VarChar(255)
-  operating_hours       Json?                       @db.JsonB
-  is_active             Boolean?                    @default(true)
-  timezone              String?                     @default("UTC") @db.VarChar(50)
-  created_at            DateTime?                   @default(now()) @db.Timestamptz()
-  updated_at            DateTime?                   @default(now()) @db.Timestamptz() @updatedAt
-  gym_id                String?                     @db.Uuid
-  manager_id            String?                     @db.Uuid
-  max_capacity          Int?                        @default(100)
-  current_occupancy     Int?                        @default(0)
-  membership_plans      membership_plans[]
-  gym_classes           gym_classes[]
-  team_members          team_members[]
-  lockers               lockers[]
-  equipment             equipment[]
-  email_templates       email_templates[]
-  sms_templates         sms_templates[]
-  whatsapp_templates    whatsapp_templates[]
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String                   @db.VarChar(255)
+  address                String?                  @db.Text
+  city                   String?                  @db.VarChar(100)
+  state                  String?                  @db.VarChar(100)
+  country                String?                  @db.VarChar(100)
+  postal_code            String?                  @db.VarChar(20)
+  phone                  String?                  @db.VarChar(20)
+  email                  String?                  @db.VarChar(255)
+  operating_hours        Json?                    @db.JsonB
+  is_active              Boolean?                 @default(true)
+  timezone               String?                  @default("UTC") @db.VarChar(50)
+  created_at             DateTime?                @default(now()) @db.Timestamptz()
+  updated_at             DateTime?                @default(now()) @updatedAt @db.Timestamptz()
+  gym_id                 String?                  @db.Uuid
+  manager_id             String?                  @db.Uuid
+  max_capacity           Int?                     @default(100)
+  current_occupancy      Int?                     @default(0)
+  membership_plans       membership_plans[]
+  gym_classes            gym_classes[]
+  team_members           team_members[]
+  lockers                lockers[]
+  equipment              equipment[]
+  email_templates        email_templates[]
+  sms_templates          sms_templates[]
+  whatsapp_templates     whatsapp_templates[]
   transaction_categories transaction_categories[]
-  products              products[]
-  dashboard_metrics     dashboard_metrics[]
+  products               products[]
+  dashboard_metrics      dashboard_metrics[]
   auto_assignment_config auto_assignment_config?
-  
+
   // Relations to other models
-  payment_gateway_configs payment_gateway_configs[]
+  payment_gateway_configs      payment_gateway_configs[]
   payment_gateway_transactions payment_gateway_transactions[]
-  profiles_profiles profiles[]
-  referral_settings referral_settings[]
-  system_settings system_settings[]
-  trainer_package_rates trainer_package_rates[]
-  trainer_profiles trainer_profiles[]
-  transactions transactions[]
-  user_roles user_roles[]
-  work_shifts work_shifts[]
-  workout_plans workout_plans[]
-  notification_logs notification_logs[]
-  biometric_devices biometric_devices[]
-  branch_analytics branch_analytics[]
-  diet_plans diet_plans[]
-  discount_codes discount_codes[]
-  feedback feedback[]
-  gyms gyms[]
-  invoices invoices[]
-  leads leads[]
-  members members[]
-  orders orders[]
-  ai_insights ai_insights[]
-  analytics_events analytics_events[]
-  attendance_records attendance_records[]
+  profiles_profiles            profiles[]
+  referral_settings            referral_settings[]
+  system_settings              system_settings[]
+  trainer_package_rates        trainer_package_rates[]
+  trainer_profiles             trainer_profiles[]
+  transactions                 transactions[]
+  user_roles                   user_roles[]
+  work_shifts                  work_shifts[]
+  workout_plans                workout_plans[]
+  notification_logs            notification_logs[]
+  biometric_devices            biometric_devices[]
+  branch_analytics             branch_analytics[]
+  diet_plans                   diet_plans[]
+  discount_codes               discount_codes[]
+  feedback                     feedback[]
+  gyms                         gyms[]
+  invoices                     invoices[]
+  leads                        leads[]
+  members                      members[]
+  orders                       orders[]
+  ai_insights                  ai_insights[]
+  analytics_events             analytics_events[]
+  attendance_records           attendance_records[]
 
   @@map("branches")
   @@schema("public")
 }
 
 model class_enrollments {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  class_id        String    @db.Uuid
-  member_id       String    @db.Uuid
-  enrollment_date DateTime? @default(now()) @db.Timestamptz()
-  status          String?   @default("enrolled") @db.Text
-  attended_at     DateTime? @db.Timestamptz()
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  class_id        String      @db.Uuid
+  member_id       String      @db.Uuid
+  enrollment_date DateTime?   @default(now()) @db.Timestamptz()
+  status          String?     @default("enrolled") @db.Text
+  attended_at     DateTime?   @db.Timestamptz()
   gym_classes     gym_classes @relation(fields: [class_id], references: [id])
   members         members     @relation(fields: [member_id], references: [id])
 
@@ -751,16 +751,16 @@ model class_enrollments {
 }
 
 model credit_transactions {
-  id                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                String                 @db.Uuid
-  transaction_type       String                 @db.Text
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                String                  @db.Uuid
+  transaction_type       String                  @db.Text
   amount                 Int
-  description            String?                @db.Text
-  related_order_id       String?                @db.Uuid
-  related_bonus_id       String?                @db.Uuid
-  created_at             DateTime?              @default(now()) @db.Timestamptz()
-  profiles               profiles               @relation(fields: [user_id], references: [user_id])
-  orders                 orders?                @relation(fields: [related_order_id], references: [id])
+  description            String?                 @db.Text
+  related_order_id       String?                 @db.Uuid
+  related_bonus_id       String?                 @db.Uuid
+  created_at             DateTime?               @default(now()) @db.Timestamptz()
+  profiles               profiles                @relation(fields: [user_id], references: [user_id])
+  orders                 orders?                 @relation(fields: [related_order_id], references: [id])
   referral_bonus_history referral_bonus_history? @relation(fields: [related_bonus_id], references: [id])
 
   @@map("credit_transactions")
@@ -843,21 +843,21 @@ model email_templates {
 }
 
 model equipment {
-  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id             String                 @db.Uuid
-  name                  String                 @db.Text
-  type                  String?                @db.Text
-  manufacturer          String?                @db.Text
-  model                 String?                @db.Text
-  serial_number         String?                @unique @db.Text
-  purchase_date         DateTime?              @db.Date
-  warranty_expiry_date  DateTime?              @db.Date
-  status                equipment_status?      @default(operational)
-  last_maintenance_date DateTime?              @db.Date
-  next_maintenance_date DateTime?              @db.Date
-  location              String?                @db.Text
-  created_at            DateTime?              @default(now()) @db.Timestamptz()
-  branches              branches               @relation(fields: [branch_id], references: [id])
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id             String                @db.Uuid
+  name                  String                @db.Text
+  type                  String?               @db.Text
+  manufacturer          String?               @db.Text
+  model                 String?               @db.Text
+  serial_number         String?               @unique @db.Text
+  purchase_date         DateTime?             @db.Date
+  warranty_expiry_date  DateTime?             @db.Date
+  status                equipment_status?     @default(operational)
+  last_maintenance_date DateTime?             @db.Date
+  next_maintenance_date DateTime?             @db.Date
+  location              String?               @db.Text
+  created_at            DateTime?             @default(now()) @db.Timestamptz()
+  branches              branches              @relation(fields: [branch_id], references: [id])
   equipment_analytics   equipment_analytics[]
   maintenance_records   maintenance_records[]
 
@@ -881,18 +881,18 @@ model equipment_analytics {
 }
 
 model feedback {
-  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  member_id          String             @db.Uuid
-  branch_id          String             @db.Uuid
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id          String               @db.Uuid
+  branch_id          String               @db.Uuid
   category           feedback_category
   rating             Int?
-  comments           String?            @db.Text
-  submitted_at       DateTime?          @default(now()) @db.Timestamptz()
-  status             feedback_status?   @default(new)
-  resolved_at        DateTime?          @db.Timestamptz()
-  tags               String[]           @db.Text
-  members            members            @relation(fields: [member_id], references: [id])
-  branches           branches           @relation(fields: [branch_id], references: [id])
+  comments           String?              @db.Text
+  submitted_at       DateTime?            @default(now()) @db.Timestamptz()
+  status             feedback_status?     @default(new)
+  resolved_at        DateTime?            @db.Timestamptz()
+  tags               String[]             @db.Text
+  members            members              @relation(fields: [member_id], references: [id])
+  branches           branches             @relation(fields: [branch_id], references: [id])
   feedback_responses feedback_responses[]
 
   @@map("feedback")
@@ -913,22 +913,22 @@ model feedback_responses {
 }
 
 model gym_classes {
-  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id           String             @db.Uuid
-  trainer_id          String?            @db.Uuid
-  name                String             @db.Text
-  description         String?            @db.Text
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id           String               @db.Uuid
+  trainer_id          String?              @db.Uuid
+  name                String               @db.Text
+  description         String?              @db.Text
   difficulty          class_difficulty
-  start_time          DateTime           @db.Timestamptz()
+  start_time          DateTime             @db.Timestamptz()
   duration_minutes    Int
   capacity            Int?
-  enrolled_count      Int?               @default(0)
-  status              String?            @default("scheduled") @db.Text
-  recurrence          class_recurrence?  @default(none)
-  recurrence_end_date DateTime?          @db.Timestamptz()
-  created_at          DateTime?          @default(now()) @db.Timestamptz()
-  branches            branches           @relation(fields: [branch_id], references: [id])
-  trainer_profiles    trainer_profiles?  @relation(fields: [trainer_id], references: [id])
+  enrolled_count      Int?                 @default(0)
+  status              String?              @default("scheduled") @db.Text
+  recurrence          class_recurrence?    @default(none)
+  recurrence_end_date DateTime?            @db.Timestamptz()
+  created_at          DateTime?            @default(now()) @db.Timestamptz()
+  branches            branches             @relation(fields: [branch_id], references: [id])
+  trainer_profiles    trainer_profiles?    @relation(fields: [trainer_id], references: [id])
   attendance_records  attendance_records[]
   class_enrollments   class_enrollments[]
 
@@ -953,20 +953,21 @@ model gym_usage {
 }
 
 model gyms {
-  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                     String                     @db.Text
-  owner_id                 String?                    @db.Uuid
-  created_at               DateTime?                  @default(now()) @db.Timestamptz()
-  updated_at               DateTime?                  @default(now()) @db.Timestamptz()
-  subscription_plan_id     String?                    @db.Uuid
-  status                   String?                    @default("active") @db.Text
-  profiles                 profiles?                  @relation(fields: [owner_id], references: [user_id])
-  subscription_plans       subscription_plans?        @relation(fields: [subscription_plan_id], references: [id])
-  branches                 branches[]
-  gym_usage                gym_usage[]
-  payment_gateway_configs  payment_gateway_configs[]
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                         String                         @db.Text
+  owner_id                     String?                        @db.Uuid
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  updated_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  subscription_plan_id         String?                        @db.Uuid
+  status                       String?                        @default("active") @db.Text
+  profiles                     profiles?                      @relation(fields: [owner_id], references: [user_id])
+  subscription_plans           subscription_plans?            @relation(fields: [subscription_plan_id], references: [id])
+  branches                     branches[]
+  gym_usage                    gym_usage[]
+  payment_gateway_configs      payment_gateway_configs[]
   payment_gateway_transactions payment_gateway_transactions[]
-  profiles_gym             profiles[]                 @relation("gym_profiles")
+  profiles_gym                 profiles[]                     @relation("gym_profiles")
+  user_roles                   user_roles[]
 
   @@map("gyms")
   @@schema("public")
@@ -986,27 +987,27 @@ model invoice_items {
 }
 
 model invoices {
-  id                           String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id                    String                       @db.Uuid
-  customer_id                  String                       @db.Uuid
-  invoice_number               String                       @unique @db.Text
-  issue_date                   DateTime                     @default(dbgenerated("CURRENT_DATE")) @db.Date
-  due_date                     DateTime?                    @db.Date
-  total_amount                 Decimal                      @db.Decimal(10, 2)
-  paid_amount                  Decimal?                     @default(0.00) @db.Decimal(10, 2)
-  status                       invoice_status?              @default(draft)
-  related_membership_id        String?                      @db.Uuid
-  related_order_id             String?                      @db.Uuid
-  notes                        String?                      @db.Text
-  created_at                   DateTime?                    @default(now()) @db.Timestamptz()
-  branches                     branches                     @relation(fields: [branch_id], references: [id])
-  profiles                     profiles                     @relation(fields: [customer_id], references: [user_id])
-  member_memberships           member_memberships?          @relation(fields: [related_membership_id], references: [id])
-  orders                       orders?                      @relation(fields: [related_order_id], references: [id])
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id                    String                         @db.Uuid
+  customer_id                  String                         @db.Uuid
+  invoice_number               String                         @unique @db.Text
+  issue_date                   DateTime                       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  due_date                     DateTime?                      @db.Date
+  total_amount                 Decimal                        @db.Decimal(10, 2)
+  paid_amount                  Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  status                       invoice_status?                @default(draft)
+  related_membership_id        String?                        @db.Uuid
+  related_order_id             String?                        @db.Uuid
+  notes                        String?                        @db.Text
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  branches                     branches                       @relation(fields: [branch_id], references: [id])
+  profiles                     profiles                       @relation(fields: [customer_id], references: [user_id])
+  member_memberships           member_memberships?            @relation(fields: [related_membership_id], references: [id])
+  orders                       orders?                        @relation(fields: [related_order_id], references: [id])
   invoice_items                invoice_items[]
   member_discount_usage        member_discount_usage[]
   payment_gateway_transactions payment_gateway_transactions[]
-  payments                     payments[]                   // Relation to the corrected payments model
+  payments                     payments[] // Relation to the corrected payments model
   trainer_packages             trainer_packages[]
 
   @@map("invoices")
@@ -1081,10 +1082,10 @@ model locker_assignments {
 }
 
 model locker_sizes {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String   @unique @db.Text
-  dimensions String?  @db.Text
-  price      Decimal? @default(0.00) @db.Decimal(8, 2)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @unique @db.Text
+  dimensions String?   @db.Text
+  price      Decimal?  @default(0.00) @db.Decimal(8, 2)
   lockers    lockers[]
 
   @@map("locker_sizes")
@@ -1170,18 +1171,18 @@ model member_credits {
 }
 
 model member_diet_plans {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String      @db.Uuid
-  diet_plan_id String      @db.Uuid
-  assigned_by  String?     @db.Uuid
-  start_date   DateTime    @db.Date
-  end_date     DateTime?   @db.Date
-  notes        String?     @db.Text
-  is_active    Boolean?    @default(true)
-  created_at   DateTime?   @default(now()) @db.Timestamptz()
-  profiles     profiles    @relation("member_diet_plans", fields: [user_id], references: [user_id])
-  diet_plans   diet_plans  @relation(fields: [diet_plan_id], references: [id])
-  assigner     profiles?   @relation("assigned_diet_plans", fields: [assigned_by], references: [user_id])
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String     @db.Uuid
+  diet_plan_id String     @db.Uuid
+  assigned_by  String?    @db.Uuid
+  start_date   DateTime   @db.Date
+  end_date     DateTime?  @db.Date
+  notes        String?    @db.Text
+  is_active    Boolean?   @default(true)
+  created_at   DateTime?  @default(now()) @db.Timestamptz()
+  profiles     profiles   @relation("member_diet_plans", fields: [user_id], references: [user_id])
+  diet_plans   diet_plans @relation(fields: [diet_plan_id], references: [id])
+  assigner     profiles?  @relation("assigned_diet_plans", fields: [assigned_by], references: [user_id])
 
   @@unique([user_id, diet_plan_id, start_date])
   @@map("member_diet_plans")
@@ -1204,17 +1205,17 @@ model member_discount_usage {
 }
 
 model member_goals {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String           @db.Uuid
-  goal_type        String           @db.Text
-  target_value     Decimal?         @db.Decimal
-  target_unit      String?          @db.Text
-  start_date       DateTime?        @default(dbgenerated("CURRENT_DATE")) @db.Date
-  target_date      DateTime?        @db.Date
-  status           String?          @default("active") @db.Text
-  notes            String?          @db.Text
-  created_at       DateTime?        @default(now()) @db.Timestamptz()
-  profiles         profiles         @relation(fields: [user_id], references: [user_id])
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String             @db.Uuid
+  goal_type        String             @db.Text
+  target_value     Decimal?           @db.Decimal
+  target_unit      String?            @db.Text
+  start_date       DateTime?          @default(dbgenerated("CURRENT_DATE")) @db.Date
+  target_date      DateTime?          @db.Date
+  status           String?            @default("active") @db.Text
+  notes            String?            @db.Text
+  created_at       DateTime?          @default(now()) @db.Timestamptz()
+  profiles         profiles           @relation(fields: [user_id], references: [user_id])
   progress_entries progress_entries[]
 
   @@map("member_goals")
@@ -1265,18 +1266,18 @@ model member_memberships {
 }
 
 model member_workout_plans {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id         String         @db.Uuid
-  workout_plan_id String         @db.Uuid
-  assigned_by     String?        @db.Uuid
-  start_date      DateTime       @db.Date
-  end_date        DateTime?      @db.Date
-  notes           String?        @db.Text
-  is_active       Boolean?       @default(true)
-  created_at      DateTime?      @default(now()) @db.Timestamptz()
-  profiles        profiles       @relation("member_workout_plans", fields: [user_id], references: [user_id])
-  workout_plans   workout_plans  @relation(fields: [workout_plan_id], references: [id])
-  assigner        profiles?      @relation("assigned_workout_plans", fields: [assigned_by], references: [user_id])
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String        @db.Uuid
+  workout_plan_id String        @db.Uuid
+  assigned_by     String?       @db.Uuid
+  start_date      DateTime      @db.Date
+  end_date        DateTime?     @db.Date
+  notes           String?       @db.Text
+  is_active       Boolean?      @default(true)
+  created_at      DateTime?     @default(now()) @db.Timestamptz()
+  profiles        profiles      @relation("member_workout_plans", fields: [user_id], references: [user_id])
+  workout_plans   workout_plans @relation(fields: [workout_plan_id], references: [id])
+  assigner        profiles?     @relation("assigned_workout_plans", fields: [assigned_by], references: [user_id])
 
   @@unique([user_id, workout_plan_id, start_date])
   @@map("member_workout_plans")
@@ -1284,37 +1285,37 @@ model member_workout_plans {
 }
 
 model members {
-  id                      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                 String                 @unique @db.Uuid
-  branch_id               String                 @db.Uuid
-  member_id_string        String?                @unique @db.Text
-  join_date               DateTime               @default(dbgenerated("CURRENT_DATE")) @db.Date
-  date_of_birth           DateTime?              @db.Date
-  gender                  String?                @db.Text
-  address                 String?                @db.Text
-  city                    String?                @db.Text
-  state                   String?                @db.Text
-  postal_code             String?                @db.Text
-  emergency_contact_name  String?                @db.Text
-  emergency_contact_phone String?                @db.Text
-  membership_status       membership_status?     @default(active)
-  last_check_in           DateTime?              @db.Timestamptz()
-  profile_picture_url     String?                @db.Text
-  created_at              DateTime?              @default(now()) @db.Timestamptz()
-  updated_at              DateTime?              @updatedAt @db.Timestamptz()
-  medical_conditions      String?                @db.Text
-  fitness_goals           String?                @db.Text
-  preferred_trainer_id    String?                @db.Uuid
-  government_id_type      String?                @db.Text
-  government_id_number    String?                @db.Text
-  is_verified             Boolean?               @default(false)
-  profile                 profiles               @relation(fields: [user_id], references: [user_id])
-  branches                branches               @relation(fields: [branch_id], references: [id])
-  preferred_trainer       trainer_profiles?      @relation(fields: [preferred_trainer_id], references: [id])
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 String                    @unique @db.Uuid
+  branch_id               String                    @db.Uuid
+  member_id_string        String?                   @unique @db.Text
+  join_date               DateTime                  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  date_of_birth           DateTime?                 @db.Date
+  gender                  String?                   @db.Text
+  address                 String?                   @db.Text
+  city                    String?                   @db.Text
+  state                   String?                   @db.Text
+  postal_code             String?                   @db.Text
+  emergency_contact_name  String?                   @db.Text
+  emergency_contact_phone String?                   @db.Text
+  membership_status       membership_status?        @default(active)
+  last_check_in           DateTime?                 @db.Timestamptz()
+  profile_picture_url     String?                   @db.Text
+  created_at              DateTime?                 @default(now()) @db.Timestamptz()
+  updated_at              DateTime?                 @updatedAt @db.Timestamptz()
+  medical_conditions      String?                   @db.Text
+  fitness_goals           String?                   @db.Text
+  preferred_trainer_id    String?                   @db.Uuid
+  government_id_type      String?                   @db.Text
+  government_id_number    String?                   @db.Text
+  is_verified             Boolean?                  @default(false)
+  profile                 profiles                  @relation(fields: [user_id], references: [user_id])
+  branches                branches                  @relation(fields: [branch_id], references: [id])
+  preferred_trainer       trainer_profiles?         @relation(fields: [preferred_trainer_id], references: [id])
   class_enrollments       class_enrollments[]
   feedback                feedback[]
   locker_assignments      locker_assignments[]
-  lockers_assigned        lockers[]              @relation("assigned_locker")
+  lockers_assigned        lockers[]                 @relation("assigned_locker")
   member_measurements     member_measurements[]
   orders                  orders[]
   trainer_assignments     trainer_assignments[]
@@ -1393,19 +1394,19 @@ model order_items {
 }
 
 model orders {
-  id                           String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id                    String                       @db.Uuid
-  member_id                    String                       @db.Uuid
-  order_number                 String                       @unique @default(dbgenerated("concat('ORD', to_char(now()::timestamp, 'YYYYMMDDHH24MISS'), floor(random() * 1000)::int)")) @db.VarChar(50)
-  order_date                   DateTime?                    @default(now()) @db.Timestamptz()
-  total_amount                 Decimal                      @db.Decimal(10, 2)
-  status                       order_status?                @default(pending)
-  payment_method               String?                      @db.Text
-  payment_status               payment_transaction_status?  @default(pending) // Changed enum
-  created_at                   DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at                   DateTime?                    @updatedAt @db.Timestamptz()
-  branches                     branches                     @relation(fields: [branch_id], references: [id])
-  members                      members                      @relation(fields: [member_id], references: [id])
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id                    String                         @db.Uuid
+  member_id                    String                         @db.Uuid
+  order_number                 String                         @unique @default(dbgenerated("concat('ORD', to_char(now()::timestamp, 'YYYYMMDDHH24MISS'), floor(random() * 1000)::int)")) @db.VarChar(50)
+  order_date                   DateTime?                      @default(now()) @db.Timestamptz()
+  total_amount                 Decimal                        @db.Decimal(10, 2)
+  status                       order_status?                  @default(pending)
+  payment_method               String?                        @db.Text
+  payment_status               payment_transaction_status?    @default(pending) // Changed enum
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  updated_at                   DateTime?                      @updatedAt @db.Timestamptz()
+  branches                     branches                       @relation(fields: [branch_id], references: [id])
+  members                      members                        @relation(fields: [member_id], references: [id])
   credit_transactions          credit_transactions[]
   invoices                     invoices[]
   order_items                  order_items[]
@@ -1416,17 +1417,17 @@ model orders {
 }
 
 model payment_gateway_configs {
-  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  gym_id                     String                       @db.Uuid
-  branch_id                  String?                      @db.Uuid
-  provider                   payment_gateway_provider
-  config_details             Json                         @db.JsonB
-  is_active                  Boolean?                     @default(true)
-  environment                String?                      @default("sandbox") @db.Text
-  created_at                 DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at                 DateTime?                    @updatedAt @db.Timestamptz()
-  gyms                       gyms                         @relation(fields: [gym_id], references: [id])
-  branches                   branches?                    @relation(fields: [branch_id], references: [id])
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id                       String                         @db.Uuid
+  branch_id                    String?                        @db.Uuid
+  provider                     payment_gateway_provider
+  config_details               Json                           @db.JsonB
+  is_active                    Boolean?                       @default(true)
+  environment                  String?                        @default("sandbox") @db.Text
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  updated_at                   DateTime?                      @updatedAt @db.Timestamptz()
+  gyms                         gyms                           @relation(fields: [gym_id], references: [id])
+  branches                     branches?                      @relation(fields: [branch_id], references: [id])
   payment_gateway_transactions payment_gateway_transactions[]
 
   @@unique([gym_id, branch_id, provider, environment])
@@ -1460,7 +1461,7 @@ model payment_gateway_transactions {
   profiles                profiles?                  @relation(fields: [customer_id], references: [user_id])
   orders                  orders?                    @relation(fields: [order_id], references: [id])
   invoices                invoices?                  @relation(fields: [invoice_id], references: [id])
-  payment_gateway_configs payment_gateway_configs? @relation(fields: [gateway_config_id], references: [id])
+  payment_gateway_configs payment_gateway_configs?   @relation(fields: [gateway_config_id], references: [id])
 
   @@unique([gateway_order_id, provider])
   @@index([customer_id], map: "idx_payment_gateway_transactions_customer_id")
@@ -1483,29 +1484,29 @@ model payment_methods {
 }
 
 model payments {
-  id                  String                       @id @db.VarChar(50)
-  txn_id              String                       @unique @db.VarChar(100)
-  order_id            String?                      @db.VarChar(100)
-  payment_reference   String?                      @db.VarChar(100)
-  member_id           String?                      @db.VarChar(50)
-  amount              Decimal                      @db.Decimal(10, 2)
-  currency            String?                      @default("INR") @db.VarChar(10)
+  id                  String                      @id @db.VarChar(50)
+  txn_id              String                      @unique @db.VarChar(100)
+  order_id            String?                     @db.VarChar(100)
+  payment_reference   String?                     @db.VarChar(100)
+  member_id           String?                     @db.VarChar(50)
+  amount              Decimal                     @db.Decimal(10, 2)
+  currency            String?                     @default("INR") @db.VarChar(10)
   payment_type        payment_type
   gateway_type        payment_gateway_type
   payment_method      payment_method
-  status              payment_transaction_status?  @default(pending)
-  invoice_id          String?                      @db.Uuid
-  membership_id       String?                      @db.VarChar(50)
-  pos_order_id        String?                      @db.VarChar(50)
-  training_package_id String?                      @db.VarChar(50)
-  gateway_response    Json?                        @db.JsonB
-  failure_reason      String?                      @db.Text
-  initiated_by        String?                      @db.Uuid
-  completed_at        DateTime?                    @db.Timestamp(6)
-  created_at          DateTime?                    @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?                    @updatedAt @db.Timestamp(6)
-  invoice             invoices?                 @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map:"payments_invoice_id_fkey")
-  initiator           profiles?                 @relation("recorded_by", fields: [initiated_by], references: [user_id])
+  status              payment_transaction_status? @default(pending)
+  invoice_id          String?                     @db.Uuid
+  membership_id       String?                     @db.VarChar(50)
+  pos_order_id        String?                     @db.VarChar(50)
+  training_package_id String?                     @db.VarChar(50)
+  gateway_response    Json?                       @db.JsonB
+  failure_reason      String?                     @db.Text
+  initiated_by        String?                     @db.Uuid
+  completed_at        DateTime?                   @db.Timestamp(6)
+  created_at          DateTime?                   @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?                   @updatedAt @db.Timestamp(6)
+  invoice             invoices?                   @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "payments_invoice_id_fkey")
+  initiator           profiles?                   @relation("recorded_by", fields: [initiated_by], references: [user_id])
   payment_logs        payment_logs[]
   payment_links       payment_links[]
   email_logs          email_logs[]
@@ -1522,11 +1523,11 @@ model payments {
 }
 
 model permissions {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String             @unique @db.Text
-  description      String?            @db.Text
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String              @unique @db.Text
+  description      String?             @db.Text
   category         permission_category
-  module           String?            @db.Text
+  module           String?             @db.Text
   role_permissions role_permissions[]
 
   @@index([category], map: "idx_permissions_category")
@@ -1555,68 +1556,69 @@ model products {
 }
 
 model profiles {
-  user_id                   String                       @id @unique @db.Uuid
-  email                     String                       @unique @db.Text
-  full_name                 String?                      @db.Text
-  avatar_url                String?                      @db.Text
-  phone                     String?                      @db.Text
-  role                      user_role                    @default(member)
-  team_role                 String?                      @db.Text
-  branch_id                 String?                      @db.Uuid
-  gym_id                    String?                      @db.Uuid
-  is_active                 Boolean?                     @default(true)
-  created_at                DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at                DateTime?                    @updatedAt @db.Timestamptz()
-  branches                  branches?                    @relation(fields: [branch_id], references: [id])
-  gym                       gyms?                        @relation("gym_profiles", fields: [gym_id], references: [id])
-  ai_insights               ai_insights[]
-  analytics_events          analytics_events[]
-  created_announcements     announcements[]
-  attendance_records        attendance_records[]
-  credit_transactions       credit_transactions[]
-  created_diet_plans        diet_plans[]
-  created_email_templates   email_templates[]            @relation("creator")
-  feedback_responses        feedback_responses[]
-  owned_gyms                gyms[]
-  customer_invoices         invoices[]
-  created_lead_notes        lead_notes[]
-  assigned_lead_tasks       lead_tasks[]
-  assigned_leads            leads[]
-  created_maintenance_records maintenance_records[]
-  member_achievements       member_achievements[]
-  member_analytics          member_analytics[]
-  member_credits            member_credits?
-  assigned_diet_plans       member_diet_plans[]          @relation("assigned_diet_plans")
-  member_discount_usage     member_discount_usage[]
-  member_goals              member_goals[]
-  measured_by_measurements  member_measurements[]
-  member_memberships        member_memberships[]
-  assigned_workout_plans    member_workout_plans[]       @relation("assigned_workout_plans")
-  member_diet_plans         member_diet_plans[]          @relation("member_diet_plans")
-  member_workout_plans      member_workout_plans[]       @relation("member_workout_plans")
-  member_profile            members?
-  requested_freezes         membership_freeze_requests[] @relation("requested_freezes")
-  reviewed_freezes          membership_freeze_requests[] @relation("reviewed_freezes")
-  notification_preferences  notification_preferences?
-  recorded_payments         payments[]                   @relation("recorded_by")
-  user_progress_entries     progress_entries[]           @relation("user_progress")
-  recorded_progress_entries progress_entries[]           @relation("recorded_progress")
-  progress_photos           progress_photos[]
-  referral_analytics        referral_analytics[]
-  referrer_bonus_history    referral_bonus_history[]     @relation("referrer_bonuses")
-  referee_bonus_history     referral_bonus_history[]     @relation("referee_bonuses")
-  referrer_referrals        referrals[]                  @relation("referrer_referrals")
-  referee_referrals         referrals[]                  @relation("referee_referrals")
-  created_sms_templates     sms_templates[]              @relation("creator")
-  team_member_profile       team_members?
-  created_trainer_assignments trainer_assignments[]
-  approved_change_requests  trainer_change_requests[]
-  trainer_profile           trainer_profiles?
-  recorded_transactions     transactions[]
-  user_notifications        user_notifications[]
-  user_roles                user_roles[]
-  created_whatsapp_templates whatsapp_templates[]        @relation("creator")
-  created_workout_plans     workout_plans[]
+  user_id                      String                         @id @unique @db.Uuid
+  email                        String                         @unique @db.Text
+  password_hash                String?                        @db.Text
+  full_name                    String?                        @db.Text
+  avatar_url                   String?                        @db.Text
+  phone                        String?                        @db.Text
+  role                         user_role                      @default(member)
+  team_role                    String?                        @db.Text
+  branch_id                    String?                        @db.Uuid
+  gym_id                       String?                        @db.Uuid
+  is_active                    Boolean?                       @default(true)
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz()
+  updated_at                   DateTime?                      @updatedAt @db.Timestamptz()
+  branches                     branches?                      @relation(fields: [branch_id], references: [id])
+  gym                          gyms?                          @relation("gym_profiles", fields: [gym_id], references: [id])
+  ai_insights                  ai_insights[]
+  analytics_events             analytics_events[]
+  created_announcements        announcements[]
+  attendance_records           attendance_records[]
+  credit_transactions          credit_transactions[]
+  created_diet_plans           diet_plans[]
+  created_email_templates      email_templates[]              @relation("creator")
+  feedback_responses           feedback_responses[]
+  owned_gyms                   gyms[]
+  customer_invoices            invoices[]
+  created_lead_notes           lead_notes[]
+  assigned_lead_tasks          lead_tasks[]
+  assigned_leads               leads[]
+  created_maintenance_records  maintenance_records[]
+  member_achievements          member_achievements[]
+  member_analytics             member_analytics[]
+  member_credits               member_credits?
+  assigned_diet_plans          member_diet_plans[]            @relation("assigned_diet_plans")
+  member_discount_usage        member_discount_usage[]
+  member_goals                 member_goals[]
+  measured_by_measurements     member_measurements[]
+  member_memberships           member_memberships[]
+  assigned_workout_plans       member_workout_plans[]         @relation("assigned_workout_plans")
+  member_diet_plans            member_diet_plans[]            @relation("member_diet_plans")
+  member_workout_plans         member_workout_plans[]         @relation("member_workout_plans")
+  member_profile               members?
+  requested_freezes            membership_freeze_requests[]   @relation("requested_freezes")
+  reviewed_freezes             membership_freeze_requests[]   @relation("reviewed_freezes")
+  notification_preferences     notification_preferences?
+  recorded_payments            payments[]                     @relation("recorded_by")
+  user_progress_entries        progress_entries[]             @relation("user_progress")
+  recorded_progress_entries    progress_entries[]             @relation("recorded_progress")
+  progress_photos              progress_photos[]
+  referral_analytics           referral_analytics[]
+  referrer_bonus_history       referral_bonus_history[]       @relation("referrer_bonuses")
+  referee_bonus_history        referral_bonus_history[]       @relation("referee_bonuses")
+  referrer_referrals           referrals[]                    @relation("referrer_referrals")
+  referee_referrals            referrals[]                    @relation("referee_referrals")
+  created_sms_templates        sms_templates[]                @relation("creator")
+  team_member_profile          team_members?
+  created_trainer_assignments  trainer_assignments[]
+  approved_change_requests     trainer_change_requests[]
+  trainer_profile              trainer_profiles?
+  recorded_transactions        transactions[]
+  user_notifications           user_notifications[]
+  user_roles                   user_roles[]
+  created_whatsapp_templates   whatsapp_templates[]           @relation("creator")
+  created_workout_plans        workout_plans[]
   payment_gateway_transactions payment_gateway_transactions[]
 
   @@map("profiles")
@@ -1624,20 +1626,20 @@ model profiles {
 }
 
 model progress_entries {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String           @db.Uuid
-  entry_date       DateTime         @default(dbgenerated("CURRENT_DATE")) @db.Date
-  related_goal_id  String?          @db.Uuid
-  entry_type       String           @db.Text
-  value            String?          @db.Text
-  unit             String?          @db.Text
-  notes            String?          @db.Text
-  recorded_by      String?          @db.Uuid
-  created_at       DateTime?        @default(now()) @db.Timestamptz()
-  profiles         profiles         @relation("user_progress", fields: [user_id], references: [user_id]) // Added missing relation field
-  member_goals     member_goals?    @relation(fields: [related_goal_id], references: [id])
-  recorder         profiles?        @relation("recorded_progress", fields: [recorded_by], references: [user_id])
-  progress_photos  progress_photos[]
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String            @db.Uuid
+  entry_date      DateTime          @default(dbgenerated("CURRENT_DATE")) @db.Date
+  related_goal_id String?           @db.Uuid
+  entry_type      String            @db.Text
+  value           String?           @db.Text
+  unit            String?           @db.Text
+  notes           String?           @db.Text
+  recorded_by     String?           @db.Uuid
+  created_at      DateTime?         @default(now()) @db.Timestamptz()
+  profiles        profiles          @relation("user_progress", fields: [user_id], references: [user_id]) // Added missing relation field
+  member_goals    member_goals?     @relation(fields: [related_goal_id], references: [id])
+  recorder        profiles?         @relation("recorded_progress", fields: [recorded_by], references: [user_id])
+  progress_photos progress_photos[]
 
   @@index([user_id, entry_date])
   @@index([related_goal_id])
@@ -1676,19 +1678,19 @@ model referral_analytics {
 }
 
 model referral_bonus_history {
-  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  referrer_user_id       String              @db.Uuid
-  referee_user_id        String?             @db.Uuid
-  referral_id            String?             @db.Uuid
+  id                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrer_user_id       String                @db.Uuid
+  referee_user_id        String?               @db.Uuid
+  referral_id            String?               @db.Uuid
   bonus_type             referral_bonus_type
-  bonus_value            String              @db.Text
-  awarded_at             DateTime?           @default(now()) @db.Timestamptz()
-  description            String?             @db.Text
-  related_transaction_id String?             @db.Uuid
-  referrer               profiles            @relation("referrer_bonuses", fields: [referrer_user_id], references: [user_id])
-  referee                profiles?           @relation("referee_bonuses", fields: [referee_user_id], references: [user_id])
-  referrals              referrals?          @relation(fields: [referral_id], references: [id])
-  transactions           transactions?       @relation(fields: [related_transaction_id], references: [id])
+  bonus_value            String                @db.Text
+  awarded_at             DateTime?             @default(now()) @db.Timestamptz()
+  description            String?               @db.Text
+  related_transaction_id String?               @db.Uuid
+  referrer               profiles              @relation("referrer_bonuses", fields: [referrer_user_id], references: [user_id])
+  referee                profiles?             @relation("referee_bonuses", fields: [referee_user_id], references: [user_id])
+  referrals              referrals?            @relation(fields: [referral_id], references: [id])
+  transactions           transactions?         @relation(fields: [related_transaction_id], references: [id])
   credit_transactions    credit_transactions[]
 
   @@index([referral_id], map: "idx_bonus_history_referral")
@@ -1730,17 +1732,17 @@ model referral_settings {
 }
 
 model referrals {
-  id                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  referrer_user_id       String                 @db.Uuid
-  referee_email          String?                @db.Text
-  referee_phone          String?                @db.Text
-  referral_code_used     String?                @db.Text
-  status                 String?                @default("pending") @db.Text
-  referee_user_id        String?                @db.Uuid
-  conversion_date        DateTime?              @db.Timestamptz()
-  created_at             DateTime?              @default(now()) @db.Timestamptz()
-  referrer               profiles               @relation("referrer_referrals", fields: [referrer_user_id], references: [user_id])
-  referee                profiles?              @relation("referee_referrals", fields: [referee_user_id], references: [user_id])
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrer_user_id       String                   @db.Uuid
+  referee_email          String?                  @db.Text
+  referee_phone          String?                  @db.Text
+  referral_code_used     String?                  @db.Text
+  status                 String?                  @default("pending") @db.Text
+  referee_user_id        String?                  @db.Uuid
+  conversion_date        DateTime?                @db.Timestamptz()
+  created_at             DateTime?                @default(now()) @db.Timestamptz()
+  referrer               profiles                 @relation("referrer_referrals", fields: [referrer_user_id], references: [user_id])
+  referee                profiles?                @relation("referee_referrals", fields: [referee_user_id], references: [user_id])
   referral_bonus_history referral_bonus_history[]
 
   @@unique([referrer_user_id, referee_email])
@@ -1799,15 +1801,15 @@ model sms_templates {
 }
 
 model subscription_plans {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String    @unique @db.Text
-  price_monthly Decimal   @db.Decimal(10, 2)
-  price_yearly  Decimal?  @db.Decimal(10, 2)
-  features      Json?     @db.JsonB
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String   @unique @db.Text
+  price_monthly Decimal  @db.Decimal(10, 2)
+  price_yearly  Decimal? @db.Decimal(10, 2)
+  features      Json?    @db.JsonB
   max_branches  Int?
   max_members   Int?
   max_staff     Int?
-  is_active     Boolean?  @default(true)
+  is_active     Boolean? @default(true)
   gyms          gyms[]
 
   @@map("subscription_plans")
@@ -1830,15 +1832,15 @@ model system_backups {
 }
 
 model system_events {
-  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  event_time     DateTime?      @default(now()) @db.Timestamptz()
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_time     DateTime?       @default(now()) @db.Timestamptz()
   event_category event_category
   event_type     event_type
   severity       severity_level? @default(info)
-  description    String         @db.Text
-  details        Json?          @db.JsonB
-  user_id        String?        @db.Uuid
-  ip_address     String?        @db.Text
+  description    String          @db.Text
+  details        Json?           @db.JsonB
+  user_id        String?         @db.Uuid
+  ip_address     String?         @db.Text
 
   @@map("system_events")
   @@schema("public")
@@ -1862,41 +1864,41 @@ model system_settings {
 }
 
 model team_members {
-  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id              String              @unique @db.Uuid
-  branch_id            String              @db.Uuid
-  employee_id          String?             @unique @db.Text
-  hire_date            DateTime            @db.Date
-  job_title            String?             @db.Text
-  department           String?             @db.Text
-  manager_id           String?             @db.Uuid
-  status               team_member_status? @default(active)
-  performance_rating   Int?
-  skills               String[]            @db.Text
-  certifications       String[]            @db.Text
-  created_at           DateTime?           @default(now()) @db.Timestamptz()
-  updated_at           DateTime?           @updatedAt @db.Timestamptz()
-  profile              profiles            @relation(fields: [user_id], references: [user_id])
-  branches             branches            @relation(fields: [branch_id], references: [id])
-  manager              team_members?       @relation("ManagerSubordinates", fields: [manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  subordinates         team_members[]      @relation("ManagerSubordinates")
-  maintenance_records  maintenance_records[]
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String                @unique @db.Uuid
+  branch_id           String                @db.Uuid
+  employee_id         String?               @unique @db.Text
+  hire_date           DateTime              @db.Date
+  job_title           String?               @db.Text
+  department          String?               @db.Text
+  manager_id          String?               @db.Uuid
+  status              team_member_status?   @default(active)
+  performance_rating  Int?
+  skills              String[]              @db.Text
+  certifications      String[]              @db.Text
+  created_at          DateTime?             @default(now()) @db.Timestamptz()
+  updated_at          DateTime?             @updatedAt @db.Timestamptz()
+  profile             profiles              @relation(fields: [user_id], references: [user_id])
+  branches            branches              @relation(fields: [branch_id], references: [id])
+  manager             team_members?         @relation("ManagerSubordinates", fields: [manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates        team_members[]        @relation("ManagerSubordinates")
+  maintenance_records maintenance_records[]
 
   @@map("team_members")
   @@schema("public")
 }
 
 model trainer_analytics {
-  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  trainer_id            String            @db.Uuid
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id            String           @db.Uuid
   month                 Int
   year                  Int
-  sessions_conducted    Int?              @default(0)
-  avg_session_rating    Decimal?          @db.Decimal(3, 2)
-  client_retention_rate Decimal?          @db.Decimal(5, 2)
-  total_earnings        Decimal?          @default(0.00) @db.Decimal(12, 2)
-  updated_at            DateTime?         @default(now()) @db.Timestamptz()
-  trainer_profiles      trainer_profiles  @relation(fields: [trainer_id], references: [id])
+  sessions_conducted    Int?             @default(0)
+  avg_session_rating    Decimal?         @db.Decimal(3, 2)
+  client_retention_rate Decimal?         @db.Decimal(5, 2)
+  total_earnings        Decimal?         @default(0.00) @db.Decimal(12, 2)
+  updated_at            DateTime?        @default(now()) @db.Timestamptz()
+  trainer_profiles      trainer_profiles @relation(fields: [trainer_id], references: [id])
 
   @@unique([trainer_id, month, year])
   @@map("trainer_analytics")
@@ -1904,36 +1906,36 @@ model trainer_analytics {
 }
 
 model trainer_assignments {
-  id                   String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  trainer_id           String                       @db.Uuid
-  member_id            String                       @db.Uuid
+  id                   String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id           String                         @db.Uuid
+  member_id            String                         @db.Uuid
   session_type         session_type
-  package_id           String?                      @db.Uuid
-  scheduled_date       DateTime                     @db.Timestamptz()
-  duration_minutes     Int                          @default(60) @map("duration")
-  status               assignment_status            @default(scheduled)
+  package_id           String?                        @db.Uuid
+  scheduled_date       DateTime                       @db.Timestamptz()
+  duration_minutes     Int                            @default(60) @map("duration")
+  status               assignment_status              @default(scheduled)
   member_rating        Int?
-  member_feedback      String?                      @db.Text
-  trainer_notes        String?                      @db.Text
-  created_by           String?                      @db.Uuid
-  session_specialty    String                       @db.VarChar(50)
-  notes                String?                      @db.Text
-  completed_at         DateTime?                    @db.Timestamptz()
-  is_paid              Boolean?                     @default(false)
-  amount               Decimal                      @db.Decimal(10, 2)
-  payment_date         DateTime?                    @db.Timestamptz()
-  payment_method       String?                      @db.VarChar(50)
+  member_feedback      String?                        @db.Text
+  trainer_notes        String?                        @db.Text
+  created_by           String?                        @db.Uuid
+  session_specialty    String                         @db.VarChar(50)
+  notes                String?                        @db.Text
+  completed_at         DateTime?                      @db.Timestamptz()
+  is_paid              Boolean?                       @default(false)
+  amount               Decimal                        @db.Decimal(10, 2)
+  payment_date         DateTime?                      @db.Timestamptz()
+  payment_method       String?                        @db.VarChar(50)
   assigned_by          trainer_assignment_assigned_by @default(manual)
-  assignment_reason    String?                      @db.Text
-  alternative_trainers String[]                     @db.Text
-  created_at           DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at           DateTime?                    @updatedAt @db.Timestamptz()
-  trainer_profiles     trainer_profiles             @relation(fields: [trainer_id], references: [id])
-  members              members                      @relation(fields: [member_id], references: [id])
-  trainer_packages     trainer_packages?            @relation(fields: [package_id], references: [id])
-  creator              profiles?                    @relation(fields: [created_by], references: [user_id])
+  assignment_reason    String?                        @db.Text
+  alternative_trainers String[]                       @db.Text
+  created_at           DateTime?                      @default(now()) @db.Timestamptz()
+  updated_at           DateTime?                      @updatedAt @db.Timestamptz()
+  trainer_profiles     trainer_profiles               @relation(fields: [trainer_id], references: [id])
+  members              members                        @relation(fields: [member_id], references: [id])
+  trainer_packages     trainer_packages?              @relation(fields: [package_id], references: [id])
+  creator              profiles?                      @relation(fields: [created_by], references: [user_id])
   trainer_reviews      trainer_reviews[]
-  payment_transactions payment_transactions[]       @relation("assignment_transactions")
+  payment_transactions payment_transactions[]         @relation("assignment_transactions")
 
   @@index([trainer_id], map: "idx_assignments_trainer_id")
   @@index([member_id], map: "idx_assignments_member_id")
@@ -1977,28 +1979,28 @@ model trainer_certifications {
 }
 
 model trainer_change_requests {
-  id                   String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  member_id            String                  @db.Uuid
-  current_trainer_id   String?                 @db.Uuid
-  requested_trainer_id String?                 @db.Uuid
-  reason               trainer_change_reason
-  description          String                  @db.Text
-  urgency              trainer_change_urgency  @default(medium)
-  status               trainer_change_status   @default(pending)
-  requested_at         DateTime?               @default(now()) @db.Timestamptz() @map("created_at")
-  approved_by          String?                 @db.Uuid @map("reviewed_by")
-  approved_at          DateTime?               @db.Timestamptz() @map("reviewed_at")
-  notes                String?                 @db.Text @map("review_notes")
-  new_trainer_id       String?                 @db.Uuid
-  reassignment_date    DateTime?               @db.Timestamptz()
-  member_notified      Boolean?                @default(false)
-  trainer_notified     Boolean?                @default(false)
-  updated_at           DateTime?               @updatedAt @db.Timestamptz()
-  members              members                 @relation(fields: [member_id], references: [id])
-  current_trainer      trainer_profiles?       @relation("current_trainer_requests", fields: [current_trainer_id], references: [id], onDelete: Cascade)
-  requested_trainer    trainer_profiles?       @relation("requested_trainer_requests", fields: [requested_trainer_id], references: [id], onDelete: SetNull)
-  approver             profiles?               @relation(fields: [approved_by], references: [user_id])
-  new_trainer          trainer_profiles?       @relation("new_trainer_assignments", fields: [new_trainer_id], references: [id], onDelete: SetNull)
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id               String                    @db.Uuid
+  current_trainer_id      String?                   @db.Uuid
+  requested_trainer_id    String?                   @db.Uuid
+  reason                  trainer_change_reason
+  description             String                    @db.Text
+  urgency                 trainer_change_urgency    @default(medium)
+  status                  trainer_change_status     @default(pending)
+  requested_at            DateTime?                 @default(now()) @map("created_at") @db.Timestamptz()
+  approved_by             String?                   @map("reviewed_by") @db.Uuid
+  approved_at             DateTime?                 @map("reviewed_at") @db.Timestamptz()
+  notes                   String?                   @map("review_notes") @db.Text
+  new_trainer_id          String?                   @db.Uuid
+  reassignment_date       DateTime?                 @db.Timestamptz()
+  member_notified         Boolean?                  @default(false)
+  trainer_notified        Boolean?                  @default(false)
+  updated_at              DateTime?                 @updatedAt @db.Timestamptz()
+  members                 members                   @relation(fields: [member_id], references: [id])
+  current_trainer         trainer_profiles?         @relation("current_trainer_requests", fields: [current_trainer_id], references: [id], onDelete: Cascade)
+  requested_trainer       trainer_profiles?         @relation("requested_trainer_requests", fields: [requested_trainer_id], references: [id], onDelete: SetNull)
+  approver                profiles?                 @relation(fields: [approved_by], references: [user_id])
+  new_trainer             trainer_profiles?         @relation("new_trainer_assignments", fields: [new_trainer_id], references: [id], onDelete: SetNull)
   change_request_workflow change_request_workflow[]
 
   @@index([status], map: "idx_change_requests_status")
@@ -2029,28 +2031,28 @@ model trainer_package_rates {
 }
 
 model trainer_packages {
-  id                   String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  member_id            String                       @db.Uuid
-  package_rate_id      String                       @db.Uuid
-  trainer_id           String?                      @db.Uuid
-  purchase_date        DateTime?                    @default(now()) @db.Timestamptz()
-  expiry_date          DateTime                     @db.Timestamptz()
-  sessions_total       Int                          @map("sessions_total")
-  sessions_used        Int?                         @default(0) @map("sessions_used")
+  id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id            String                      @db.Uuid
+  package_rate_id      String                      @db.Uuid
+  trainer_id           String?                     @db.Uuid
+  purchase_date        DateTime?                   @default(now()) @db.Timestamptz()
+  expiry_date          DateTime                    @db.Timestamptz()
+  sessions_total       Int                         @map("sessions_total")
+  sessions_used        Int?                        @default(0) @map("sessions_used")
   // remaining_sessions Int?                       // Omit generated column
-  status               package_status?              @default(active)
-  payment_status       payment_transaction_status?  @default(pending) // Changed enum
-  total_amount         Decimal                      @db.Decimal(10, 2)
-  payment_id           String?                      @db.VarChar(255)
-  related_invoice_id   String?                      @db.Uuid
-  created_at           DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at           DateTime?                    @updatedAt @db.Timestamptz()
-  members              members                      @relation(fields: [member_id], references: [id])
-  package_rate         trainer_package_rates        @relation("PackageRatePackages", fields: [package_rate_id], references: [id])
-  trainer_profiles     trainer_profiles?            @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
-  invoices             invoices?                    @relation(fields: [related_invoice_id], references: [id])
+  status               package_status?             @default(active)
+  payment_status       payment_transaction_status? @default(pending) // Changed enum
+  total_amount         Decimal                     @db.Decimal(10, 2)
+  payment_id           String?                     @db.VarChar(255)
+  related_invoice_id   String?                     @db.Uuid
+  created_at           DateTime?                   @default(now()) @db.Timestamptz()
+  updated_at           DateTime?                   @updatedAt @db.Timestamptz()
+  members              members                     @relation(fields: [member_id], references: [id])
+  package_rate         trainer_package_rates       @relation("PackageRatePackages", fields: [package_rate_id], references: [id])
+  trainer_profiles     trainer_profiles?           @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+  invoices             invoices?                   @relation(fields: [related_invoice_id], references: [id])
   trainer_assignments  trainer_assignments[]
-  payment_transactions payment_transactions[]       @relation("package_transactions")
+  payment_transactions payment_transactions[]      @relation("package_transactions")
 
   @@map("trainer_packages")
   @@schema("public")
@@ -2064,7 +2066,7 @@ model trainer_profiles {
   specialties                String[]                  @default([]) @db.Text
   bio                        String?                   @db.Text
   experience_years           Int                       @default(0) @map("experience")
-  rating_avg                 Decimal?                  @default(0.00) @db.Decimal(3, 2) @map("rating")
+  rating_avg                 Decimal?                  @default(0.00) @map("rating") @db.Decimal(3, 2)
   hourly_rate                Decimal                   @db.Decimal(10, 2)
   status                     trainer_status            @default(active)
   created_at                 DateTime?                 @default(now()) @db.Timestamptz()
@@ -2109,23 +2111,23 @@ model trainer_profiles {
 }
 
 model trainer_utilization {
-  id                      String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  trainer_id              String             @db.Uuid
-  period                  utilization_period
-  date                    DateTime           @db.Date
-  total_available_hours   Decimal            @db.Decimal(5, 2)
-  booked_hours            Decimal            @db.Decimal(5, 2)
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id            String             @db.Uuid
+  period                utilization_period
+  date                  DateTime           @db.Date
+  total_available_hours Decimal            @db.Decimal(5, 2)
+  booked_hours          Decimal            @db.Decimal(5, 2)
   // utilization_rate Decimal?           // Omit generated column
-  scheduled_sessions      Int?               @default(0)
-  completed_sessions      Int?               @default(0)
-  cancelled_sessions      Int?               @default(0)
-  no_show_sessions        Int?               @default(0)
-  total_revenue           Decimal?           @default(0.00) @db.Decimal(10, 2)
-  average_session_value   Decimal?           @default(0.00) @db.Decimal(10, 2)
-  average_rating          Decimal?           @default(0.00) @db.Decimal(3, 2)
-  punctuality_score       Int?               @default(100)
-  created_at              DateTime?          @default(now()) @db.Timestamptz()
-  trainer_profiles        trainer_profiles   @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+  scheduled_sessions    Int?               @default(0)
+  completed_sessions    Int?               @default(0)
+  cancelled_sessions    Int?               @default(0)
+  no_show_sessions      Int?               @default(0)
+  total_revenue         Decimal?           @default(0.00) @db.Decimal(10, 2)
+  average_session_value Decimal?           @default(0.00) @db.Decimal(10, 2)
+  average_rating        Decimal?           @default(0.00) @db.Decimal(3, 2)
+  punctuality_score     Int?               @default(100)
+  created_at            DateTime?          @default(now()) @db.Timestamptz()
+  trainer_profiles      trainer_profiles   @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
 
   @@unique([trainer_id, period, date])
   @@index([trainer_id, period, date], map: "idx_utilization_trainer_period_date")
@@ -2135,13 +2137,13 @@ model trainer_utilization {
 }
 
 model transaction_categories {
-  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id    String?            @db.Uuid
-  name         String             @db.Text
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id    String?          @db.Uuid
+  name         String           @db.Text
   type         transaction_kind
-  description  String?            @db.Text
+  description  String?          @db.Text
   transactions transactions[]
-  branches     branches?      @relation(fields: [branch_id], references: [id])
+  branches     branches?        @relation(fields: [branch_id], references: [id])
 
   @@unique([branch_id, name, type])
   @@map("transaction_categories")
@@ -2149,24 +2151,24 @@ model transaction_categories {
 }
 
 model transactions {
-  id                     String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id              String                       @db.Uuid
-  category_id            String?                      @db.Uuid
-  member_id              String?                      @db.Uuid
-  transaction_date       DateTime                     @default(dbgenerated("CURRENT_DATE")) @db.Date
-  amount                 Decimal                      @db.Decimal(12, 2)
+  id                     String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id              String                      @db.Uuid
+  category_id            String?                     @db.Uuid
+  member_id              String?                     @db.Uuid
+  transaction_date       DateTime                    @default(dbgenerated("CURRENT_DATE")) @db.Date
+  amount                 Decimal                     @db.Decimal(12, 2)
   type                   transaction_kind
-  description            String?                      @db.Text
-  payment_method_id      String?                      @db.Uuid
-  reference_id           String?                      @db.Text
-  status                 payment_transaction_status?  @default(completed)
-  recorded_by            String?                      @db.Uuid
-  created_at             DateTime?                    @default(now()) @db.Timestamptz()
-  branches               branches                     @relation(fields: [branch_id], references: [id])
-  transaction_categories transaction_categories?      @relation(fields: [category_id], references: [id])
-  members                members?                     @relation(fields: [member_id], references: [id])
-  payment_methods        payment_methods?             @relation(fields: [payment_method_id], references: [id])
-  profiles               profiles?                    @relation(fields: [recorded_by], references: [user_id])
+  description            String?                     @db.Text
+  payment_method_id      String?                     @db.Uuid
+  reference_id           String?                     @db.Text
+  status                 payment_transaction_status? @default(completed)
+  recorded_by            String?                     @db.Uuid
+  created_at             DateTime?                   @default(now()) @db.Timestamptz()
+  branches               branches                    @relation(fields: [branch_id], references: [id])
+  transaction_categories transaction_categories?     @relation(fields: [category_id], references: [id])
+  members                members?                    @relation(fields: [member_id], references: [id])
+  payment_methods        payment_methods?            @relation(fields: [payment_method_id], references: [id])
+  profiles               profiles?                   @relation(fields: [recorded_by], references: [user_id])
   referral_bonus_history referral_bonus_history[]
 
   @@map("transactions")
@@ -2192,16 +2194,18 @@ model user_notifications {
 }
 
 model user_roles {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String     @db.Uuid
-  role       user_role  // Direct enum storage instead of FK
-  branch_id  String?    @db.Uuid
-  gym_id     String?    @db.Uuid
-  team_role  String?    @db.Text
-  created_at DateTime?  @default(now()) @db.Timestamptz()
-  profiles   profiles   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  branches   branches?  @relation(fields: [branch_id], references: [id])
-  gyms       gyms?      @relation(fields: [gym_id], references: [id])
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  role       user_role // Direct enum storage instead of FK
+  branch_id  String?   @db.Uuid
+  gym_id     String?   @db.Uuid
+  team_role  String?   @db.Text
+  created_at DateTime? @default(now()) @db.Timestamptz()
+  profiles   profiles  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  branches   branches? @relation(fields: [branch_id], references: [id])
+  gyms       gyms?     @relation(fields: [gym_id], references: [id])
+  roles      roles?    @relation(fields: [rolesId], references: [id])
+  rolesId    String?   @db.Uuid
 
   @@unique([user_id, role, branch_id])
   @@index([role], map: "idx_user_roles_role")
@@ -2211,26 +2215,26 @@ model user_roles {
 }
 
 model whatsapp_templates {
-  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id            String?                  @db.Uuid
-  name                 String                   @db.Text
+  id                   String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id            String?                    @db.Uuid
+  name                 String                     @db.Text
   category             whatsapp_template_category
-  event                String                   @db.Text
-  template_type        whatsapp_template_type   @default(text)
-  header_type          String?                  @db.Text
-  header_content       String?                  @db.Text
-  body_text            String                   @db.Text
-  footer_text          String?                  @db.Text
-  buttons              Json?                    @default("[]") @db.JsonB
-  variables            Json?                    @default("[]") @db.JsonB
-  status               whatsapp_template_status? @default(pending)
-  provider_template_id String?                  @db.Text
-  is_active            Boolean?                 @default(true)
-  created_at           DateTime?                @default(now()) @db.Timestamptz()
-  updated_at           DateTime?                @updatedAt @db.Timestamptz()
-  created_by           String?                  @db.Uuid
-  branches             branches?                @relation(fields: [branch_id], references: [id])
-  creator              profiles?                @relation("creator", fields: [created_by], references: [user_id])
+  event                String                     @db.Text
+  template_type        whatsapp_template_type     @default(text)
+  header_type          String?                    @db.Text
+  header_content       String?                    @db.Text
+  body_text            String                     @db.Text
+  footer_text          String?                    @db.Text
+  buttons              Json?                      @default("[]") @db.JsonB
+  variables            Json?                      @default("[]") @db.JsonB
+  status               whatsapp_template_status?  @default(pending)
+  provider_template_id String?                    @db.Text
+  is_active            Boolean?                   @default(true)
+  created_at           DateTime?                  @default(now()) @db.Timestamptz()
+  updated_at           DateTime?                  @updatedAt @db.Timestamptz()
+  created_by           String?                    @db.Uuid
+  branches             branches?                  @relation(fields: [branch_id], references: [id])
+  creator              profiles?                  @relation("creator", fields: [created_by], references: [user_id])
 
   @@map("whatsapp_templates")
   @@schema("public")
@@ -2279,37 +2283,37 @@ model workout_plans {
 }
 
 model payment_gateways {
-  id                String                      @id @db.VarChar(50)
-  name              String                      @db.VarChar(100)
+  id                String                       @id @db.VarChar(50)
+  name              String                       @db.VarChar(100)
   type              payment_gateway_type
-  is_active         Boolean?                    @default(false)
+  is_active         Boolean?                     @default(false)
   environment       payment_gateway_environment? @default(sandbox)
-  api_key           String?                     @db.VarChar(500)
-  api_secret        String?                     @db.VarChar(500)
-  merchant_id       String?                     @db.VarChar(200)
-  webhook_secret    String?                     @db.VarChar(500)
-  additional_config Json?                       @db.JsonB
-  created_at        DateTime?                   @default(now()) @db.Timestamp(6)
-  updated_at        DateTime?                   @updatedAt @db.Timestamp(6)
+  api_key           String?                      @db.VarChar(500)
+  api_secret        String?                      @db.VarChar(500)
+  merchant_id       String?                      @db.VarChar(200)
+  webhook_secret    String?                      @db.VarChar(500)
+  additional_config Json?                        @db.JsonB
+  created_at        DateTime?                    @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?                    @updatedAt @db.Timestamp(6)
 
   @@map("payment_gateways")
   @@schema("public")
 }
 
 model payment_logs {
-  id                BigInt                      @id @default(autoincrement())
-  payment_id        String?                     @db.VarChar(50)
+  id                BigInt                     @id @default(autoincrement())
+  payment_id        String?                    @db.VarChar(50)
   gateway_type      payment_gateway_type
   log_type          payment_log_type
-  request_payload   Json?                       @db.JsonB
-  response_payload  Json?                       @db.JsonB
-  headers           Json?                       @db.JsonB
+  request_payload   Json?                      @db.JsonB
+  response_payload  Json?                      @db.JsonB
+  headers           Json?                      @db.JsonB
   status_code       Int?
   processing_status payment_processing_status? @default(received)
-  error_message     String?                     @db.Text
-  received_at       DateTime?                   @default(now()) @db.Timestamp(6)
-  processed_at      DateTime?                   @db.Timestamp(6)
-  payment           payments?                   @relation(fields: [payment_id], references: [id])
+  error_message     String?                    @db.Text
+  received_at       DateTime?                  @default(now()) @db.Timestamp(6)
+  processed_at      DateTime?                  @db.Timestamp(6)
+  payment           payments?                  @relation(fields: [payment_id], references: [id])
 
   @@index([payment_id], map: "idx_payment_logs")
   @@index([gateway_type, received_at], map: "idx_gateway_logs")
@@ -2420,18 +2424,18 @@ model payment_receipts {
 }
 
 model payment_analytics {
-  id                      BigInt                 @id @default(autoincrement())
-  date                    DateTime               @db.Date
-  gateway_type            payment_gateway_type
-  payment_type            payment_type
-  total_transactions      Int?                   @default(0)
-  successful_transactions Int?                   @default(0)
-  failed_transactions     Int?                   @default(0)
-  total_amount            Decimal?               @default(0.00) @db.Decimal(12, 2)
-  successful_amount       Decimal?               @default(0.00) @db.Decimal(12, 2)
-  average_transaction_value Decimal?            @default(0.00) @db.Decimal(10, 2)
-  success_rate            Decimal?               @default(0.00) @db.Decimal(5, 2)
-  created_at              DateTime?              @default(now()) @db.Timestamp(6)
+  id                        BigInt               @id @default(autoincrement())
+  date                      DateTime             @db.Date
+  gateway_type              payment_gateway_type
+  payment_type              payment_type
+  total_transactions        Int?                 @default(0)
+  successful_transactions   Int?                 @default(0)
+  failed_transactions       Int?                 @default(0)
+  total_amount              Decimal?             @default(0.00) @db.Decimal(12, 2)
+  successful_amount         Decimal?             @default(0.00) @db.Decimal(12, 2)
+  average_transaction_value Decimal?             @default(0.00) @db.Decimal(10, 2)
+  success_rate              Decimal?             @default(0.00) @db.Decimal(5, 2)
+  created_at                DateTime?            @default(now()) @db.Timestamp(6)
 
   @@unique([date, gateway_type, payment_type], map: "unique_analytics")
   @@index([date], map: "idx_analytics_date")
@@ -2441,30 +2445,30 @@ model payment_analytics {
 }
 
 model change_request_workflow {
-  id         String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  request_id String                  @db.Uuid
-  status_from String?                @db.VarChar(20)
-  status_to  String                  @db.VarChar(20)
-  changed_by String                  @db.Uuid
-  notes      String?                 @db.Text
-  created_at DateTime?               @default(now()) @db.Timestamptz()
-  request    trainer_change_requests @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  request_id  String                  @db.Uuid
+  status_from String?                 @db.VarChar(20)
+  status_to   String                  @db.VarChar(20)
+  changed_by  String                  @db.Uuid
+  notes       String?                 @db.Text
+  created_at  DateTime?               @default(now()) @db.Timestamptz()
+  request     trainer_change_requests @relation(fields: [request_id], references: [id], onDelete: Cascade)
 
   @@map("change_request_workflow")
   @@schema("public")
 }
 
 model member_trainer_preferences {
-  id                         String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  member_id                  String                                  @unique @db.Uuid
-  preferred_specialties      String[]                                @default([]) @db.Text
+  id                         String                                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id                  String                                       @unique @db.Uuid
+  preferred_specialties      String[]                                     @default([]) @db.Text
   preferred_gender           member_trainer_preferences_gender?
   preferred_experience_level member_trainer_preferences_experience_level? @default(any)
-  preferred_languages        String[]                                @default(["English"]) @db.Text
-  avoid_trainer_ids          String[]                                @default([]) @db.Text
-  max_hourly_rate            Decimal?                                @db.Decimal(10, 2)
-  preferred_time_slots       Json?                                   @db.JsonB
-  updated_at                 DateTime?                               @updatedAt @db.Timestamptz()
+  preferred_languages        String[]                                     @default(["English"]) @db.Text
+  avoid_trainer_ids          String[]                                     @default([]) @db.Text
+  max_hourly_rate            Decimal?                                     @db.Decimal(10, 2)
+  preferred_time_slots       Json?                                        @db.JsonB
+  updated_at                 DateTime?                                    @updatedAt @db.Timestamptz()
 
   @@map("member_trainer_preferences")
   @@schema("public")
@@ -2495,20 +2499,20 @@ model auto_assignment_config {
 }
 
 model trainer_reviews {
-  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  trainer_id             String              @db.Uuid
-  member_id              String              @db.Uuid
-  assignment_id          String?             @db.Uuid
+  id                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id             String               @db.Uuid
+  member_id              String               @db.Uuid
+  assignment_id          String?              @db.Uuid
   rating                 Int
-  review_text            String?             @db.Text
+  review_text            String?              @db.Text
   professionalism_rating Int?
   knowledge_rating       Int?
   communication_rating   Int?
-  is_verified            Boolean?            @default(false)
-  is_featured            Boolean?            @default(false)
-  created_at             DateTime?           @default(now()) @db.Timestamptz()
-  updated_at             DateTime?           @updatedAt @db.Timestamptz()
-  trainer                trainer_profiles    @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+  is_verified            Boolean?             @default(false)
+  is_featured            Boolean?             @default(false)
+  created_at             DateTime?            @default(now()) @db.Timestamptz()
+  updated_at             DateTime?            @updatedAt @db.Timestamptz()
+  trainer                trainer_profiles     @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
   assignment             trainer_assignments? @relation(fields: [assignment_id], references: [id], onDelete: SetNull)
 
   @@unique([trainer_id, member_id, assignment_id])
@@ -2517,25 +2521,25 @@ model trainer_reviews {
 }
 
 model payment_transactions {
-  id                       String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  member_id                String                       @db.Uuid
-  trainer_id               String?                      @db.Uuid
-  package_id               String?                      @db.Uuid
-  assignment_id            String?                      @db.Uuid
+  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id                String                      @db.Uuid
+  trainer_id               String?                     @db.Uuid
+  package_id               String?                     @db.Uuid
+  assignment_id            String?                     @db.Uuid
   transaction_type         transaction_kind
-  amount                   Decimal                      @db.Decimal(10, 2)
-  currency                 String?                      @default("USD") @db.VarChar(3)
-  payment_processor        String?                      @default("stripe") @db.VarChar(20)
-  payment_method           String?                      @db.VarChar(20)
-  processor_transaction_id String?                      @db.VarChar(255)
-  processor_fee            Decimal?                     @default(0.00) @db.Decimal(10, 2)
-  status                   payment_transaction_status?  @default(pending)
-  payment_metadata         Json?                        @db.JsonB
-  created_at               DateTime?                    @default(now()) @db.Timestamptz()
-  updated_at               DateTime?                    @updatedAt @db.Timestamptz()
-  trainer                  trainer_profiles?            @relation("trainer_transactions", fields: [trainer_id], references: [id], onDelete: SetNull)
-  package                  trainer_packages?            @relation("package_transactions", fields: [package_id], references: [id], onDelete: SetNull)
-  assignment               trainer_assignments?         @relation("assignment_transactions", fields: [assignment_id], references: [id], onDelete: SetNull)
+  amount                   Decimal                     @db.Decimal(10, 2)
+  currency                 String?                     @default("USD") @db.VarChar(3)
+  payment_processor        String?                     @default("stripe") @db.VarChar(20)
+  payment_method           String?                     @db.VarChar(20)
+  processor_transaction_id String?                     @db.VarChar(255)
+  processor_fee            Decimal?                    @default(0.00) @db.Decimal(10, 2)
+  status                   payment_transaction_status? @default(pending)
+  payment_metadata         Json?                       @db.JsonB
+  created_at               DateTime?                   @default(now()) @db.Timestamptz()
+  updated_at               DateTime?                   @updatedAt @db.Timestamptz()
+  trainer                  trainer_profiles?           @relation("trainer_transactions", fields: [trainer_id], references: [id], onDelete: SetNull)
+  package                  trainer_packages?           @relation("package_transactions", fields: [package_id], references: [id], onDelete: SetNull)
+  assignment               trainer_assignments?        @relation("assignment_transactions", fields: [assignment_id], references: [id], onDelete: SetNull)
 
   @@map("payment_transactions")
   @@schema("public")

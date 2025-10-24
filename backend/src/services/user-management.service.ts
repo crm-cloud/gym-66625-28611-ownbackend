@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import { hashPassword } from '../utils/crypto-utils.js';
 
 export interface CreateUserParams {
   email: string;
@@ -77,8 +76,8 @@ class UserManagementService {
         };
       }
 
-      // Hash password
-      const password_hash = await bcrypt.hash(password, 10);
+      // Hash password using crypto
+      const password_hash = hashPassword(password);
 
       // Create new profile
       const profile = await prisma.profiles.create({
@@ -141,8 +140,8 @@ class UserManagementService {
         };
       }
 
-      // Hash password
-      const password_hash = await bcrypt.hash(password, 10);
+      // Hash password using crypto
+      const password_hash = hashPassword(password);
 
       // Create profile
       const profile = await prisma.profiles.create({

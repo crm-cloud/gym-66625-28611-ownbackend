@@ -1,19 +1,22 @@
-import bcrypt from 'bcryptjs';
-
-const SALT_ROUNDS = 10;
+import { hashPassword, verifyPassword } from './crypto-utils';
 
 /**
- * Hash password with bcrypt
+ * Hash password with PBKDF2
+ * @param password The plain text password to hash
+ * @returns A hashed password string
  */
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
+export async function hashPasswordCrypto(password: string): Promise<string> {
+  return hashPassword(password);
 }
 
 /**
  * Compare password with hash
+ * @param password The plain text password to verify
+ * @param hash The stored hash to compare against
+ * @returns boolean indicating if the password matches the hash
  */
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  return verifyPassword(password, hash);
 }
 
 /**
@@ -43,3 +46,5 @@ export function validatePasswordStrength(password: string): { valid: boolean; er
     errors
   };
 }
+
+export { hashPassword, verifyPassword, updatePasswordHash } from './crypto-utils';

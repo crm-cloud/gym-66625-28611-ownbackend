@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/password';
+import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/crypto-utils';
 import { generateTokens, generateRandomToken, TokenPayload } from '../utils/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../config/email';
 import { ApiError } from '../middleware/errorHandler';
@@ -27,8 +27,8 @@ export class AuthService {
       throw new ApiError('User with this email already exists', 400);
     }
 
-    // Hash password
-    const passwordHash = await hashPassword(password);
+    // Hash password using crypto
+    const passwordHash = hashPassword(password);
 
     // Create user profile
     const user = await prisma.profiles.create({
@@ -92,8 +92,8 @@ export class AuthService {
       throw new ApiError('Invalid email or password', 401);
     }
 
-    // Verify password
-    const isValidPassword = await comparePassword(password, user.password_hash);
+    // Verify password using crypto
+    const isValidPassword = verifyPassword(password, user.password_hash);
     if (!isValidPassword) {
       throw new ApiError('Invalid email or password', 401);
     }
@@ -252,13 +252,13 @@ export class AuthService {
       throw new ApiError('Reset token has expired', 400);
     }
 
-    // Hash new password
-    const passwordHash = await hashPassword(newPassword);
+    // Hash new password using crypto
+    const newPasswordHash = await hashPassword(newPassword);
 
     // Update password
     await prisma.profiles.update({
       where: { user_id },
-      data: { password_hash: passwordHash }
+      data: { password_hash: newPasswordHash }
     });
 
     // Delete used token
@@ -284,8 +284,8 @@ export class AuthService {
       throw new ApiError('User not found', 404);
     }
 
-    // Verify current password
-    const isValidPassword = await comparePassword(currentPassword, user.password_hash);
+    // Verify current password using crypto
+    const isValidPassword = verifyPassword(currentPassword, user.password_hash);
     if (!isValidPassword) {
       throw new ApiError('Current password is incorrect', 401);
     }
@@ -296,13 +296,13 @@ export class AuthService {
       throw new ApiError(passwordValidation.errors.join(', '), 400);
     }
 
-    // Hash new password
-    const passwordHash = await hashPassword(newPassword);
+    // Hash new password using crypto
+    const newPasswordHash = await hashPassword(newPassword);
 
     // Update password
     await prisma.profiles.update({
       where: { user_id: userId },
-      data: { password_hash: passwordHash }
+      data: { password_hash: newPasswordHash }
     });
 
     return {
