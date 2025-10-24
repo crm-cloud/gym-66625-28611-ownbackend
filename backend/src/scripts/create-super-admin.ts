@@ -70,22 +70,6 @@ async function createSuperAdmin() {
   // Password validation is now handled in the loop above
   
   try {
-    // Check if super_admin role exists, if not create it
-    let superAdminRole = await prisma.roles.findFirst({
-      where: { name: 'super_admin' }
-    });
-
-    if (!superAdminRole) {
-      console.log('ℹ️ Creating super_admin role...');
-      superAdminRole = await prisma.roles.create({
-        data: {
-          name: 'super_admin',
-          description: 'Super Administrator with full system access'
-        }
-      });
-      console.log('✅ Created super_admin role');
-    }
-
     const hashedPassword = await hashPassword(password);
     const userId = randomUUID();
 
@@ -93,71 +77,67 @@ async function createSuperAdmin() {
     const existingUser = await prisma.profiles.findFirst({
       where: { email },
       include: {
-        user_roles: {
-          include: {
-            roles: true
-          }
-        }
+        user_roles: true
       }
     });
 
     if (existingUser) {
-      console.log('ℹ️ User with this email already exists, updating to admin...');
+      console.log('ℹ️ User with this email already exists, updating to super_admin...');
       
-      // Update user to be active
+      // Update user profile
       await prisma.profiles.update({
         where: { user_id: existingUser.user_id },
         data: {
-          is_active: true
+          full_name: fullName,
+          password_hash: hashedPassword,
+          is_active: true,
+          email_verified: true,
         }
       });
 
-      // Remove any existing roles and add SUPER_ADMIN role
+      // Remove any existing roles
       await prisma.user_roles.deleteMany({
         where: { user_id: existingUser.user_id }
       });
       
-      // Add the super_admin role
+      // Add the super_admin role (now using enum directly)
       await prisma.user_roles.create({
         data: {
+          id: randomUUID(),
           user_id: existingUser.user_id,
-          role_id: superAdminRole.id
+          role: 'super_admin',  // Direct enum, not role_id
+          created_at: new Date(),
         }
       });
       
       console.log(`✅ Updated existing user ${email} to super_admin`);
       console.log('👑 Admin email:', email);
+      console.log('🔑 Password updated');
       return;
     }
     
-    // If we get here, we need to create a new user
+    // Create new super admin user
     console.log('ℹ️ Creating new super admin user...');
-    
-    if (!superAdminRole) {
-      throw new Error('Super admin role not found');
-    }
 
-    // Create the profile first
+    // Create the profile
     const newSuperAdmin = await prisma.profiles.create({
       data: {
         user_id: userId,
         email,
-        full_name: fullName
-      },
-      include: {
-        user_roles: {
-          include: {
-            roles: true
-          }
-        }
+        full_name: fullName,
+        password_hash: hashedPassword,
+        is_active: true,
+        email_verified: true,
       }
     });
     
-    // Then assign the super_admin role
+    // Assign the super_admin role (using enum directly)
     await prisma.user_roles.create({
       data: {
+        id: randomUUID(),
         user_id: userId,
-        role_id: superAdminRole.id
+        role: 'super_admin',  // Direct enum, not role_id
+        created_at: new Date(),
       }
     });
 

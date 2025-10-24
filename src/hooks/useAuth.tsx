@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Check if user has a valid session on mount
     const checkSession = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
 
       if (!token) {
         setAuthState(prev => ({
@@ -51,17 +51,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
         // Validate token and get user profile
-        const response = await api.get('/api/auth/me');
+        const response = await api.get('/auth/me');
         const userData = response.data;
 
         setAuthState({
           user: {
-            id: userData.id,
+            id: userData.id || userData.user_id,
             email: userData.email,
             name: userData.name || userData.full_name,
             role: userData.role as UserRole,
             teamRole: userData.teamRole || userData.team_role,
-            avatar: userData.avatar,
+            avatar: userData.avatar || userData.avatar_url,
             phone: userData.phone,
             joinDate: userData.createdAt?.split('T')[0] || userData.created_at?.split('T')[0],
             branchId: userData.branchId || userData.branch_id,
@@ -76,7 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error: any) {
         console.error('Session validation failed:', error);
         // Clear invalid token
-        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         delete api.defaults.headers.common['Authorization'];
         
         setAuthState({
@@ -106,8 +107,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Invalid response from server');
       }
 
-      // Store JWT token with consistent key
+      // Store JWT tokens
       localStorage.setItem('access_token', access_token);
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
+      }
       
       // Set default auth header for future requests
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -118,14 +122,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: userData.email,
         name: userData.full_name,
         role: userData.role as UserRole,
-        teamRole: userData.teamRole || userData.team_role,
-        avatar: userData.avatar,
+        teamRole: userData.team_role,
+        avatar: userData.avatar_url,
         phone: userData.phone,
-        joinDate: userData.createdAt?.split('T')[0] || userData.created_at?.split('T')[0],
-        branchId: userData.branchId || userData.branch_id,
-        branchName: userData.branchName || userData.branch_name,
-        gym_id: userData.gymId || userData.gym_id,
-        gymName: userData.gymName || userData.gym_name
+        joinDate: userData.created_at?.split('T')[0],
+        branchId: userData.branch_id,
+        branchName: userData.branch_name,
+        gym_id: userData.gym_id,
+        gymName: userData.gym_name
       };
 
       setAuthState({
@@ -161,46 +165,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userData: any): Promise<void> => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await api.post('/api/auth/register', {
+      const response = await api.post('/auth/register', {
         email,
         password,
-        name: userData.name || userData.full_name,
+        full_name: userData.name || userData.full_name,
+        phone: userData.phone,
         role: userData.role || 'member',
-        ...userData
       });
 
-      // After successful registration, log the user in automatically
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      const { access_token, refresh_token, user: userResponse } = response.data;
+
+      // Store tokens if provided
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token);
+        }
+        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         
         setAuthState({
           user: {
-            id: response.data.user.id,
-            email: response.data.user.email,
-            name: response.data.user.name || response.data.user.full_name,
-            role: response.data.user.role,
-            teamRole: response.data.user.teamRole,
-            avatar: response.data.user.avatar,
-            phone: response.data.user.phone,
+            id: userResponse.user_id,
+            email: userResponse.email,
+            name: userResponse.full_name,
+            role: 'member' as UserRole,
+            phone: userResponse.phone,
             joinDate: new Date().toISOString().split('T')[0],
-            branchId: response.data.user.branchId,
-            branchName: response.data.user.branchName,
-            gym_id: response.data.user.gymId,
-            gymName: response.data.user.gymName
           },
           isAuthenticated: true,
           isLoading: false,
           error: null
         });
+      } else {
+        // Registration successful but needs email verification
+        setAuthState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: null
+        }));
       }
 
       toast({
         title: "Account created",
-        description: response.data.message || "You have been successfully registered and logged in.",
+        description: response.data.message || "Registration successful. Please check your email to verify your account.",
       });
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Sign up failed';
@@ -222,23 +232,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    const token = localStorage.getItem('token');
-    
     try {
-      // Call backend logout endpoint to invalidate the token
-      if (token) {
-        await api.post('/api/auth/logout', {}, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
+      // Call backend logout endpoint
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout API error:', error);
       // Continue with local cleanup even if API call fails
     } finally {
-      // Clear token and auth header
-      localStorage.removeItem('token');
+      // Clear tokens and auth header
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       delete api.defaults.headers.common['Authorization'];
       
       // Reset auth state

@@ -12,6 +12,11 @@ export function authorize(allowedRoles: string[]) {
 
     const userRole = req.user.role;
     
+    // Super admin bypass - has access to everything
+    if (userRole === 'super_admin') {
+      return next();
+    }
+    
     if (!userRole || !allowedRoles.includes(userRole)) {
       return next(new ApiError('Insufficient permissions', 403));
     }

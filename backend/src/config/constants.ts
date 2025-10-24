@@ -2,12 +2,14 @@
 export const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
-// User Roles
+// User Roles - Must match user_role enum in schema.prisma
 export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
+  MANAGER: 'manager',
   TRAINER: 'trainer',
-  MEMBER: 'member',
   STAFF: 'staff',
+  MEMBER: 'member',
 } as const;
 
 // Default pagination values

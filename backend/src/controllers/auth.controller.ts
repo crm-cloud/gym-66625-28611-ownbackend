@@ -55,8 +55,10 @@ class AuthController {
       // Assign default 'member' role
       await prisma.user_roles.create({
         data: {
+          id: crypto.randomUUID(),
           user_id: user.user_id,
           role: 'member',
+          created_at: new Date(),
         }
       });
 
@@ -92,20 +94,21 @@ class AuthController {
     try {
       const validatedData = loginSchema.parse(req.body);
 
-      // Find user
+      // Find user with roles
       const user = await prisma.profiles.findUnique({
         where: { email: validatedData.email },
         include: {
-          user_roles: true,
+          user_roles: {
+            include: {
+              branches: { select: { name: true, id: true } },
+              gyms: { select: { name: true, id: true } },
+            }
+          },
         }
       });
 
-      if (!user) {
+      if (!user || !user.password_hash) {
         throw new ApiError('Invalid credentials', 401);
-      }
-
-      if (!user.is_active) {
-        throw new ApiError('Account is inactive', 403);
       }
 
       // Verify password
@@ -115,14 +118,21 @@ class AuthController {
         throw new ApiError('Invalid credentials', 401);
       }
 
-      // Get primary role
-      const primaryRole = user.user_roles[0];
+      if (!user.is_active) {
+        throw new ApiError('Account is inactive. Please verify your email.', 403);
+      }
 
-      // Generate tokens
+      // Get primary role from user_roles (now has .role field)
+      const primaryRole = user.user_roles[0];
+      
+      // Fallback to profiles.role if no user_roles exist
+      const userRole = primaryRole?.role || user.role || 'member';
+
+      // Generate tokens with correct role
       const tokenPayload = {
         userId: user.user_id,
         email: user.email,
-        role: primaryRole?.role,
+        role: userRole,
         teamRole: primaryRole?.team_role || undefined,
         branchId: primaryRole?.branch_id || undefined,
         gymId: primaryRole?.gym_id || undefined,
@@ -137,10 +147,12 @@ class AuthController {
           user_id: user.user_id,
           email: user.email,
           full_name: user.full_name,
-          role: primaryRole?.role,
+          role: userRole,
           team_role: primaryRole?.team_role,
           branch_id: primaryRole?.branch_id,
+          branch_name: primaryRole?.branches?.name,
           gym_id: primaryRole?.gym_id,
+          gym_name: primaryRole?.gyms?.name,
         },
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -178,30 +190,42 @@ class AuthController {
         include: {
           user_roles: {
             include: {
-              branch: true,
-              gym: true,
+              branches: { select: { name: true, id: true } },
+              gyms: { select: { name: true, id: true } },
             }
           },
         },
-        select: {
-          user_id: true,
-          email: true,
-          full_name: true,
-          phone: true,
-          date_of_birth: true,
-          gender: true,
-          avatar_url: true,
-          email_verified: true,
-          is_active: true,
-          user_roles: true,
-        }
       });
 
       if (!user) {
         throw new ApiError('User not found', 404);
       }
 
-      res.json(user);
+      const primaryRole = user.user_roles[0];
+
+      res.json({
+        id: user.user_id,
+        user_id: user.user_id,
+        email: user.email,
+        name: user.full_name,
+        full_name: user.full_name,
+        phone: user.phone,
+        role: primaryRole?.role || user.role,
+        team_role: primaryRole?.team_role,
+        avatar: user.avatar_url,
+        avatar_url: user.avatar_url,
+        branch_id: primaryRole?.branch_id,
+        branch_name: primaryRole?.branches?.name,
+        branchId: primaryRole?.branch_id,
+        branchName: primaryRole?.branches?.name,
+        gym_id: primaryRole?.gym_id,
+        gym_name: primaryRole?.gyms?.name,
+        gymId: primaryRole?.gym_id,
+        gymName: primaryRole?.gyms?.name,
+        email_verified: user.email_verified,
+        is_active: user.is_active,
+        created_at: user.created_at,
+      });
     } catch (error) {
       next(error);
     }

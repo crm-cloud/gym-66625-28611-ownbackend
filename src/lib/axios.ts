@@ -13,20 +13,18 @@ export const api = axios.create({
 
 // Request interceptor for auth tokens
 api.interceptors.request.use((config) => {
-  // Skip adding auth header for login/register endpoints
-  const publicEndpoints = ['/auth/login', '/auth/register'];
-  if (publicEndpoints.some(endpoint => config.url?.includes(endpoint))) {
-    return config;
+  // Public endpoints that don't require authentication
+  const publicEndpoints = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/verify-email', '/auth/request-password-reset', '/auth/reset-password'];
+  const isPublic = publicEndpoints.some(endpoint => config.url?.endsWith(endpoint));
+  
+  if (!isPublic) {
+    // Add JWT token if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
-
-  // Add JWT token if available
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    // If no token and not a public endpoint, reject the request
-    return Promise.reject(new Error('No authentication token found'));
-  }
+  
   return config;
 });
 
@@ -45,7 +43,7 @@ api.interceptors.response.use(
         
         if (refreshToken) {
           // Try to refresh the access token
-          const response = await axios.post(`${BACKEND_URL}/api/auth/refresh`, {
+          const response = await axios.post(`${BACKEND_URL}/auth/refresh`, {
             refresh_token: refreshToken
           });
 

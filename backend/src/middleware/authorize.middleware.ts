@@ -29,6 +29,11 @@ export const authorize = (allowedRoles: Role[] = []) => {
       });
     }
 
+    // Super admin bypass - has access to everything
+    if (req.user.role === ROLES.SUPER_ADMIN) {
+      return next();
+    }
+
     // If no specific roles are required, allow access
     if (allowedRoles.length === 0) {
       return next();
