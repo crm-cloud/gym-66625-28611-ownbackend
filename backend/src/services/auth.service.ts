@@ -12,6 +12,9 @@ export class AuthService {
   async register(input: RegisterInput) {
     const { email, password, fullName, phone, role = 'member', branchId } = input;
 
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Validate password strength
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.valid) {
@@ -20,7 +23,7 @@ export class AuthService {
 
     // Check if user already exists
     const existingUser = await prisma.profiles.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingUser) {
@@ -34,7 +37,7 @@ export class AuthService {
     const user = await prisma.profiles.create({
       data: {
         user_id: crypto.randomUUID(),
-        email,
+        email: normalizedEmail,
         password_hash: passwordHash,
         full_name: fullName,
         phone,
@@ -60,7 +63,7 @@ export class AuthService {
 
     // Send verification email
     try {
-      await sendVerificationEmail(email, verificationToken);
+      await sendVerificationEmail(normalizedEmail, verificationToken);
     } catch (error) {
       console.error('Failed to send verification email:', error);
       // Don't fail registration if email fails
@@ -79,9 +82,12 @@ export class AuthService {
   async login(input: LoginInput) {
     const { email, password } = input;
 
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user
     const user = await prisma.profiles.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: {
         branches: true,
         gyms: true
@@ -186,9 +192,12 @@ export class AuthService {
    * Request password reset
    */
   async requestPasswordReset(email: string) {
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+    
     // Find user
     const user = await prisma.profiles.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     // Don't reveal if user exists
@@ -213,7 +222,7 @@ export class AuthService {
 
     // Send reset email
     try {
-      await sendPasswordResetEmail(email, resetToken);
+      await sendPasswordResetEmail(normalizedEmail, resetToken);
     } catch (error) {
       console.error('Failed to send reset email:', error);
     }
