@@ -1562,16 +1562,10 @@ model profiles {
   full_name                    String?                        @db.Text
   avatar_url                   String?                        @db.Text
   phone                        String?                        @db.Text
-  role                         user_role                      @default(member)
-  team_role                    String?                        @db.Text
-  branch_id                    String?                        @db.Uuid
-  gym_id                       String?                        @db.Uuid
   is_active                    Boolean?                       @default(true)
   email_verified               Boolean?                       @default(false)
   created_at                   DateTime?                      @default(now()) @db.Timestamptz()
   updated_at                   DateTime?                      @updatedAt @db.Timestamptz()
-  branches                     branches?                      @relation(fields: [branch_id], references: [id])
-  gym                          gyms?                          @relation("gym_profiles", fields: [gym_id], references: [id])
   ai_insights                  ai_insights[]
   analytics_events             analytics_events[]
   created_announcements        announcements[]
@@ -1621,6 +1615,8 @@ model profiles {
   created_whatsapp_templates   whatsapp_templates[]           @relation("creator")
   created_workout_plans        workout_plans[]
   payment_gateway_transactions payment_gateway_transactions[]
+  admin_subscriptions          admin_subscriptions[]
+  assigned_subscriptions       admin_subscriptions[]          @relation("assigned_by")
 
   @@map("profiles")
   @@schema("public")
@@ -1812,6 +1808,7 @@ model subscription_plans {
   max_staff     Int?
   is_active     Boolean? @default(true)
   gyms          gyms[]
+  admin_subscriptions admin_subscriptions[]
 
   @@map("subscription_plans")
   @@schema("public")
@@ -2197,7 +2194,7 @@ model user_notifications {
 model user_roles {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String    @db.Uuid
-  role       user_role // Direct enum storage instead of FK
+  role       user_role
   branch_id  String?   @db.Uuid
   gym_id     String?   @db.Uuid
   team_role  String?   @db.Text
@@ -2205,13 +2202,32 @@ model user_roles {
   profiles   profiles  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   branches   branches? @relation(fields: [branch_id], references: [id])
   gyms       gyms?     @relation(fields: [gym_id], references: [id])
-  roles      roles?    @relation(fields: [rolesId], references: [id])
-  rolesId    String?   @db.Uuid
 
   @@unique([user_id, role, branch_id])
   @@index([role], map: "idx_user_roles_role")
   @@index([user_id], map: "idx_user_roles_user_id")
   @@map("user_roles")
+  @@schema("public")
+}
+
+model admin_subscriptions {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admin_id              String              @db.Uuid
+  subscription_plan_id  String              @db.Uuid
+  assigned_by           String?             @db.Uuid
+  assigned_at           DateTime?           @default(now()) @db.Timestamptz()
+  status                String?             @default("active") @db.Text
+  notes                 String?             @db.Text
+  created_at            DateTime?           @default(now()) @db.Timestamptz()
+  updated_at            DateTime?           @updatedAt @db.Timestamptz()
+  admin                 profiles            @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+  subscription_plan     subscription_plans  @relation(fields: [subscription_plan_id], references: [id])
+  assigner              profiles?           @relation("assigned_by", fields: [assigned_by], references: [user_id])
+
+  @@unique([admin_id, subscription_plan_id])
+  @@index([admin_id], map: "idx_admin_subscriptions_admin")
+  @@index([subscription_plan_id], map: "idx_admin_subscriptions_plan")
+  @@map("admin_subscriptions")
   @@schema("public")
 }
 

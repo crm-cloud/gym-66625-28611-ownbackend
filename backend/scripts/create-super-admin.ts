@@ -37,7 +37,6 @@ async function createSuperAdmin() {
           where: { user_id: existingAdmin.user_id },
           data: { 
             password_hash: passwordHash,
-            role: 'super_admin',
             is_active: true,
             email_verified: true
           }
@@ -50,7 +49,7 @@ async function createSuperAdmin() {
 
     // Create the super admin user
     await prisma.$transaction(async (tx) => {
-      // Create the profile with password hash
+      // Create the profile with password hash (NO role, gym_id, or branch_id)
       const profile = await tx.profiles.create({
         data: {
           user_id: userId,
@@ -61,18 +60,18 @@ async function createSuperAdmin() {
           avatar_url: 'https://ui-avatars.com/api/?name=Super+Admin&background=random',
           is_active: true,
           email_verified: true,
-          role: 'super_admin',
           created_at: new Date(),
           updated_at: new Date(),
         }
       });
 
-      // Create user_roles entry with role
+      // Create user_roles entry with 'super_admin' role (NO gym_id or branch_id)
       await tx.user_roles.create({
         data: {
           id: uuidv4(),
           user_id: userId,
           role: 'super_admin',
+          // Super admins have NO gym_id or branch_id - they manage all gyms
           created_at: new Date(),
         }
       });
@@ -88,6 +87,8 @@ async function createSuperAdmin() {
     console.log('\n⚠️  IMPORTANT: Change password after first login!');
     console.log('📧 Email verified: true');
     console.log('✅ Account active: true');
+    console.log('🔐 Role: super_admin (stored in user_roles table)');
+    console.log('🌍 Scope: Global (no gym or branch assignment)');
 
   } catch (error) {
     console.error('❌ Error creating super admin:', error);

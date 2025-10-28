@@ -71,6 +71,7 @@ import analyticsEventsRoutes from './routes/analytics-events.routes';
 import teamRoutes from './routes/team.routes';
 import templatesRoutes from './routes/templates.routes';
 import userManagementRoutes from './routes/user-management.routes';
+import adminManagementRoutes from './routes/admin-management.routes';
 // Phase 13: API Architecture & Auth Enhancements
 import mfaRoutes from './routes/mfa.routes';
 import oauthRoutes from './routes/oauth.routes';
@@ -203,6 +204,7 @@ v1Router.use('/templates', templatesRoutes);
 
 // Admin routes with IP whitelisting
 v1Router.use('/user-management', adminIpWhitelist, userManagementRoutes);
+v1Router.use('/admin-management', adminManagementRoutes);
 
 // Mount v1 router
 app.use('/api/v1', v1Router);

@@ -31,7 +31,6 @@ async function verifySuperAdmin() {
     console.log('  Password hash length:', user.password_hash?.length || 0);
     console.log('  Is active:', user.is_active);
     console.log('  Email verified:', user.email_verified);
-    console.log('  Profile role:', user.role);
     console.log('  User roles:');
     user.user_roles.forEach(r => {
       console.log('    -', {

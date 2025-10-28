@@ -104,6 +104,13 @@ class AuthController {
               gyms: { select: { name: true, id: true } },
             }
           },
+          owned_gyms: {
+            select: {
+              id: true,
+              name: true,
+              status: true
+            }
+          }
         }
       });
 
@@ -122,20 +129,32 @@ class AuthController {
         throw new ApiError('Account is inactive. Please verify your email.', 403);
       }
 
-      // Get primary role from user_roles (now has .role field)
+      // Get primary role from user_roles
       const primaryRole = user.user_roles[0];
       
-      // Fallback to profiles.role if no user_roles exist
-      const userRole = primaryRole?.role || user.role || 'member';
+      if (!primaryRole) {
+        throw new ApiError('User has no assigned role. Please contact support.', 403);
+      }
 
-      // Generate tokens with correct role
+      const userRole = primaryRole.role;
+
+      // For admins, use their owned gym if they have one
+      let gymId = primaryRole.gym_id;
+      let gymName = primaryRole.gyms?.name;
+      
+      if (userRole === 'admin' && user.owned_gyms.length > 0) {
+        gymId = user.owned_gyms[0].id;
+        gymName = user.owned_gyms[0].name;
+      }
+
+      // Generate tokens with correct role from user_roles
       const tokenPayload = {
         userId: user.user_id,
         email: user.email,
         role: userRole,
-        teamRole: primaryRole?.team_role || undefined,
-        branchId: primaryRole?.branch_id || undefined,
-        gymId: primaryRole?.gym_id || undefined,
+        teamRole: primaryRole.team_role || undefined,
+        branchId: primaryRole.branch_id || undefined,
+        gymId: gymId || undefined,
       };
 
       const accessToken = generateAccessToken(tokenPayload);
@@ -148,11 +167,11 @@ class AuthController {
           email: user.email,
           full_name: user.full_name,
           role: userRole,
-          team_role: primaryRole?.team_role,
-          branch_id: primaryRole?.branch_id,
-          branch_name: primaryRole?.branches?.name,
-          gym_id: primaryRole?.gym_id,
-          gym_name: primaryRole?.gyms?.name,
+          team_role: primaryRole.team_role,
+          branch_id: primaryRole.branch_id,
+          branch_name: primaryRole.branches?.name,
+          gym_id: gymId,
+          gym_name: gymName,
         },
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -194,6 +213,13 @@ class AuthController {
               gyms: { select: { name: true, id: true } },
             }
           },
+          owned_gyms: {
+            select: {
+              id: true,
+              name: true,
+              status: true
+            }
+          }
         },
       });
 
@@ -203,6 +229,19 @@ class AuthController {
 
       const primaryRole = user.user_roles[0];
 
+      if (!primaryRole) {
+        throw new ApiError('User has no assigned role', 403);
+      }
+
+      // For admins, use their owned gym if they have one
+      let gymId = primaryRole.gym_id;
+      let gymName = primaryRole.gyms?.name;
+      
+      if (primaryRole.role === 'admin' && user.owned_gyms.length > 0) {
+        gymId = user.owned_gyms[0].id;
+        gymName = user.owned_gyms[0].name;
+      }
+
       res.json({
         id: user.user_id,
         user_id: user.user_id,
@@ -210,18 +249,18 @@ class AuthController {
         name: user.full_name,
         full_name: user.full_name,
         phone: user.phone,
-        role: primaryRole?.role || user.role,
-        team_role: primaryRole?.team_role,
+        role: primaryRole.role,
+        team_role: primaryRole.team_role,
         avatar: user.avatar_url,
         avatar_url: user.avatar_url,
-        branch_id: primaryRole?.branch_id,
-        branch_name: primaryRole?.branches?.name,
-        branchId: primaryRole?.branch_id,
-        branchName: primaryRole?.branches?.name,
-        gym_id: primaryRole?.gym_id,
-        gym_name: primaryRole?.gyms?.name,
-        gymId: primaryRole?.gym_id,
-        gymName: primaryRole?.gyms?.name,
+        branch_id: primaryRole.branch_id,
+        branch_name: primaryRole.branches?.name,
+        branchId: primaryRole.branch_id,
+        branchName: primaryRole.branches?.name,
+        gym_id: gymId,
+        gym_name: gymName,
+        gymId: gymId,
+        gymName: gymName,
         email_verified: user.email_verified,
         is_active: user.is_active,
         created_at: user.created_at,
