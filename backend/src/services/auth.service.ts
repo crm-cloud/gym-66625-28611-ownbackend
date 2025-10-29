@@ -125,13 +125,20 @@ export class AuthService {
       throw new ApiError('Account is inactive. Please verify your email.', 401);
     }
 
+    // Get primary role (first role assignment, or default to member)
+    const primaryRole = user.user_roles?.[0] || { 
+      role: 'member' as const, 
+      branch_id: null, 
+      gym_id: null 
+    };
+
     // Generate tokens
     const payload: TokenPayload = {
       userId: user.user_id,
       email: user.email,
-      role: user.role || 'member',
-      branchId: user.branch_id,
-      gymId: user.gym_id
+      role: primaryRole.role,
+      branchId: primaryRole.branch_id,
+      gymId: primaryRole.gym_id
     };
 
     const tokens = generateTokens(payload);
@@ -142,13 +149,13 @@ export class AuthService {
         id: user.user_id,
         email: user.email,
         name: user.full_name,
-        role: user.role,
+        role: primaryRole.role,
         phone: user.phone,
         avatar: user.avatar_url,
-        branchId: user.branch_id,
-        branchName: user.branches?.name,
-        gymId: user.gym_id,
-        gymName: user.gyms?.name,
+        branchId: primaryRole.branch_id,
+        branchName: primaryRole.branches?.name,
+        gymId: primaryRole.gym_id,
+        gymName: primaryRole.gyms?.name || user.owned_gyms?.[0]?.name,
         emailVerified: user.email_verified
       }
     };
@@ -342,8 +349,15 @@ export class AuthService {
     const user = await prisma.profiles.findUnique({
       where: { user_id: userId },
       include: {
-        branches: true,
-        gyms: true
+        user_roles: {
+          include: {
+            branches: { select: { name: true, id: true } },
+            gyms: { select: { name: true, id: true } }
+          }
+        },
+        owned_gyms: {
+          select: { id: true, name: true }
+        }
       }
     });
 
@@ -351,17 +365,26 @@ export class AuthService {
       throw new ApiError('User not found', 404);
     }
 
+    // Get primary role
+    const primaryRole = user.user_roles?.[0] || { 
+      role: 'member' as const, 
+      branch_id: null, 
+      gym_id: null,
+      branches: null,
+      gyms: null
+    };
+
     return {
       id: user.user_id,
       email: user.email,
       name: user.full_name,
-      role: user.role,
+      role: primaryRole.role,
       phone: user.phone,
       avatar: user.avatar_url,
-      branchId: user.branch_id,
-      branchName: user.branches?.name,
-      gymId: user.gym_id,
-      gymName: user.gyms?.name,
+      branchId: primaryRole.branch_id,
+      branchName: primaryRole.branches?.name,
+      gymId: primaryRole.gym_id,
+      gymName: primaryRole.gyms?.name || user.owned_gyms?.[0]?.name,
       emailVerified: user.email_verified,
       isActive: user.is_active
     };

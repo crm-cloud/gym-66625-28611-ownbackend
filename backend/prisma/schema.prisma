@@ -707,7 +707,6 @@ model branches {
   // Relations to other models
   payment_gateway_configs      payment_gateway_configs[]
   payment_gateway_transactions payment_gateway_transactions[]
-  profiles_profiles            profiles[]
   referral_settings            referral_settings[]
   system_settings              system_settings[]
   trainer_package_rates        trainer_package_rates[]
@@ -966,7 +965,6 @@ model gyms {
   gym_usage                    gym_usage[]
   payment_gateway_configs      payment_gateway_configs[]
   payment_gateway_transactions payment_gateway_transactions[]
-  profiles_gym                 profiles[]                     @relation("gym_profiles")
   user_roles                   user_roles[]
 
   @@map("gyms")
@@ -1772,7 +1770,6 @@ model roles {
   description      String?            @db.Text
   scope            role_scope         @default(branch)
   role_permissions role_permissions[]
-  user_roles       user_roles[]
 
   @@map("roles")
   @@schema("public")
