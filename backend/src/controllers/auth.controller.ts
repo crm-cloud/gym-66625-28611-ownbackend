@@ -40,15 +40,25 @@ class AuthController {
       // Hash password using crypto
       const passwordHash = hashPassword(validatedData.password);
 
-      // Create user
+      // Create user profile
+      const userId = crypto.randomUUID();
       const user = await prisma.profiles.create({
         data: {
+          user_id: userId,
           email: validatedData.email,
           full_name: validatedData.full_name,
           phone: validatedData.phone,
           password_hash: passwordHash,
           email_verified: false,
           is_active: true,
+        }
+      });
+
+      // Create default member role for new registrations
+      await prisma.user_roles.create({
+        data: {
+          user_id: userId,
+          role: 'member' as any,
         }
       });
 

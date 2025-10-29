@@ -33,18 +33,27 @@ export class AuthService {
     // Hash password using crypto
     const passwordHash = hashPassword(password);
 
-    // Create user profile
+    // Create user profile (without role - role goes in user_roles table)
+    const userId = crypto.randomUUID();
     const user = await prisma.profiles.create({
       data: {
-        user_id: crypto.randomUUID(),
+        user_id: userId,
         email: normalizedEmail,
         password_hash: passwordHash,
         full_name: fullName,
         phone,
-        role,
-        branch_id: branchId,
         is_active: false, // Require email verification
         email_verified: false
+      }
+    });
+
+    // Create user role entry (RBAC)
+    await prisma.user_roles.create({
+      data: {
+        user_id: userId,
+        role: role as any, // 'member', 'admin', etc.
+        branch_id: branchId,
+        gym_id: null, // Will be set later when user joins a gym
       }
     });
 
@@ -85,12 +94,19 @@ export class AuthService {
     // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user
+    // Find user with roles (RBAC structure)
     const user = await prisma.profiles.findUnique({
       where: { email: normalizedEmail },
       include: {
-        branches: true,
-        gyms: true
+        user_roles: {
+          include: {
+            branches: { select: { name: true, id: true } },
+            gyms: { select: { name: true, id: true } }
+          }
+        },
+        owned_gyms: {
+          select: { id: true, name: true, status: true }
+        }
       }
     });
 

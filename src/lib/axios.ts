@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use backend URL from environment or default to localhost
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000') + '/api/v1';
+// Use backend URL from environment or default to localhost:3001 (backend port)
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001') + '/api/v1';
 
 export const api = axios.create({
   baseURL: BACKEND_URL,
