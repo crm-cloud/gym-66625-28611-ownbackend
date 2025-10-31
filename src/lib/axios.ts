@@ -15,7 +15,8 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   // Public endpoints that don't require authentication
   const publicEndpoints = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/verify-email', '/auth/request-password-reset', '/auth/reset-password'];
-  const isPublic = publicEndpoints.some(endpoint => config.url?.endsWith(endpoint));
+  // Check if the URL ends with any of the public endpoints
+  const isPublic = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
   
   if (!isPublic) {
     // Add JWT token if available

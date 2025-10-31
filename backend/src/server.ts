@@ -88,16 +88,37 @@ app.use(helmet());
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+// Enhanced CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('🔍 [CORS] Origin:', origin);
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
+      console.warn('⚠️ [CORS] Blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count']
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`🌐 [${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log('📦 Headers:', JSON.stringify(req.headers, null, 2));
+  if (req.method !== 'GET') {
+    console.log('📝 Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({

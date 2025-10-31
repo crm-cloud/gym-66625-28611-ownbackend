@@ -718,6 +718,7 @@ model branches {
   notification_logs            notification_logs[]
   biometric_devices            biometric_devices[]
   branch_analytics             branch_analytics[]
+  profiles_profiles            profiles[]                     @relation("branch_profiles")
   diet_plans                   diet_plans[]
   discount_codes               discount_codes[]
   feedback                     feedback[]
@@ -966,6 +967,7 @@ model gyms {
   payment_gateway_configs      payment_gateway_configs[]
   payment_gateway_transactions payment_gateway_transactions[]
   user_roles                   user_roles[]
+  profiles_gym                 profiles[]                     @relation("gym_profiles")
 
   @@map("gyms")
   @@schema("public")
@@ -1592,6 +1594,10 @@ model profiles {
   member_profile               members?
   requested_freezes            membership_freeze_requests[]   @relation("requested_freezes")
   reviewed_freezes             membership_freeze_requests[]   @relation("reviewed_freezes")
+  
+  // Relations from branches and gyms
+  branches                    branches[]                     @relation("branch_profiles")
+  gyms                        gyms[]                         @relation("gym_profiles")
   notification_preferences     notification_preferences?
   recorded_payments            payments[]                     @relation("recorded_by")
   user_progress_entries        progress_entries[]             @relation("user_progress")
@@ -1770,6 +1776,7 @@ model roles {
   description      String?            @db.Text
   scope            role_scope         @default(branch)
   role_permissions role_permissions[]
+  user_roles       user_roles[]
 
   @@map("roles")
   @@schema("public")
@@ -2192,6 +2199,7 @@ model user_roles {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String    @db.Uuid
   role       user_role
+  role_id    String    @db.Uuid
   branch_id  String?   @db.Uuid
   gym_id     String?   @db.Uuid
   team_role  String?   @db.Text
@@ -2199,6 +2207,7 @@ model user_roles {
   profiles   profiles  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   branches   branches? @relation(fields: [branch_id], references: [id])
   gyms       gyms?     @relation(fields: [gym_id], references: [id])
+  roles      roles     @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, role, branch_id])
   @@index([role], map: "idx_user_roles_role")

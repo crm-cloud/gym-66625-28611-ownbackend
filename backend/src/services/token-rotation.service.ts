@@ -1,5 +1,5 @@
-import { prisma } from '../lib/prisma';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt';
+import prisma from '../config/database.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type TokenPayload } from '../utils/jwt.js';
 
 /**
  * Token Rotation Service
@@ -27,7 +27,26 @@ export class TokenRotationService {
         is_revoked: false,
       },
       include: {
-        user: true,
+        user: {
+          include: {
+            user_roles: {
+              include: {
+                roles: {
+                  include: {
+                    role_permissions: {
+                      include: {
+                        permissions: true
+                      }
+                    }
+                  }
+                }
+              },
+              orderBy: {
+                created_at: 'asc' // Get the primary role first
+              }
+            }
+          }
+        },
       },
     });
 
@@ -47,22 +66,38 @@ export class TokenRotationService {
     // Revoke old refresh token
     await this.revokeToken(oldRefreshToken);
 
-    // Generate new tokens
-    const newAccessToken = generateAccessToken({
-      userId: storedToken.user.user_id,
-      email: storedToken.user.email,
-      role: storedToken.user.role,
-      branchId: storedToken.user.branch_id || undefined,
-      gymId: storedToken.user.gym_id || undefined,
+    // Get primary role (first role assignment, or default to member)
+    const primaryRole = storedToken.user.user_roles?.[0] || { 
+      role: 'member' as const, 
+      branch_id: null, 
+      gym_id: null,
+      roles: {
+        role_permissions: []
+      }
+    };
+
+    // Collect all permissions from all roles
+    const permissions = new Set<string>();
+    storedToken.user.user_roles?.forEach(ur => {
+      ur.roles?.role_permissions?.forEach(rp => {
+        if (rp.permissions) {
+          permissions.add(rp.permissions.name);
+        }
+      });
     });
 
-    const newRefreshToken = generateRefreshToken({
+    // Generate new tokens
+    const tokenPayload = {
       userId: storedToken.user.user_id,
       email: storedToken.user.email,
-      role: storedToken.user.role,
-      branchId: storedToken.user.branch_id || undefined,
-      gymId: storedToken.user.gym_id || undefined,
-    });
+      role: primaryRole.role,
+      branchId: primaryRole.branch_id || undefined,
+      gymId: primaryRole.gym_id || undefined,
+      permissions: Array.from(permissions)
+    };
+
+    const newAccessToken = generateAccessToken(tokenPayload);
+    const newRefreshToken = generateRefreshToken(tokenPayload);
 
     // Store new refresh token
     await prisma.refreshToken.create({

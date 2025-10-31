@@ -1,9 +1,36 @@
-import prisma from '../config/database';
-import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/crypto-utils';
-import { generateTokens, generateRandomToken, TokenPayload } from '../utils/jwt';
-import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../config/email';
-import { ApiError } from '../middleware/errorHandler';
+import { Prisma, PrismaClient, UserRole } from '@prisma/client';
+import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/crypto-utils.js';
+import { generateTokens, generateRandomToken, TokenPayload } from '../utils/jwt.js';
+import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../config/email.js';
+import { ApiError } from '../middleware/errorHandler.js';
 import { RegisterInput, LoginInput } from '../validation/auth.validation';
+import prisma from '../config/database.js';
+
+// Extend the Prisma client with custom types
+type PrismaClientType = typeof prisma;
+
+export type UserWithRoles = Prisma.ProfilesGetPayload<{
+  include: {
+    user_roles: {
+      include: {
+        roles: true;
+        branches: true;
+      };
+    };
+  };
+}>;
+
+export type LoginResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    roles: string[];
+    permissions: string[];
+  };
+};
 
 export class AuthService {
   /**
@@ -86,51 +113,334 @@ export class AuthService {
   }
 
   /**
-   * Login user
+   * Login user with email and password
+   * @param input Login credentials
+   * @returns Authentication tokens and user data
    */
-  async login(input: LoginInput) {
+  async login(input: LoginInput): Promise<LoginResponse> {
     const { email, password } = input;
+    
+    console.log('\n🔐 [AUTH] Login attempt for email:', email);
+    console.log('📡 [AUTH] Database connection:', process.env.DATABASE_URL ? '✅ Configured' : '❌ Not configured');
 
-    // Normalize email to lowercase
-    const normalizedEmail = email.toLowerCase().trim();
+    try {
+      // Normalize email to lowercase
+      const normalizedEmail = email.toLowerCase().trim();
+      console.log('\n🔍 [AUTH] Querying database for user...');
 
-    // Find user with roles (RBAC structure)
-    const user = await prisma.profiles.findUnique({
-      where: { email: normalizedEmail },
-      include: {
-        user_roles: {
-          include: {
-            branches: { select: { name: true, id: true } },
-            gyms: { select: { name: true, id: true } }
-          }
-        },
-        owned_gyms: {
-          select: { id: true, name: true, status: true }
-        }
+      // Find user by email with password and roles
+      const user = await this.findUserByEmail(normalizedEmail);
+      
+      if (!user) {
+        console.error('❌ [AUTH] No user found with email:', normalizedEmail);
+        throw new ApiError('Invalid credentials', 401);
       }
-    });
 
-    if (!user || !user.password_hash) {
-      throw new ApiError('Invalid email or password', 401);
+      console.log('\n🔑 [AUTH] User found:', {
+        userId: user.user_id,
+        email: user.email,
+        isActive: user.is_active,
+        emailVerified: user.email_verified,
+        hasPasswordHash: !!user.password_hash
+      });
+
+      // Verify password
+      await this.verifyUserPassword(user, password);
+
+      // Check if account is active
+      this.checkAccountStatus(user);
+
+      // Generate tokens
+      return this.generateAuthResponse(user);
+    } catch (error) {
+      console.error('❌ [AUTH] Login error:', error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
+  /**
+   * Find user by email with roles and permissions
+   */
+  private async findUserByEmail(email: string): Promise<UserWithRoles | null> {
+    try {
+      const user = await prisma.profiles.findUnique({
+        where: { email },
+        include: {
+          user_roles: {
+            include: {
+              roles: {
+                include: {
+                  role_permissions: {
+                    include: {
+                      permissions: true
+                    }
+                  }
+                }
+              },
+              branches: true
+            }
+          }
+        }
+      });
+
+      return user as UserWithRoles;
+    } catch (error) {
+      console.error('❌ [AUTH] Error finding user:', error);
+      throw new ApiError('Error during authentication', 500);
+    }
+  }
+
+  /**
+   * Verify user password
+   */
+  private async verifyUserPassword(user: UserWithRoles, password: string): Promise<void> {
+    if (!user.password_hash) {
+      console.error('❌ [AUTH] No password hash found for user:', user.user_id);
+      throw new ApiError('Invalid credentials', 401);
     }
 
-    // Verify password using crypto
+    console.log('\n🔑 [AUTH] Starting password verification...');
+    console.log('🔑 [AUTH] Input password length:', password.length);
+    console.log('🔑 [AUTH] Stored hash length:', user.password_hash?.length);
+    
+    // Log hash components for debugging
+    const hashParts = user.password_hash?.split(':');
+    if (hashParts?.length === 5) {
+      const [salt, iterations, keylen, digest] = hashParts;
+      console.log('🔑 [AUTH] Hash components:', {
+        salt: salt?.substring(0, 8) + '...',
+        iterations,
+        keylen,
+        digest,
+        hashPrefix: hashParts[4]?.substring(0, 8) + '...'
+      });
+    }
+
     const isValidPassword = verifyPassword(password, user.password_hash);
+    console.log('🔑 [AUTH] Password verification result:', isValidPassword ? '✅ Valid' : '❌ Invalid');
+    
     if (!isValidPassword) {
-      throw new ApiError('Invalid email or password', 401);
+      console.error('❌ [AUTH] Invalid password for user:', user.user_id);
+      throw new ApiError('Invalid credentials', 401);
+    }
+  }
+
+  /**
+   * Check if user account is active and verified
+   */
+  private checkAccountStatus(user: UserWithRoles): void {
+    console.log('\n🔍 [AUTH] Checking account status...');
+    
+    if (!user.is_active) {
+      console.error('❌ [AUTH] Account is inactive for user:', user.user_id);
+      throw new ApiError('Account is inactive. Please contact support.', 403);
     }
 
-    // Check if account is active
-    if (!user.is_active) {
-      throw new ApiError('Account is inactive. Please verify your email.', 401);
+    if (!user.email_verified) {
+      console.warn('⚠️ [AUTH] Email not verified for user:', user.user_id);
+      // Optionally resend verification email
+      // await this.sendVerificationEmail(user.email);
+      throw new ApiError('Please verify your email address before logging in.', 403);
+    }
+  }
+
+  /**
+   * Generate authentication response with tokens
+   */
+  private async generateAuthResponse(user: UserWithRoles): Promise<LoginResponse> {
+    console.log('\n🔑 [AUTH] Generating authentication tokens...');
+    
+    // Extract roles and permissions
+    const roles = user.user_roles.map(ur => ur.roles?.name).filter(Boolean) as string[];
+    const permissions = user.user_roles.flatMap(ur => 
+      ur.roles?.role_permissions?.map(rp => rp.permissions?.name).filter(Boolean) || []
+    ) as string[];
+
+    // Create token payload
+    const tokenPayload: TokenPayload = {
+      userId: user.user_id,
+      user_id: user.user_id, // For backward compatibility
+      email: user.email,
+      roles,
+      permissions,
+      fullName: user.full_name || null,
+      phone: user.phone || null,
+      emailVerified: user.email_verified || false,
+      // Add any additional claims here
+    };
+
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(tokenPayload);
+
+    console.log('✅ [AUTH] Authentication successful for user:', user.user_id);
+    
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        fullName: user.full_name,
+        roles,
+        permissions
+      }
+    };
+  }
+      const user = await prisma.profiles.findUnique({
+        where: { email: normalizedEmail },
+        select: {
+          user_id: true,
+          email: true,
+          password_hash: true,
+          is_active: true,
+          full_name: true,
+          phone: true,
+          avatar_url: true,
+          email_verified: true,
+          user_roles: {
+            include: {
+              branches: true,
+              gyms: true,
+              roles: {
+                include: {
+                  role_permissions: {
+                    include: {
+                      permissions: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: {
+              created_at: 'asc' // Get the primary role first
+            }
+          }
+        }
+      });
+
+      console.log('🔍 User lookup result:', user ? 'User found' : 'User not found');
+      if (!user) {
+        console.error('❌ No user found with email:', email);
+        throw new ApiError('Invalid email or password', 401);
+      }
+
+      if (!user.password_hash) {
+        console.error('❌ No password hash found for user:', user.user_id);
+        throw new ApiError('Invalid email or password', 401);
+      }
+
+      console.log('🔑 Verifying password...');
+      console.log('🔑 Input password length:', password.length);
+      console.log('🔑 Stored hash length:', user.password_hash?.length);
+      
+      // Trim whitespace from password and hash for debugging
+      const trimmedPassword = password.trim();
+      const trimmedHash = user.password_hash.trim();
+      
+      console.log('🔑 Trimmed password length:', trimmedPassword.length);
+      console.log('🔑 Trimmed hash length:', trimmedHash.length);
+      
+      const isValidPassword = verifyPassword(trimmedPassword, trimmedHash);
+      console.log('🔑 Password verification result:', isValidPassword ? '✅ Valid' : '❌ Invalid');
+      
+      if (!isValidPassword) {
+        console.error('❌ Invalid password for user:', user.user_id);
+        console.error('❌ Hash comparison failed - check for whitespace or encoding issues');
+        throw new ApiError('Invalid email or password', 401);
+      }
+
+      // Check if account is active
+      console.log('🔍 Checking if account is active...');
+      if (!user.is_active) {
+        console.error('❌ Account is inactive for user:', user.user_id);
+        throw new ApiError('Account is inactive. Please verify your email.', 401);
+      }
+
+      // Get primary role (first role assignment, or default to member)
+      const primaryRole = user.user_roles?.[0] || { 
+        role: 'member' as const, 
+        branch_id: null, 
+        gym_id: null,
+        branches: null,
+        gyms: null,
+        roles: {
+          name: 'member',
+          description: 'Regular member',
+          role_permissions: []
+        }
+      };
+
+      // Get all permissions from all roles
+      const allPermissions = new Set<string>();
+      user.user_roles?.forEach(ur => {
+        ur.roles?.role_permissions?.forEach(rp => {
+          allPermissions.add(rp.permissions.name);
+        });
+      });
+
+      // Generate tokens
+      const tokens = generateTokens({
+        userId: user.user_id,
+        user_id: user.user_id, // For backward compatibility
+        email: user.email,
+        role: primaryRole.roles?.name || 'member',
+        branchId: primaryRole.branch_id,
+        gymId: primaryRole.gym_id,
+        permissions: Array.from(allPermissions)
+      });
+
+      // Update last login
+      await prisma.profiles.update({
+        where: { user_id: user.user_id },
+        data: { last_login: new Date() }
+      });
+
+      return {
+        user: {
+          id: user.user_id,
+          user_id: user.user_id, // For backward compatibility
+          email: user.email,
+          full_name: user.full_name,
+          phone: user.phone,
+          avatar_url: user.avatar_url,
+          email_verified: user.email_verified,
+          role: primaryRole.roles?.name || 'member',
+          branch_id: primaryRole.branch_id,
+          gym_id: primaryRole.gym_id,
+          permissions: Array.from(allPermissions)
+        },
+        tokens
+      };
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      throw error;
     }
 
     // Get primary role (first role assignment, or default to member)
     const primaryRole = user.user_roles?.[0] || { 
       role: 'member' as const, 
       branch_id: null, 
-      gym_id: null 
+      gym_id: null,
+      branches: null,
+      gyms: null,
+      roles: {
+        name: 'member',
+        display_name: 'Member',
+        description: 'Basic member access',
+        is_system: true,
+        role_permissions: []
+      }
     };
+
+    // Collect all permissions from all roles
+    const permissions = new Set<string>();
+    user.user_roles?.forEach(ur => {
+      ur.roles?.role_permissions?.forEach(rp => {
+        if (rp.permissions) {
+          permissions.add(rp.permissions.name);
+        }
+      });
+    });
 
     // Generate tokens
     const payload: TokenPayload = {
@@ -138,7 +448,8 @@ export class AuthService {
       email: user.email,
       role: primaryRole.role,
       branchId: primaryRole.branch_id,
-      gymId: primaryRole.gym_id
+      gymId: primaryRole.gym_id,
+      permissions: Array.from(permissions)
     };
 
     const tokens = generateTokens(payload);
@@ -309,10 +620,34 @@ export class AuthService {
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     // Find user
     const user = await prisma.profiles.findUnique({
-      where: { user_id: userId }
+      where: { user_id: userId },
+      include: {
+        user_roles: {
+          include: {
+            branches: {
+              select: { name: true, id: true }
+            },
+            gyms: {
+              select: { name: true, id: true }
+            },
+            roles: {
+              include: {
+                role_permissions: {
+                  include: {
+                    permissions: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'asc' // Get the primary role first
+          }
+        }
+      }
     });
 
-    if (!user || !user.password_hash) {
+    if (!user) {
       throw new ApiError('User not found', 404);
     }
 
@@ -351,12 +686,25 @@ export class AuthService {
       include: {
         user_roles: {
           include: {
-            branches: { select: { name: true, id: true } },
-            gyms: { select: { name: true, id: true } }
+            branches: {
+              select: { name: true, id: true }
+            },
+            gyms: {
+              select: { name: true, id: true }
+            },
+            roles: {
+              include: {
+                role_permissions: {
+                  include: {
+                    permissions: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'asc' // Get the primary role first
           }
-        },
-        owned_gyms: {
-          select: { id: true, name: true }
         }
       }
     });
@@ -365,13 +713,20 @@ export class AuthService {
       throw new ApiError('User not found', 404);
     }
 
-    // Get primary role
+    // Get primary role (first role assignment, or default to member)
     const primaryRole = user.user_roles?.[0] || { 
       role: 'member' as const, 
       branch_id: null, 
       gym_id: null,
       branches: null,
-      gyms: null
+      gyms: null,
+      roles: {
+        name: 'member',
+        display_name: 'Member',
+        description: 'Basic member access',
+        is_system: true,
+        role_permissions: []
+      }
     };
 
     return {

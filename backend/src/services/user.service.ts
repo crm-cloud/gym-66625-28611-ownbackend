@@ -1,7 +1,7 @@
-import prisma from '../config/database';
-import { ApiError } from '../middleware/errorHandler';
-import { hashPassword } from '../utils/password';
-import { CreateUserInput, UpdateUserInput, UserQueryInput, UpdateProfileInput } from '../validation/user.validation';
+import prisma from '../config/database.js';
+import { ApiError } from '../middleware/errorHandler.js';
+import { hashPassword } from '../utils/password.js';
+import { CreateUserInput, UpdateUserInput, UserQueryInput, UpdateProfileInput } from '../validation/user.validation.js';
 
 export class UserService {
   /**
@@ -10,19 +10,12 @@ export class UserService {
   async getUsers(query: UserQueryInput, userRole: string, userBranchId?: string | null) {
     const { branch_id, gym_id, role, is_active, search, page = 1, limit = 50 } = query;
 
+    // Base where clause for profiles
     const where: any = {};
-
-    // Branch filtering based on user role
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-      where.branch_id = userBranchId;
-    } else {
-      if (branch_id) where.branch_id = branch_id;
-      if (gym_id) where.gym_id = gym_id;
-    }
-
-    if (role) where.role = role;
+    
     if (is_active !== undefined) where.is_active = is_active;
 
+    // Handle search
     if (search) {
       where.OR = [
         { full_name: { contains: search, mode: 'insensitive' } },
@@ -31,42 +24,86 @@ export class UserService {
       ];
     }
 
-    const [users, total] = await Promise.all([
-      prisma.profiles.findMany({
-        where,
-        select: {
-          user_id: true,
-          email: true,
-          full_name: true,
-          phone: true,
-          role: true,
-          avatar_url: true,
-          is_active: true,
-          email_verified: true,
-          branch_id: true,
-          gym_id: true,
-          created_at: true,
-          branches: {
-            select: { name: true, id: true }
-          },
-          gyms: {
-            select: { name: true, id: true }
+    // Build the base query with role-based filtering
+    const baseQuery = prisma.profiles.findMany({
+      where,
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        phone: true,
+        avatar_url: true,
+        is_active: true,
+        email_verified: true,
+        created_at: true,
+        user_roles: {
+          select: {
+            role: true,
+            branch_id: true,
+            gym_id: true,
+            branches: {
+              select: { name: true, id: true }
+            },
+            gyms: {
+              select: { name: true, id: true }
+            }
           }
-        },
-        orderBy: { created_at: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      prisma.profiles.count({ where })
-    ]);
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    });
 
+    // Get total count
+    const totalQuery = prisma.profiles.count({ where });
+
+    const [users, total] = await Promise.all([baseQuery, totalQuery]);
+
+    // Process users to handle role-based filtering
+    const filteredUsers = users.filter(user => {
+      // For non-admin users, filter by their branch
+      if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return user.user_roles.some(ur => ur.branch_id === userBranchId);
+      }
+      
+      // Apply role filter if specified
+      if (role) {
+        return user.user_roles.some(ur => ur.role === role);
+      }
+      
+      // Apply branch filter if specified
+      if (branch_id) {
+        return user.user_roles.some(ur => ur.branch_id === branch_id);
+      }
+      
+      // Apply gym filter if specified
+      if (gym_id) {
+        return user.user_roles.some(ur => ur.gym_id === gym_id);
+      }
+      
+      return true;
+    });
+
+    // Format the response
+    const formattedUsers = filteredUsers.map(user => {
+      const primaryRole = user.user_roles[0] || {};
+      return {
+        ...user,
+        role: primaryRole.role,
+        branch_id: primaryRole.branch_id,
+        gym_id: primaryRole.gym_id,
+        branches: primaryRole.branches,
+        gyms: primaryRole.gyms
+      };
+    });
     return {
-      data: users,
+      data: formattedUsers,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: filteredUsers.length, // Use filtered count for accurate pagination
+        totalPages: Math.ceil(filteredUsers.length / limit)
       }
     };
   }
@@ -77,21 +114,13 @@ export class UserService {
   async getUserById(id: string, userRole: string, userBranchId?: string | null) {
     const user = await prisma.profiles.findUnique({
       where: { user_id: id },
-      select: {
-        user_id: true,
-        email: true,
-        full_name: true,
-        phone: true,
-        role: true,
-        avatar_url: true,
-        is_active: true,
-        email_verified: true,
-        branch_id: true,
-        gym_id: true,
-        created_at: true,
-        updated_at: true,
-        branches: true,
-        gyms: true
+      include: {
+        user_roles: {
+          include: {
+            branches: true,
+            gyms: true
+          }
+        }
       }
     });
 
@@ -99,14 +128,33 @@ export class UserService {
       throw new ApiError('User not found', 404);
     }
 
-    // Check branch access
+    // For non-admin users, ensure they can only access users in their branch
     if (userRole !== 'admin' && userRole !== 'super_admin') {
-      if (user.branch_id !== userBranchId) {
+      const hasAccess = user.user_roles.some(ur => ur.branch_id === userBranchId);
+      if (!hasAccess) {
         throw new ApiError('Access denied', 403);
       }
     }
 
-    return user;
+    // Get primary role (first role assignment, or default to member)
+    const primaryRole = user.user_roles[0] || { 
+      role: 'member' as const, 
+      branch_id: null, 
+      gym_id: null 
+    };
+
+    // Format the response
+    const formattedUser = {
+      ...user,
+      role: primaryRole.role,
+      branch_id: primaryRole.branch_id,
+      gym_id: primaryRole.gym_id,
+      branches: primaryRole.branches,
+      gyms: primaryRole.gyms
+    };
+
+    return formattedUser;
+
   }
 
   /**
