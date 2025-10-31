@@ -6,7 +6,8 @@ export class GymController {
   async createGym(req: Request, res: Response, next: NextFunction) {
     try {
       const data = createGymSchema.parse(req.body);
-      const gym = await gymService.createGym(data);
+      const adminUserId = req.user?.userId; // Get from JWT
+      const gym = await gymService.createGym(data, adminUserId);
       res.status(201).json({ message: 'Gym created successfully', gym });
     } catch (error) { next(error); }
   }

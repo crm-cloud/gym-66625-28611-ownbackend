@@ -93,7 +93,7 @@ export class GymService {
   /**
    * Create new gym
    */
-  async createGym(data: CreateGymInput) {
+  async createGym(data: CreateGymInput, adminUserId?: string) {
     // Check if email already exists
     const existingGym = await prisma.gyms.findUnique({
       where: { email: data.email }
@@ -116,9 +116,25 @@ export class GymService {
       data: {
         ...data,
         subscription_start_date: subscriptionStartDate.toISOString(),
-        subscription_end_date: subscriptionEndDate.toISOString()
+        subscription_end_date: subscriptionEndDate.toISOString(),
+        owner_id: adminUserId // Set admin as owner
       }
     });
+
+    // Update admin's user_roles to link to this gym
+    if (adminUserId) {
+      await prisma.user_roles.updateMany({
+        where: {
+          user_id: adminUserId,
+          role: 'admin'
+        },
+        data: {
+          gym_id: gym.id
+        }
+      });
+      
+      console.log(`✅ Linked gym ${gym.id} to admin user ${adminUserId}`);
+    }
 
     return gym;
   }

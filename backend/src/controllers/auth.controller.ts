@@ -54,15 +54,7 @@ class AuthController {
         }
       });
 
-      // Create default member role for new registrations
-      await prisma.user_roles.create({
-        data: {
-          user_id: userId,
-          role: 'member' as any,
-        }
-      });
-
-      // Assign default 'member' role
+      // Create default user_roles entry for member
       await prisma.user_roles.create({
         data: {
           id: crypto.randomUUID(),
@@ -103,15 +95,30 @@ class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = loginSchema.parse(req.body);
+      
+      console.log('🔐 Login attempt for:', validatedData.email);
 
-      // Find user with roles
+      // Find user with roles - MUST explicitly select password_hash
       const user = await prisma.profiles.findUnique({
-        where: { email: validatedData.email },
-        include: {
+        where: { email: validatedData.email.toLowerCase() },
+        select: {
+          user_id: true,
+          email: true,
+          full_name: true,
+          avatar_url: true,
+          phone: true,
+          is_active: true,
+          email_verified: true,
+          password_hash: true, // CRITICAL: Explicit select
+          created_at: true,
           user_roles: {
             include: {
-              branches: { select: { name: true, id: true } },
-              gyms: { select: { name: true, id: true } },
+              branches: {
+                select: { name: true, id: true }
+              },
+              gyms: {
+                select: { name: true, id: true }
+              },
             }
           },
           owned_gyms: {
@@ -124,18 +131,31 @@ class AuthController {
         }
       });
 
+      console.log('👤 User found:', {
+        exists: !!user,
+        hasPasswordHash: !!user?.password_hash,
+        passwordHashLength: user?.password_hash?.length,
+        email: user?.email,
+        isActive: user?.is_active,
+        rolesCount: user?.user_roles?.length
+      });
+
       if (!user || !user.password_hash) {
+        console.log('❌ Login failed: User not found or no password hash');
         throw new ApiError('Invalid credentials', 401);
       }
 
-      // Verify password
+      console.log('🔑 Verifying password...');
       const isValidPassword = verifyPassword(validatedData.password, user.password_hash);
+      console.log('✅ Password verification result:', isValidPassword);
       
       if (!isValidPassword) {
+        console.log('❌ Login failed: Invalid password');
         throw new ApiError('Invalid credentials', 401);
       }
 
       if (!user.is_active) {
+        console.log('❌ Login failed: Account inactive');
         throw new ApiError('Account is inactive. Please verify your email.', 403);
       }
 

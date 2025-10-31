@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Suspense, lazy } from "react";
-import { AuthProvider } from "@/hooks/useAuth";
+import { Suspense, lazy, useEffect } from "react";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { RBACProvider } from "@/hooks/useRBAC";
+import { useNavigate, useLocation } from "react-router-dom";
 import { BranchContextProvider } from "@/hooks/useBranchContext";
 import { CartProvider } from "@/hooks/useCart";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -91,6 +92,28 @@ import { UserCreatePage } from "./pages/users/create";
 import { RoleCreatePage } from "./pages/roles/create";
 import AttendanceDashboard from "./pages/attendance/dashboard";
 import AttendanceDevicesPage from "./pages/attendance/devices";
+import SetupGym from "./pages/SetupGym";
+
+// Admin Onboarding Guard Component
+const AdminOnboardingGuard = ({ children }: { children: React.ReactNode }) => {
+  const { authState } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Only redirect if user is admin without gym_id and not already on setup page
+    if (
+      authState.user?.role === 'admin' && 
+      !authState.user?.gym_id && 
+      location.pathname !== '/setup-gym'
+    ) {
+      console.log('🏢 Admin without gym detected, redirecting to setup...');
+      navigate('/setup-gym', { replace: true });
+    }
+  }, [authState.user, navigate, location.pathname]);
+
+  return <>{children}</>;
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,12 +144,24 @@ const App = () => (
                   <Toaster />
                   <Sonner />
                   <BrowserRouter>
+                    <AdminOnboardingGuard>
                       <Routes>
                         <Route path="/" element={<PublicHome />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/unauthorized" element={<Unauthorized />} />
+                        
+                        {/* Admin Gym Setup Route - Must be before dashboard */}
+                        <Route 
+                          path="/setup-gym" 
+                          element={
+                            <RouteGuard allowedRoles={['admin']}>
+                              <SetupGym />
+                            </RouteGuard>
+                          } 
+                        />
+                        
                         <Route 
                           path="/dashboard" 
                           element={
@@ -1067,17 +1102,18 @@ const App = () => (
                            </ProtectedRoute>
                          } 
                        />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </TooltipProvider>
-              </CartProvider>
-            </BranchContextProvider>
-          </RBACProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+                       <Route path="*" element={<NotFound />} />
+                     </Routes>
+                    </AdminOnboardingGuard>
+                   </BrowserRouter>
+                 </TooltipProvider>
+               </CartProvider>
+             </BranchContextProvider>
+           </RBACProvider>
+         </AuthProvider>
+       </ThemeProvider>
+     </QueryClientProvider>
+   </ErrorBoundary>
 );
 
 export default App;

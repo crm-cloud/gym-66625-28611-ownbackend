@@ -7,6 +7,25 @@ class UserManagementController {
    */
   async createUser(req: Request, res: Response) {
     try {
+      const { role } = req.body;
+      const requesterRole = req.user?.role;
+
+      // Super admin can only create admin users
+      if (requesterRole === 'super_admin' && role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Super admin can only create admin users'
+        });
+      }
+
+      // Admin cannot be created with gym_id pre-set
+      if (role === 'admin' && req.body.gym_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Admin users must create their own gym after first login'
+        });
+      }
+
       const result = await userManagementService.createUserWithRole(req.body);
       
       if (result.error) {
