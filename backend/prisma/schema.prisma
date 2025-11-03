@@ -10,6 +10,39 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Maintenance status enum
+enum maintenance_status {
+  pending
+  in_progress
+  completed
+  cancelled
+  failed
+
+  @@schema("public")
+}
+
+// Maintenance type enum
+enum maintenance_type {
+  preventive
+  corrective
+  inspection
+  calibration
+  other
+
+  @@schema("public")
+}
+
+// Backup status enum
+enum backup_status {
+  pending
+  in_progress
+  completed
+  failed
+  deleted
+
+  @@schema("public")
+}
+
 // ENUM Types (Consolidated and corrected based on SQL files)
 enum assignment_status {
   scheduled
@@ -1825,12 +1858,12 @@ model system_backups {
   status           backup_status
   file_path        String?       @db.Text
   file_size_mb     Decimal?      @db.Decimal(10, 2)
-  duration_seconds Int?
-  initiated_by     String?       @db.Text
-  notes            String?       @db.Text
 
-  @@map("system_backups")
+  // Relations
+  creator profiles? @relation(fields: [created_by], references: [user_id])
+
   @@schema("public")
+  @@map("system_backups")
 }
 
 model system_events {

@@ -1,112 +1,193 @@
-import prisma from '../config/database';
-import { ApiError } from '../middleware/errorHandler';
+import { Prisma, PrismaClient } from '@prisma/client';
+import prisma from '../config/database.js';
+import { ApiError } from '../middleware/errorHandler.js';
+
+// Define maintenance record status type
+type MaintenanceStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+// Define maintenance record type
+export interface MaintenanceRecord {
+  id: string;
+  equipment_id: string;
+  reported_by: string | null;
+  assigned_to: string | null;
+  title: string;
+  description: string | null;
+  status: MaintenanceStatus;
+  priority: 'low' | 'medium' | 'high';
+  scheduled_date: Date | null;
+  completed_date: Date | null;
+  created_at: Date;
+  updated_at: Date;
+  user?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+  equipment?: {
+    name: string;
+    serial_number: string | null;
+  } | null;
+}
 
 export class MaintenanceService {
   /**
-   * Get maintenance records
+   * Get maintenance records with filters
    */
-  async getRecords(filters: any) {
+  async getRecords(filters: {
+    equipment_id?: string;
+    status?: string;
+    from_date?: string;
+    to_date?: string;
+  }) {
     const { equipment_id, status, from_date, to_date } = filters;
 
-    let whereConditions: string[] = [];
-    if (equipment_id) whereConditions.push(`equipment_id = '${equipment_id}'`);
-    if (status) whereConditions.push(`status = '${status}'`);
-    if (from_date) whereConditions.push(`maintenance_date >= '${from_date}'`);
-    if (to_date) whereConditions.push(`maintenance_date <= '${to_date}'`);
+    const where: Prisma.maintenance_recordsWhereInput = {};
+    
+    if (equipment_id) where.equipment_id = equipment_id;
+    if (status) where.status = status as any;
+    
+    if (from_date || to_date) {
+      where.maintenance_date = {};
+      if (from_date) where.maintenance_date.gte = new Date(from_date);
+      if (to_date) where.maintenance_date.lte = new Date(to_date);
+    }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const records = await prisma.maintenance_records.findMany({
+      where,
+      include: {
+        equipment: {
+          select: {
+            name: true,
+            type: true,
+          },
+        },
+        performer: {
+          select: {
+            full_name: true,
+          },
+        },
+      },
+      orderBy: {
+        maintenance_date: 'desc',
+      },
+    });
 
-    const records = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT 
-        mr.*,
-        e.name as equipment_name,
-        e.type as equipment_type,
-        p.full_name as performed_by_name
-      FROM maintenance_records mr
-      LEFT JOIN equipment e ON mr.equipment_id = e.id
-      LEFT JOIN profiles p ON mr.performed_by = p.user_id
-      ${whereClause}
-      ORDER BY mr.maintenance_date DESC
-    `);
-
-    return records;
+    return records.map(record => ({
+      ...record,
+      equipment_name: record.equipment?.name,
+      equipment_type: record.equipment?.type,
+      performed_by_name: record.performer?.full_name,
+    }));
   }
 
   /**
-   * Get record by ID
+   * Get maintenance record by ID
    */
   async getRecordById(id: string) {
-    const record = await prisma.$queryRaw<any[]>`
-      SELECT 
-        mr.*,
-        e.name as equipment_name,
-        e.type as equipment_type,
-        p.full_name as performed_by_name
-      FROM maintenance_records mr
-      LEFT JOIN equipment e ON mr.equipment_id = e.id
-      LEFT JOIN profiles p ON mr.performed_by = p.user_id
-      WHERE mr.id = ${id}
-      LIMIT 1
-    `;
+    const record = await prisma.maintenance_records.findUnique({
+      where: { id },
+      include: {
+        equipment: {
+          select: {
+            name: true,
+            type: true,
+          },
+        },
+        performer: {
+          select: {
+            full_name: true,
+          },
+        },
+      },
+    });
 
-    if (!record || record.length === 0) {
+    if (!record) {
       throw new ApiError('Maintenance record not found', 404);
     }
 
-    return record[0];
+    return {
+      ...record,
+      equipment_name: record.equipment?.name,
+      equipment_type: record.equipment?.type,
+      performed_by_name: record.performer?.full_name,
+    };
   }
 
   /**
-   * Create maintenance record
+   * Create a new maintenance record
    */
-  async createRecord(data: any, performedBy: string) {
-    const recordId = crypto.randomUUID();
+  async createRecord(
+    data: {
+      equipment_id: string;
+      maintenance_date?: Date;
+      maintenance_type: string;
+      description?: string;
+      cost?: number;
+      status?: string;
+      next_maintenance_date?: Date;
+      notes?: string;
+    },
+    performedBy: string
+  ) {
+    const record = await prisma.maintenance_records.create({
+      data: {
+        equipment_id: data.equipment_id,
+        maintenance_date: data.maintenance_date || new Date(),
+        maintenance_type: data.maintenance_type as any,
+        description: data.description,
+        cost: data.cost ? new Prisma.Decimal(data.cost) : undefined,
+        performed_by: performedBy,
+        status: (data.status as any) || 'pending',
+        next_maintenance_date: data.next_maintenance_date,
+        notes: data.notes,
+      },
+    });
 
-    await prisma.$executeRaw`
-      INSERT INTO maintenance_records (
-        id, equipment_id, maintenance_date, maintenance_type,
-        description, cost, performed_by, status, next_maintenance_date
-      ) VALUES (
-        ${recordId},
-        ${data.equipment_id},
-        ${data.maintenance_date || new Date()},
-        ${data.maintenance_type},
-        ${data.description || null},
-        ${data.cost || null},
-        ${performedBy},
-        ${data.status || 'pending'},
-        ${data.next_maintenance_date || null}
-      )
-    `;
-
-    return { id: recordId, message: 'Maintenance record created' };
+    return { id: record.id, message: 'Maintenance record created' };
   }
 
   /**
-   * Update maintenance record
+   * Update an existing maintenance record
    */
-  async updateRecord(id: string, data: any) {
-    await prisma.$executeRaw`
-      UPDATE maintenance_records
-      SET 
-        status = COALESCE(${data.status}, status),
-        description = COALESCE(${data.description}, description),
-        cost = COALESCE(${data.cost}, cost),
-        next_maintenance_date = COALESCE(${data.next_maintenance_date}, next_maintenance_date),
-        updated_at = NOW()
-      WHERE id = ${id}
-    `;
+  async updateRecord(
+    id: string,
+    data: {
+      status?: string;
+      description?: string;
+      cost?: number;
+      next_maintenance_date?: Date;
+      notes?: string;
+      resolved_at?: Date;
+      resolved_by?: string;
+    }
+  ) {
+    const updateData: Prisma.maintenance_recordsUpdateInput = {
+      updated_at: new Date(),
+    };
+
+    if (data.status) updateData.status = data.status as any;
+    if (data.description) updateData.description = data.description;
+    if (data.cost !== undefined) updateData.cost = new Prisma.Decimal(data.cost);
+    if (data.next_maintenance_date) updateData.next_maintenance_date = data.next_maintenance_date;
+    if (data.notes) updateData.notes = data.notes;
+    if (data.resolved_at) updateData.resolved_at = data.resolved_at;
+    if (data.resolved_by) updateData.resolved_by = data.resolved_by;
+
+    await prisma.maintenance_records.update({
+      where: { id },
+      data: updateData,
+    });
 
     return { success: true, message: 'Maintenance record updated' };
   }
 
   /**
-   * Delete maintenance record
+   * Delete a maintenance record
    */
   async deleteRecord(id: string) {
-    await prisma.$executeRaw`
-      DELETE FROM maintenance_records WHERE id = ${id}
-    `;
+    await prisma.maintenance_records.delete({
+      where: { id },
+    });
   }
 }
 

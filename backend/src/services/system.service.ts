@@ -1,10 +1,27 @@
-import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
+import prisma from '../config/database.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
+import { ApiError } from '../utils/ApiError.js';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { logger } from '../utils/logger.js';
 
-const execAsync = promisify(exec);
+interface SystemLog {
+  id: string;
+  severity: string;
+  description: string;
+  event_time: Date;
+  details: Record<string, unknown>;
+  user_id?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  user?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+}
 
 export class SystemService {
   /**
@@ -17,9 +34,15 @@ export class SystemService {
       
       // Get system metrics
       const [gymCount, memberCount, paymentCount] = await Promise.all([
-        prisma.$queryRaw<any[]>`SELECT COUNT(*)::int as count FROM gyms`,
-        prisma.$queryRaw<any[]>`SELECT COUNT(*)::int as count FROM members`,
-        prisma.$queryRaw<any[]>`SELECT COUNT(*)::int as count FROM payments WHERE created_at >= NOW() - INTERVAL '24 hours'`
+        prisma.gyms.count(),
+        prisma.members.count(),
+        prisma.payments.count({
+          where: {
+            created_at: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+            }
+          }
+        })
       ]);
 
       return {
@@ -27,9 +50,9 @@ export class SystemService {
         timestamp: new Date().toISOString(),
         database: dbHealth,
         metrics: {
-          total_gyms: gymCount[0].count,
-          total_members: memberCount[0].count,
-          payments_24h: paymentCount[0].count
+          total_gyms: gymCount,
+          total_members: memberCount,
+          payments_24h: paymentCount
         },
         uptime: process.uptime(),
         memory: process.memoryUsage(),
@@ -48,16 +71,20 @@ export class SystemService {
    * Check database health
    */
   private async checkDatabaseHealth() {
+    const start = Date.now();
     try {
       await prisma.$queryRaw`SELECT 1`;
+      const responseTime = Date.now() - start;
+      
       return {
         status: 'connected',
-        response_time_ms: 0 // TODO: Measure actual response time
+        response_time_ms: responseTime
       };
     } catch (error) {
       return {
         status: 'disconnected',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        response_time_ms: Date.now() - start
       };
     }
   }
@@ -67,39 +94,32 @@ export class SystemService {
    */
   async getBackups() {
     try {
-      const backupDir = path.join(process.cwd(), 'backups');
-      
-      // Ensure backup directory exists
-      await fs.mkdir(backupDir, { recursive: true });
-      
-      // Read backup directory
-      const files = await fs.readdir(backupDir);
-      
-      // Filter for backup files and get their stats
-      const backups = await Promise.all(
-        files
-          .filter(file => file.endsWith('.sql') || file.endsWith('.dump'))
-          .map(async (file) => {
-            const filePath = path.join(backupDir, file);
-            const stats = await fs.stat(filePath);
-            return {
-              id: file,
-              filename: file,
-              size: stats.size,
-              created_at: stats.birthtime,
-              path: filePath,
-              type: file.endsWith('.sql') ? 'sql' : 'dump'
-            };
-          })
-      );
-      
-      // Sort by creation date (newest first)
-      backups.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
-      
+      const backups = await prisma.system_backups.findMany({
+        orderBy: {
+          created_at: 'desc',
+        },
+        select: {
+          id: true,
+          filename: true,
+          path: true,
+          size: true,
+          status: true,
+          created_at: true,
+          completed_at: true,
+          creator: {
+            select: {
+              user_id: true,
+              full_name: true,
+              email: true
+            }
+          }
+        }
+      });
+
       return backups;
     } catch (error) {
       console.error('Error listing backups:', error);
-      throw new Error('Failed to list backups');
+      throw new Error('Failed to retrieve backup list');
     }
   }
 
@@ -107,10 +127,26 @@ export class SystemService {
    * Create database backup using pg_dump
    */
   async createBackup(createdBy: string) {
+    const backupId = uuidv4();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${timestamp}.sql`;
     const backupDir = path.join(process.cwd(), 'backups');
     const backupPath = path.join(backupDir, filename);
+
+    // Create backup record in database
+    const backupRecord = await prisma.system_backups.create({
+      data: {
+        id: backupId,
+        filename,
+        path: backupPath,
+        status: 'in_progress',
+        created_by: createdBy,
+        metadata: {
+          type: 'full',
+          method: 'pg_dump'
+        }
+      }
+    });
 
     try {
       // Ensure backups directory exists
@@ -128,7 +164,7 @@ export class SystemService {
       const dbPass = url.password;
       const dbHost = url.hostname;
       const dbPort = url.port || '5432';
-      const dbName = url.pathname.replace(/^\//, '');
+      const dbName = url.pathname.replace(/^\//, '').split('?')[0];
 
       // Build pg_dump command
       const pgDumpPath = process.env.PG_DUMP_PATH || 'pg_dump';
@@ -146,66 +182,167 @@ export class SystemService {
         `-U ${dbUser}`,
         `-d ${dbName}`,
         '-F c', // Custom format (compressed)
-        '-f', backupPath
+        '-f', `"${backupPath}"`
       ].join(' ');
 
       // Execute pg_dump
       const { stderr } = await execAsync(command, { env });
       
       if (stderr && !stderr.includes('WARNING')) {
-        console.error('pg_dump stderr:', stderr);
-        throw new Error(`Backup failed: ${stderr}`);
+        throw new Error(`pg_dump error: ${stderr}`);
       }
 
       // Get file stats
       const stats = await fs.stat(backupPath);
 
-      // Log the backup in the database
-      await prisma.system_backups.create({
+      // Update backup record
+      await prisma.system_backups.update({
+        where: { id: backupId },
         data: {
-          filename,
-          path: backupPath,
+          status: 'completed',
           size: stats.size,
-          created_by: createdBy,
-          status: 'completed'
+          completed_at: new Date(),
+          metadata: {
+            ...(backupRecord.metadata as Prisma.JsonObject || {}),
+            size: stats.size,
+            completed_at: new Date().toISOString()
+          }
         }
       });
 
       return {
+        id: backupId,
         success: true,
         message: 'Backup created successfully',
         filename,
         path: backupPath,
         size: stats.size,
-        created_at: new Date()
+        created_at: backupRecord.created_at,
+        completed_at: new Date()
       };
     } catch (error) {
-      // Log the failed backup attempt
-      await prisma.system_backups.create({
+      // Update backup record with error
+      await prisma.system_backups.update({
+        where: { id: backupId },
         data: {
-          filename,
-          path: backupPath,
           status: 'failed',
           error: error instanceof Error ? error.message : 'Unknown error',
-          created_by: createdBy
+          metadata: {
+            ...(backupRecord.metadata as Prisma.JsonObject || {}),
+            error: error instanceof Error ? error.message : 'Unknown error',
+            failed_at: new Date().toISOString()
+          }
         }
       });
-      
-      console.error('Backup error:', error);
+
       throw new Error(`Backup creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Restore backup
+   * Restore database from backup
    */
   async restoreBackup(backupId: string, restoredBy: string) {
-    // TODO: Implement backup restoration
-    return {
-      success: true,
-      message: 'Backup restoration will be implemented',
-      backup_id: backupId
-    };
+    // Get backup record
+    const backup = await prisma.system_backups.findUnique({
+      where: { id: backupId }
+    });
+
+    if (!backup) {
+      throw new Error('Backup not found');
+    }
+
+    if (backup.status !== 'completed') {
+      throw new Error('Cannot restore from an incomplete or failed backup');
+    }
+
+    try {
+      // Parse database URL
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        throw new Error('DATABASE_URL not configured');
+      }
+
+      // Extract connection details from URL
+      const url = new URL(dbUrl);
+      const dbUser = url.username;
+      const dbPass = url.password;
+      const dbHost = url.hostname;
+      const dbPort = url.port || '5432';
+      const dbName = url.pathname.replace(/^\//, '').split('?')[0];
+
+      // Build pg_restore command
+      const pgRestorePath = process.env.PG_RESTORE_PATH || 'pg_restore';
+      const env = { ...process.env };
+      
+      // Set PGPASSWORD in environment if password is provided
+      if (dbPass) {
+        env.PGPASSWORD = dbPass;
+      }
+
+      const command = [
+        `"${pgRestorePath}"`,
+        `-h ${dbHost}`,
+        `-p ${dbPort}`,
+        `-U ${dbUser}`,
+        '-d', `"${dbName}"`,
+        '--clean', // Clean (drop) database objects before recreating
+        '--if-exists', // Use IF EXISTS when dropping objects
+        '--no-owner', // Skip restoration of object ownership
+        '--no-privileges', // Prevent restoration of access privileges
+        '--no-comments', // Skip restoration of comments
+        '--no-tablespaces', // Do not output commands to select tablespaces
+        '--single-transaction', // Execute as a single transaction
+        `"${backup.path}"`
+      ].join(' ');
+
+      // Execute pg_restore
+      const { stderr } = await execAsync(command, { env });
+      
+      if (stderr && !stderr.includes('WARNING')) {
+        throw new Error(`pg_restore error: ${stderr}`);
+      }
+
+      // Log the restoration
+      await prisma.system_events.create({
+        data: {
+          event_category: 'system',
+          event_type: 'backup_restored',
+          description: `Database restored from backup: ${backup.filename}`,
+          details: {
+            backup_id: backup.id,
+            restored_by: restoredBy,
+            filename: backup.filename,
+            path: backup.path,
+            size: backup.size
+          }
+        }
+      });
+
+      return {
+        success: true,
+        message: 'Database restored successfully',
+        backup_id: backupId,
+        restored_at: new Date()
+      };
+    } catch (error) {
+      // Log the error
+      await prisma.system_events.create({
+        data: {
+          event_category: 'system',
+          event_type: 'backup_restore_failed',
+          severity: 'error',
+          description: `Failed to restore database from backup: ${backup.filename}`,
+          details: {
+            backup_id: backup.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            restored_by: restoredBy
+          }
+        }
+      });
+
+      throw new Error(`Backup restoration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
@@ -216,45 +353,58 @@ export class SystemService {
     from_date?: string;
     to_date?: string;
     limit?: number;
+    search?: string;
   }) {
+    const { level, from_date, to_date, limit = 100, search } = filters;
+    
     try {
-      const { level, from_date, to_date, limit = 100 } = filters;
-      
-      // Build where clause
       const where: any = {};
       
-      if (level) {
-        where.level = level;
-      }
+      // Apply level filter
+      if (level) where.level = level;
       
+      // Apply date range filter
       if (from_date || to_date) {
         where.timestamp = {};
-        if (from_date) {
-          where.timestamp.gte = new Date(from_date);
-        }
-        if (to_date) {
-          where.timestamp.lte = new Date(to_date);
-        }
+        if (from_date) where.timestamp.gte = new Date(from_date);
+        if (to_date) where.timestamp.lte = new Date(to_date);
+      }
+      
+      // Apply search filter
+      if (search) {
+        where.OR = [
+          { message: { contains: search, mode: 'insensitive' } },
+          { meta: { path: ['$'], string_contains: search } }
+        ];
       }
       
       // Query logs from database
-      const logs = await prisma.system_logs.findMany({
+      const logs = await prisma.system_events.findMany({
         where,
         orderBy: { timestamp: 'desc' },
-        take: Math.min(Number(limit) || 100, 1000), // Max 1000 logs at once
-        select: {
-          id: true,
-          level: true,
-          message: true,
-          timestamp: true,
-          meta: true,
-          user_id: true,
-          ip_address: true,
-          user_agent: true
+        take: Math.min(Number(limit), 1000), // Max 1000 logs at once
+        include: {
+          user: {
+            select: {
+              full_name: true,
+              email: true
+            }
+          }
         }
       });
       
-      return logs;
+      // Format the response
+      return logs.map((log: SystemLog) => ({
+        id: log.id,
+        level: log.severity,
+        message: log.description,
+        timestamp: log.event_time,
+        meta: log.details,
+        user_id: log.user_id,
+        ip_address: log.ip_address,
+        user_agent: log.user_agent,
+        user: log.user
+      }));
     } catch (error) {
       console.error('Error fetching logs:', error);
       throw new Error('Failed to fetch system logs');
