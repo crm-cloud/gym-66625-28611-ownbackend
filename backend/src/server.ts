@@ -218,6 +218,31 @@ v1Router.use('/tasks', taskRoutes);
 // Phase 1 Migration: Member Credits & Membership Freeze
 v1Router.use('/member-credits', memberCreditsRoutes);
 v1Router.use('/membership-freeze', membershipFreezeRoutes);
+
+// NEW: Missing Backend Endpoints (All 6 Phases Implementation)
+// Phase 1: Payment Webhooks & Discounts
+import discountRoutes from './routes/discount.routes';
+v1Router.use('/discounts', discountRoutes);
+
+// Phase 2: System Settings
+import settingsRoutes from './routes/settings.routes';
+v1Router.use('/settings', settingsRoutes);
+
+// Phase 4: File Upload
+import fileRoutes from './routes/file.routes';
+v1Router.use('/files', fileRoutes);
+
+// Phase 5: Platform Analytics & System Tools
+import platformRoutes from './routes/platform.routes';
+import systemRoutes from './routes/system.routes';
+v1Router.use('/platform', platformRoutes);
+v1Router.use('/system', systemRoutes);
+
+// Phase 6: Template & Log Management
+import maintenanceRoutes from './routes/maintenance.routes';
+import logsRoutes from './routes/logs.routes';
+v1Router.use('/maintenance', maintenanceRoutes);
+v1Router.use('/logs', logsRoutes);
 v1Router.use('/member-goals', memberGoalsRoutes);
 v1Router.use('/analytics', analyticsEventsRoutes);
 v1Router.use('/team', teamRoutes);
