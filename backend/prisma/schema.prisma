@@ -32,17 +32,6 @@ enum maintenance_type {
   @@schema("public")
 }
 
-// Backup status enum
-enum backup_status {
-  pending
-  in_progress
-  completed
-  failed
-  deleted
-
-  @@schema("public")
-}
-
 // ENUM Types (Consolidated and corrected based on SQL files)
 enum assignment_status {
   scheduled
@@ -1654,6 +1643,7 @@ model profiles {
   payment_gateway_transactions payment_gateway_transactions[]
   admin_subscriptions          admin_subscriptions[]
   assigned_subscriptions       admin_subscriptions[]          @relation("assigned_by")
+  created_system_backups       system_backups[]               @relation("creator")
 
   @@map("profiles")
   @@schema("public")
@@ -1858,9 +1848,10 @@ model system_backups {
   status           backup_status
   file_path        String?       @db.Text
   file_size_mb     Decimal?      @db.Decimal(10, 2)
+  created_by       String?       @db.Uuid
 
   // Relations
-  creator profiles? @relation(fields: [created_by], references: [user_id])
+  creator profiles? @relation("creator", fields: [created_by], references: [user_id])
 
   @@schema("public")
   @@map("system_backups")
