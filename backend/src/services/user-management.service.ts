@@ -23,7 +23,7 @@ class UserManagementService {
   /**
    * Create user with role
    */
-  async createUserWithRole(params: CreateUserParams): Promise<CreateUserResult> {
+  async createUserWithRole(params: CreateUserParams, requesterRole?: string): Promise<CreateUserResult> {
     const {
       email,
       password,
@@ -35,6 +35,24 @@ class UserManagementService {
       date_of_birth,
       address
     } = params;
+
+    // RBAC: Super admin can only create admin users
+    if (requesterRole === 'super_admin' && role !== 'admin') {
+      return {
+        user: null,
+        profile: null,
+        error: new Error('Super admin can only create admin users')
+      };
+    }
+
+    // RBAC: Admin users cannot be created with gym_id pre-set
+    if (role === 'admin' && gym_id) {
+      return {
+        user: null,
+        profile: null,
+        error: new Error('Admin users must create their own gym after first login')
+      };
+    }
 
     try {
       // Check if user already exists
@@ -143,13 +161,12 @@ class UserManagementService {
       // Hash password using crypto
       const password_hash = hashPassword(password);
 
-      // Create profile
+      // Create profile (without branch_id - branches are assigned via user_roles)
       const profile = await prisma.profiles.create({
         data: {
           email,
           password_hash,
           full_name,
-          branch_id,
           email_verified: false,
           is_active: true
         }

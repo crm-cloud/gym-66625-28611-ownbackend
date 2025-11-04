@@ -26,7 +26,7 @@ class UserManagementController {
         });
       }
 
-      const result = await userManagementService.createUserWithRole(req.body);
+      const result = await userManagementService.createUserWithRole(req.body, requesterRole);
       
       if (result.error) {
         return res.status(400).json({
