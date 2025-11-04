@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient, UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/crypto-utils.js';
 import { generateTokens, generateRandomToken, TokenPayload } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../config/email.js';
@@ -9,12 +9,29 @@ import prisma from '../config/database.js';
 // Extend the Prisma client with custom types
 type PrismaClientType = typeof prisma;
 
-export type UserWithRoles = Prisma.ProfilesGetPayload<{
-  include: {
+export type UserWithRoles = Prisma.profilesGetPayload<{
+  select: {
+    user_id: true;
+    email: true;
+    password_hash: true;
+    full_name: true;
+    phone: true;
+    avatar_url: true;
+    is_active: true;
+    email_verified: true;
     user_roles: {
       include: {
-        roles: true;
+        roles: {
+          include: {
+            role_permissions: {
+              include: {
+                permissions: true;
+              };
+            };
+          };
+        };
         branches: true;
+        gyms: true;
       };
     };
   };
@@ -151,7 +168,7 @@ export class AuthService {
       this.checkAccountStatus(user);
 
       // Generate tokens
-      return this.generateAuthResponse(user);
+      return user;
     } catch (error) {
       console.error('❌ [AUTH] Login error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
@@ -162,10 +179,33 @@ export class AuthService {
    * Find user by email with roles and permissions
    */
   private async findUserByEmail(email: string): Promise<UserWithRoles | null> {
+    if (!email || typeof email !== 'string') {
+      console.error('❌ [AUTH] Invalid email provided:', email);
+      throw new ApiError('Invalid email format', 400);
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!email || typeof email !== 'string') {
+      console.error('❌ [AUTH] Invalid email provided:', email);
+      throw new ApiError('Invalid email format', 400);
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    
     try {
+      console.log('🔍 [AUTH] Querying database for email:', normalizedEmail);
+      
       const user = await prisma.profiles.findUnique({
-        where: { email },
-        include: {
+        where: { email: normalizedEmail },
+        select: {
+          user_id: true,
+          email: true,
+          password_hash: true,
+          full_name: true,
+          phone: true,
+          avatar_url: true,
+          is_active: true,
+          email_verified: true,
           user_roles: {
             include: {
               roles: {
@@ -177,13 +217,26 @@ export class AuthService {
                   }
                 }
               },
-              branches: true
+              branches: true,
+              gyms: true
             }
           }
         }
       });
 
-      return user as UserWithRoles;
+      if (!user) {
+        console.log('❌ [AUTH] No user found with email:', normalizedEmail);
+        return null;
+      }
+
+      console.log('✅ [AUTH] User found:', {
+        userId: user.user_id,
+        email: user.email,
+        hasPasswordHash: !!user.password_hash,
+        roles: user.user_roles?.map(ur => ur.roles?.name).filter(Boolean) || []
+      });
+
+      return user;
     } catch (error) {
       console.error('❌ [AUTH] Error finding user:', error);
       throw new ApiError('Error during authentication', 500);
