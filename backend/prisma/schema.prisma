@@ -990,6 +990,7 @@ model gyms {
   payment_gateway_transactions payment_gateway_transactions[]
   user_roles                   user_roles[]
   profiles_gym                 profiles[]                     @relation("gym_profiles")
+  system_settings              system_settings[]
 
   @@map("gyms")
   @@schema("public")
@@ -1873,18 +1874,18 @@ model system_events {
 }
 
 model system_settings {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branch_id   String?   @db.Uuid
-  key         String    @db.Text
-  value       String?   @db.Text
-  description String?   @db.Text
-  category    String?   @db.Text
-  updated_at  DateTime? @updatedAt @db.Timestamptz()
-  branches    branches? @relation(fields: [branch_id], references: [id])
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category   String    @db.VarChar(50)
+  gym_id     String?   @db.Uuid
+  branch_id  String?   @db.Uuid
+  config     Json      @default("{}") @db.JsonB
+  is_active  Boolean?  @default(true)
+  created_at DateTime? @default(now()) @db.Timestamptz()
+  updated_at DateTime? @updatedAt @db.Timestamptz()
+  gyms       gyms?     @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  branches   branches? @relation(fields: [branch_id], references: [id], onDelete: Cascade)
 
-  @@unique([branch_id, key])
-  @@index([branch_id], map: "idx_system_settings_branch_id")
-  @@index([category, branch_id], map: "idx_system_settings_category_branch")
+  @@unique([category, gym_id, branch_id])
   @@map("system_settings")
   @@schema("public")
 }
