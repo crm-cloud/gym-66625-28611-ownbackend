@@ -52,23 +52,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Validate token and get user profile
         const response = await api.get('/auth/me');
-        const userData = response.data;
+        // Handle nested data structure in response
+        const responseData = response.data.data || response.data;
+        const userData = responseData.user || responseData;
+
+        // Map backend user data to frontend User type consistently with login
+        const user = {
+          id: userData.user_id || userData.id,
+          email: userData.email,
+          name: userData.full_name || userData.name,
+          role: userData.role,
+          teamRole: userData.team_role || userData.role, // Fallback to role if team_role not available
+          avatar: userData.avatar_url || userData.avatar,
+          phone: userData.phone || userData.phone_number,
+          joinDate: (userData.created_at || userData.createdAt || new Date().toISOString()).split('T')[0],
+          branchId: userData.branch_id || userData.branchId,
+          branchName: userData.branch_name || userData.branchName,
+          gym_id: userData.gym_id || userData.gymId,
+          gymName: userData.gym_name || userData.gymName
+        };
 
         setAuthState({
-          user: {
-            id: userData.id || userData.user_id,
-            email: userData.email,
-            name: userData.name || userData.full_name,
-            role: userData.role as UserRole,
-            teamRole: userData.teamRole || userData.team_role,
-            avatar: userData.avatar || userData.avatar_url,
-            phone: userData.phone,
-            joinDate: userData.createdAt?.split('T')[0] || userData.created_at?.split('T')[0],
-            branchId: userData.branchId || userData.branch_id,
-            branchName: userData.branchName || userData.branch_name,
-            gym_id: userData.gymId || userData.gym_id,
-            gymName: userData.gymName || userData.gym_name
-          },
+          user,
           isAuthenticated: true,
           isLoading: false,
           error: null
@@ -92,21 +97,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkSession();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+  const login = async (credentials) => {
+    setAuthState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null
+    }));
     
     try {
       const response = await api.post('/auth/login', {
         email: credentials.email,
         password: credentials.password
       });
-
-      const { access_token, refresh_token, user: userData } = response.data;
-
+      
+      // Handle nested data structure in response
+      const responseData = response.data.data || response.data;
+      const { access_token, refresh_token, user: userData } = responseData;
+      
       if (!access_token || !userData) {
         throw new Error('Invalid response from server');
       }
-
+      
       // Store JWT tokens
       localStorage.setItem('access_token', access_token);
       if (refresh_token) {
@@ -115,17 +126,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Set default auth header for future requests
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-
+      
       // Map backend user data to frontend User type
-      const user: User = {
-        id: userData.user_id,
+      const user = {
+        id: userData.user_id || userData.id,
         email: userData.email,
-        name: userData.full_name,
-        role: userData.role as UserRole,
-        teamRole: userData.team_role,
-        avatar: userData.avatar_url,
-        phone: userData.phone,
-        joinDate: userData.created_at?.split('T')[0],
+        name: userData.full_name || userData.name,
+        role: userData.role,
+        teamRole: userData.team_role || userData.role, // Fallback to role if team_role not available
+        avatar: userData.avatar_url || userData.avatar,
+        phone: userData.phone || userData.phone_number,
+        joinDate: (userData.created_at || new Date().toISOString()).split('T')[0],
         branchId: userData.branch_id,
         branchName: userData.branch_name,
         gym_id: userData.gym_id,
