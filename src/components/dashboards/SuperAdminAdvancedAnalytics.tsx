@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useDashboardStats } from '@/hooks/useAnalytics';
 
 interface AdvancedMetrics {
   totalRevenue: number;
@@ -21,8 +21,8 @@ interface AdvancedMetrics {
 }
 
 export function SuperAdminAdvancedAnalytics() {
-  // Use analytics hook to fetch platform-wide metrics
-  const { data: dashboardStats, isLoading } = useAnalytics();
+  // Use dashboard stats hook to fetch platform-wide metrics
+  const { data: dashboardStats, isLoading } = useDashboardStats();
 
   if (isLoading) {
     return (

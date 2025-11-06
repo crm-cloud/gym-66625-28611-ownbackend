@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Building2, Users, DollarSign, MapPin, BarChart3, FileText, CreditCard, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useDashboardStats } from '@/hooks/useAnalytics';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Link } from 'react-router-dom';
 
 export const SuperAdminDashboard = () => {
   // Fetch platform-level metrics using REST API
-  const { data: dashboardStats, isLoading } = useAnalytics();
+  const { data: dashboardStats, isLoading } = useDashboardStats();
   const { data: subscriptionPlans = [] } = useSystemSettings('subscription');
 
   const { formatCurrency } = useCurrency();

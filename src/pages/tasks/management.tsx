@@ -37,7 +37,6 @@ export const TaskManagementPage = () => {
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
-  const { data: stats } = useTaskStats();
   
   const tasks = tasksData || [];
   const [searchTerm, setSearchTerm] = useState('');

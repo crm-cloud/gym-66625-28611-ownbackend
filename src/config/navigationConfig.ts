@@ -37,7 +37,9 @@ import {
   LifeBuoy,
   BrainCircuit,
   Megaphone,
-  Share2
+  Share2,
+  Code,
+  Flag
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { Permission } from '@/types/rbac';
@@ -123,9 +125,10 @@ export const navigationConfig: NavigationGroup[] = [
       }
     ]
   },
+  // Super Admin specific navigation
   {
-    id: 'saas-management',
-    title: 'SaaS Management',
+    id: 'platform-management',
+    title: 'Platform Management',
     allowedRoles: ['super-admin'],
     priority: 2,
     items: [
@@ -134,7 +137,7 @@ export const navigationConfig: NavigationGroup[] = [
         title: 'Gym Management',
         url: '/gyms',
         icon: Building,
-        group: 'saas-management',
+        group: 'platform-management',
         allowedRoles: ['super-admin'],
       },
       {
@@ -142,7 +145,7 @@ export const navigationConfig: NavigationGroup[] = [
         title: 'Admin Management',
         url: '/users/admin-management',
         icon: UserCog,
-        group: 'saas-management',
+        group: 'platform-management',
         allowedRoles: ['super-admin'],
       },
       {
@@ -150,7 +153,7 @@ export const navigationConfig: NavigationGroup[] = [
         title: 'Subscription Plans',
         url: '/subscription-plans',
         icon: CreditCard,
-        group: 'saas-management',
+        group: 'platform-management',
         allowedRoles: ['super-admin'],
       }
     ]
