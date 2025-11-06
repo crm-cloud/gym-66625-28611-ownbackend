@@ -9,7 +9,7 @@ interface ApiResponse<T> {
 }
 
 // Define error response type
-interface ApiErrorResponse {
+export interface ApiErrorResponse {
   status?: number;
   message: string;
   response?: {

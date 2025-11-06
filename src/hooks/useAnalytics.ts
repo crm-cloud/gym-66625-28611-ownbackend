@@ -1,115 +1,110 @@
-import { useApiQuery, buildEndpoint } from './useApiQuery';
+import { useApiQuery } from './useApiQuery';
 
-interface DashboardStats {
+export interface DashboardStats {
   totalMembers: number;
   activeMembers: number;
-  monthlyRevenue: number;
-  classAttendance: number;
-  memberRetention: number;
+  totalRevenue: number;
   growthRate: number;
-  // Super admin properties
-  totalGyms?: number;
-  activeGyms?: number;
-  totalBranches?: number;
-  totalTrainers?: number;
-  recentGyms?: any[];
+  pendingPayments: number;
+  activeClasses: number;
 }
 
-interface RevenueAnalytics {
-  month: string;
-  membership: number;
-  personal: number;
-  retail: number;
-  total: number;
-}
-
-interface MembershipAnalytics {
-  month: string;
-  active: number;
-  new: number;
-  churned: number;
-  retention: number;
-}
-
-interface AttendanceAnalytics {
+export interface RevenueData {
   date: string;
-  checkins: number;
-  classAttendance: number;
-  peakHour: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
 }
 
-interface ClassPopularity {
+export interface MembershipData {
+  month: string;
+  new: number;
+  active: number;
+  expired: number;
+}
+
+export interface ClassPopularity {
   name: string;
-  value: number;
   attendance: number;
-  cancellationRate: number;
-  color?: string;
+  capacity: number;
+  revenue: number;
 }
 
-export const useDashboardStats = (params?: {
+interface AnalyticsFilters {
   branchId?: string;
   gymId?: string;
   startDate?: string;
   endDate?: string;
-}) => {
-  const endpoint = buildEndpoint('/api/analytics/dashboard', params);
+}
+
+export const useDashboardStats = (filters?: AnalyticsFilters) => {
   return useApiQuery<DashboardStats>(
-    ['analytics', 'dashboard', JSON.stringify(params || {})],
-    endpoint
+    ['analytics', 'dashboard', filters],
+    `/api/v1/analytics/dashboard?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    {
+      enabled: true,
+      staleTime: 60000 // 1 minute
+    }
   );
 };
 
-export const useRevenueAnalytics = (params?: {
-  branchId?: string;
-  gymId?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const endpoint = buildEndpoint('/api/analytics/revenue', params);
-  return useApiQuery<RevenueAnalytics[]>(
-    ['analytics', 'revenue', JSON.stringify(params || {})],
-    endpoint
+export const useRevenueAnalytics = (filters?: AnalyticsFilters) => {
+  return useApiQuery<RevenueData[]>(
+    ['analytics', 'revenue', filters],
+    `/api/v1/analytics/revenue?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    {
+      enabled: true,
+      staleTime: 300000 // 5 minutes
+    }
   );
 };
 
-export const useMembershipAnalytics = (params?: {
-  branchId?: string;
-  gymId?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const endpoint = buildEndpoint('/api/analytics/memberships', params);
-  return useApiQuery<MembershipAnalytics[]>(
-    ['analytics', 'memberships', JSON.stringify(params || {})],
-    endpoint
+export const useMembershipAnalytics = (filters?: AnalyticsFilters) => {
+  return useApiQuery<MembershipData[]>(
+    ['analytics', 'membership', filters],
+    `/api/v1/analytics/membership?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    {
+      enabled: true,
+      staleTime: 300000
+    }
   );
 };
 
-export const useAttendanceAnalytics = (params?: {
-  branchId?: string;
-  gymId?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const endpoint = buildEndpoint('/api/analytics/attendance', params);
-  return useApiQuery<AttendanceAnalytics[]>(
-    ['analytics', 'attendance', JSON.stringify(params || {})],
-    endpoint
-  );
-};
-
-export const useClassPopularity = (params?: {
-  branchId?: string;
-  gymId?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const endpoint = buildEndpoint('/api/analytics/classes', params);
+export const useClassPopularity = (filters?: AnalyticsFilters) => {
   return useApiQuery<ClassPopularity[]>(
-    ['analytics', 'classes', JSON.stringify(params || {})],
-    endpoint
+    ['analytics', 'classes', filters],
+    `/api/v1/analytics/classes?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    {
+      enabled: true,
+      staleTime: 300000
+    }
   );
 };
 
-// Export useAnalytics as an alias for useDashboardStats (used in some components)
-export const useAnalytics = useDashboardStats;
+// Platform analytics for super admin
+export const usePlatformAnalytics = (filters?: Omit<AnalyticsFilters, 'branchId' | 'gymId'>) => {
+  return useApiQuery<{
+    totalGyms: number;
+    totalBranches: number;
+    totalMembers: number;
+    totalRevenue: number;
+    growthRate: number;
+    topPerformingGyms: Array<{
+      gymId: string;
+      gymName: string;
+      revenue: number;
+      memberCount: number;
+    }>;
+    revenueByMonth: Array<{
+      month: string;
+      revenue: number;
+    }>;
+  }>(
+    ['platform', 'analytics', filters],
+    `/api/v1/platform/analytics?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    {
+      enabled: true,
+      staleTime: 300000
+    }
+  );
+};

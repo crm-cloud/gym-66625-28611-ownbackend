@@ -26,68 +26,20 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { useToast } from '@/hooks/use-toast';
 import { PermissionGate } from '@/components/PermissionGate';
 import { format } from 'date-fns';
-
-// Mock task data
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  assignedTo: string;
-  assignedBy: string;
-  dueDate: Date;
-  createdAt: Date;
-  category: string;
-  tags: string[];
-}
-
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Equipment Maintenance Check',
-    description: 'Perform monthly maintenance check on all cardio equipment',
-    priority: 'high',
-    status: 'pending',
-    assignedTo: 'John Smith',
-    assignedBy: 'Admin',
-    dueDate: new Date('2024-12-25'),
-    createdAt: new Date('2024-12-15'),
-    category: 'maintenance',
-    tags: ['equipment', 'monthly']
-  },
-  {
-    id: '2',
-    title: 'New Member Orientation',
-    description: 'Conduct orientation session for new member Sarah Johnson',
-    priority: 'medium',
-    status: 'in-progress',
-    assignedTo: 'Jane Doe',
-    assignedBy: 'Manager',
-    dueDate: new Date('2024-12-22'),
-    createdAt: new Date('2024-12-20'),
-    category: 'member-service',
-    tags: ['orientation', 'new-member']
-  },
-  {
-    id: '3',
-    title: 'Monthly Financial Report',
-    description: 'Prepare and submit monthly financial summary',
-    priority: 'urgent',
-    status: 'completed',
-    assignedTo: 'Mike Wilson',
-    assignedBy: 'Admin',
-    dueDate: new Date('2024-12-15'),
-    createdAt: new Date('2024-12-01'),
-    category: 'finance',
-    tags: ['report', 'monthly']
-  }
-];
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useTaskStats } from '@/hooks/useTasks';
+import type { Task, CreateTaskInput, TaskFilters } from '@/types/task';
 
 export const TaskManagementPage = () => {
   const { hasPermission } = useRBAC();
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [filters, setFilters] = useState<TaskFilters>({});
+  const { data: tasksData, isLoading } = useTasks(filters);
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+  const { data: stats } = useTaskStats();
+  
+  const tasks = tasksData || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
