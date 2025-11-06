@@ -75,6 +75,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'dashboard',
     title: 'Dashboard',
+    allowedRoles: ['super-admin', 'admin', 'team', 'member'],
     priority: 1,
     items: [
       {
@@ -262,7 +263,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'membership',
     title: 'Membership',
-    allowedRoles: ['admin', 'team'],
+    allowedRoles: ['super-admin', 'admin', 'team'],
     priority: 4,
     items: [
       {
@@ -1282,22 +1283,21 @@ export const getNavigationForUser = (
   userPermissions: Permission[],
   teamRole?: string
 ): NavigationGroup[] => {
-  // Debug logging for team roles
-  if (userRole === 'team') {
-    console.log('[Navigation Config] Team user detected:', {
+  // Debug logging for user roles
+  console.log('[Navigation Config] User detected:', {
+    userRole,
+    teamRole,
+    permissionCount: userPermissions.length,
+    permissions: userPermissions.slice(0, 10) // Log first 10 permissions
+  });
+  
+  // Safety check: If no permissions loaded, log warning
+  if (userRole !== 'super-admin' && userPermissions.length === 0) {
+    console.warn('[Navigation Config] ⚠️ No permissions loaded for user!', {
       userRole,
       teamRole,
-      permissionCount: userPermissions.length,
-      permissions: userPermissions.slice(0, 10) // Log first 10 permissions
+      note: 'This might result in empty navigation. Check user_roles and role_permissions tables.'
     });
-    
-    // Safety check: If no permissions loaded, log warning
-    if (userPermissions.length === 0) {
-      console.warn('[Navigation Config] ⚠️ No permissions loaded for team user!', {
-        teamRole,
-        note: 'This will result in empty navigation. Check user_roles and role_permissions tables.'
-      });
-    }
   }
   
   return navigationConfig

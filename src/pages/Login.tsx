@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, Loader2, Dumbbell, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Dumbbell, ArrowRight, User, Shield, Crown } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // Import gym poster image
 import gymPoster from '@/assets/gym-poster.jpg';
@@ -19,12 +21,53 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('Attempting demo login with:', demoEmail);
+      await login({ 
+        email: demoEmail, 
+        password: demoPassword 
+      });
+      
+      toast({
+        title: "Demo login successful",
+        description: `Logged in as ${demoEmail.split('@')[0]}`,
+      });
+      
+      // Navigate to dashboard after successful login
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+      
+    } catch (error) {
+      console.error('Demo login error:', error);
+      
+      let errorMessage = 'Failed to login with demo account';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      toast({
+        title: "Demo login failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Redirect if already authenticated
-  if (authState.isAuthenticated) {
-    const from = location.state?.from?.pathname || '/dashboard';
-    return <Navigate to={from} replace />;
-  }
+  // Handle redirection after successful authentication
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      // Use navigate with replace to prevent going back to login
+      navigate(from, { replace: true });
+    }
+  }, [authState.isAuthenticated, location.state?.from?.pathname, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +76,15 @@ const Login = () => {
     
     try {
       await login({ email, password });
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during login');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
+return (
     <div className="min-h-screen flex relative bg-gray-50 overflow-hidden">
       {/* Background Pattern */}
       <div 
@@ -203,6 +247,34 @@ const Login = () => {
                 )}
               </Button>
             </div>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Demo Access</span>
+              </div>
+            </div>
+
+            <div className="text-center mb-6">
+              <p className="text-sm text-gray-500 mb-3">Use the demo super admin account to explore the platform:</p>
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <p className="text-sm font-medium text-gray-700">Email: <span className="font-mono text-primary">superadmin@example.com</span></p>
+                <p className="text-sm font-medium text-gray-700">Password: <span className="font-mono text-primary">SuperAdmin@123</span></p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base font-medium border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50"
+              onClick={() => handleDemoLogin('superadmin@example.com', 'SuperAdmin@123')}
+              disabled={isLoading}
+            >
+              <Crown className="mr-2 h-4 w-4" />
+              Login as Demo Super Admin
+            </Button>
           </form>
           </CardContent>
         </Card>

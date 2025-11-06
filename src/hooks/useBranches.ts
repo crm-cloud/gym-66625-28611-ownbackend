@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
+import { ApiErrorResponse } from './useApiQuery';
 import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import { toast } from '@/hooks/use-toast';
@@ -6,18 +7,31 @@ import { toast } from '@/hooks/use-toast';
 const SELECTED_BRANCH_KEY = 'selected_branch_id';
 
 export const useBranches = (filters?: { search?: string; isActive?: boolean }) => {
-  const [selectedBranch, setSelectedBranchState] = useState<any>(null);
+  // Define Branch type based on your API response
+  interface Branch {
+    id: string;
+    name: string;
+    address?: string;
+    is_active?: boolean;
+    // Add other branch properties as needed
+  }
+
+  const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(null);
   const queryClient = useQueryClient();
   
-  // By default, the query is enabled
-  // The parent component can control this with the 'enabled' option if needed
-  const enabled = true;
+  // Check if user is authenticated
+  const token = localStorage.getItem('access_token');
+  
+  // Only enable the query if there's an auth token and the parent component hasn't disabled it
+  // This prevents unnecessary API calls when the user is not authenticated
+  const enabled = !!token;
 
-  const queryResult = useQuery({
+  const queryResult = useQuery<Branch[], ApiErrorResponse>({
     queryKey: ['branches', filters?.search ?? '', filters?.isActive ?? 'all'],
-    enabled, // Only enable the query if not on login page
-    queryFn: async () => {
-      const params: any = {};
+    enabled, // Only enable the query if we have a token
+    retry: 1, // Only retry once on failure
+    queryFn: async (): Promise<Branch[]> => {
+      const params: Record<string, string | boolean | number> = {};
       
       if (filters?.search) {
         params.search = filters.search;
@@ -26,26 +40,33 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
         params.is_active = filters.isActive;
       }
 
-      // Check if user is authenticated
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.error('No authentication token found. User needs to log in.');
-        // Return empty data instead of throwing to prevent UI errors
-        return [];
-      }
-
       try {
-        const response = await api.get('/branches', { params });
+        // Use the new API path without version
+        const response = await api.get('/api/branches', { params });
         return response.data;
       } catch (error) {
-        console.error('Error fetching branches:', error);
+        console.error('Error fetching branches:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          }
+        });
+        
         if (error.response?.status === 401) {
           console.error('Authentication failed. Redirecting to login...');
-          // Clear invalid token and redirect to login
+          // Clear tokens and redirect to login
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          // Use a small timeout to allow the error to be logged before redirecting
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
         }
+        
         throw error;
       }
     },
@@ -55,7 +76,7 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
   useEffect(() => {
     const savedBranchId = localStorage.getItem(SELECTED_BRANCH_KEY);
     if (savedBranchId && queryResult.data) {
-      const branch = queryResult.data.find((b: any) => b.id === savedBranchId);
+      const branch = queryResult.data.find((b) => b.id === savedBranchId);
       if (branch) {
         setSelectedBranchState(branch);
       }
@@ -64,7 +85,7 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
     }
   }, [queryResult.data, selectedBranch]);
 
-  const setSelectedBranch = (branch: any) => {
+  const setSelectedBranch = (branch: Branch | null) => {
     if (branch) {
       localStorage.setItem(SELECTED_BRANCH_KEY, branch.id);
     } else {
@@ -95,9 +116,9 @@ export const useBranchById = (branchId: string) => {
 export const useCreateBranch = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (branchData: any) => {
-      const response = await api.post('/api/v1/branches', branchData);
+  const createBranch = useMutation<Branch, ApiErrorResponse, Omit<Branch, 'id'>>({
+    mutationFn: async (newBranch) => {
+      const response = await api.post('/api/v1/branches', newBranch);
       return response.data;
     },
     onSuccess: () => {
@@ -115,6 +136,8 @@ export const useCreateBranch = () => {
       });
     },
   });
+
+  return createBranch;
 };
 
 export const useUpdateBranch = () => {
@@ -146,8 +169,8 @@ export const useUpdateBranch = () => {
 export const useDeleteBranch = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (branchId: string) => {
+  const deleteBranch = useMutation<void, ApiErrorResponse, string>({
+    mutationFn: async (branchId) => {
       await api.delete(`/api/v1/branches/${branchId}`);
     },
     onSuccess: () => {

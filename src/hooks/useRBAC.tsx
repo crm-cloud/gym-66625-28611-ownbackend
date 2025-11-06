@@ -208,7 +208,8 @@ export const useRBAC = () => {
 const getRolePermissions = (role: UserRole, teamRole?: string): Permission[] => {
   switch (role) {
     case 'super-admin':
-      return mockRoles['super-admin'].permissions;
+      // Super admin gets all permissions
+      return Object.values(mockRoles).flatMap(roleDef => roleDef.permissions || []);
     case 'admin':
       return mockRoles['admin'].permissions;
     case 'team':
@@ -253,214 +254,74 @@ const getUserRoleDefinition = (role: UserRole, teamRole?: string): RoleDefinitio
   }
 };
 
-export const RBACProvider = ({ children }: { children: ReactNode }) => {
+export const RBACProvider = ({ children }: { children: React.ReactNode }) => {
   const { authState } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  // Define default permissions that all authenticated users should have
+  const defaultPermissions: Permission[] = ['dashboard.view'];
+  const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
   const [currentUser, setCurrentUser] = useState<UserWithRoles | null>(null);
-  const [userRoles, setUserRoles] = useState<any[]>([]);
-  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
 
-  // Fetch roles and permissions from database
   useEffect(() => {
-    const loadUserWithRolesAndPermissions = async () => {
+    const loadUserPermissions = async () => {
       setIsLoadingPermissions(true);
-      
+
       if (!authState.user) {
         setCurrentUser(null);
-        setUserRoles([]);
-        setUserPermissions([]);
+        setPermissions([]);
+        setIsLoading(false);
         setIsLoadingPermissions(false);
         return;
       }
 
       try {
-        // Step 1: Fetch roles from user_roles table
-        const rolesResponse = await api.get(`/api/users/${authState.user.id}/roles`);
-        const rolesData = rolesResponse.data;
+        // Get user's permissions based on role
+        const userPermissions = getRolePermissions(
+          authState.user.role as UserRole,
+          authState.user.teamRole
+        );
 
-        if (!rolesData) {
-          console.error('Error fetching user roles');
-          setUserRoles([]);
-          setUserPermissions([]);
-        } else {
-          console.log('🔍 [RBAC Debug] User Roles Loaded:', {
-            userId: authState.user.id,
-            email: authState.user.email,
-            rolesData,
-            rolesCount: rolesData?.length || 0
-          });
-          setUserRoles(rolesData || []);
+        // Get user's role definition
+        const roleDefinition = getUserRoleDefinition(
+          authState.user.role as UserRole,
+          authState.user.teamRole
+        );
 
-          // Step 2: Fetch permissions for these roles from database
-          if (rolesData && rolesData.length > 0) {
-            // Get role IDs from roles table based on role names
-            const roleNames = rolesData.map((r: any) => {
-              if (r.role === 'team' && r.team_role) {
-                return `team-${r.team_role}`;
-              }
-              return r.role;
-            });
+        setPermissions(userPermissions);
 
-            const roleRecordsResponse = await api.get('/api/roles', {
-              params: { names: roleNames.join(',') }
-            });
-            const roleRecords = roleRecordsResponse.data;
+        // Create user with roles
+        const userWithRoles: UserWithRoles = {
+          ...authState.user,
+          id: authState.user.id || 'current-user',
+          roles: [roleDefinition],
+          isActive: true,
+          lastLogin: new Date(),
+          createdBy: 'system',
+          assignedBranches: ['all']
+        };
 
-            if (roleRecords && roleRecords.length > 0) {
-              const roleIds = roleRecords.map((r: any) => r.id);
+        setCurrentUser(userWithRoles);
 
-              // Fetch permissions via role_permissions junction table
-              const permissionsResponse = await api.get('/api/role-permissions', {
-                params: { roleIds: roleIds.join(',') }
-              });
-              const permissionsData = permissionsResponse.data;
-
-              if (!permissionsData) {
-                console.error('❌ [RBAC] Failed to fetch permissions');
-                setUserPermissions([]);
-              } else {
-                // Extract permission names
-                const permissions = permissionsData
-                  .map((rp: any) => rp.permissions?.name)
-                  .filter(Boolean) as Permission[];
-
-                console.log('✅ [RBAC] Permissions loaded from database:', {
-                  permissionsCount: permissions.length,
-                  samplePermissions: permissions.slice(0, 5)
-                });
-
-                setUserPermissions(permissions);
-              }
-            } else {
-              console.warn('⚠️ [RBAC] No role records found in database');
-              setUserPermissions([]);
-            }
-          }
-        }
-
-        // Step 3: Fetch profile data
-        const profileResponse = await api.get(`/api/profiles/${authState.user.id}`);
-        const profile = profileResponse.data;
-
-        if (profile && rolesData && rolesData.length > 0) {
-          // Build roles array from user_roles data
-          const roles = rolesData.map(r => {
-            if (r.role === 'team' && r.team_role) {
-              const teamRoleKey = `team-${r.team_role}` as keyof typeof mockRoles;
-              return mockRoles[teamRoleKey];
-            }
-            return mockRoles[r.role];
-          }).filter(Boolean);
-          
-          // Extract team_role if user has team role
-          const teamRoleData = rolesData.find(r => r.role === 'team');
-          const teamRole = teamRoleData?.team_role as 'manager' | 'trainer' | 'staff' | undefined;
-          
-          const userWithRoles: UserWithRoles = {
-            id: profile.user_id,
-            email: profile.email,
-            name: profile.full_name,
-            role: rolesData[0].role as UserRole,
-            avatar: profile.avatar_url,
-            phone: profile.phone,
-            joinDate: profile.created_at?.split('T')[0],
-            branchId: profile.branch_id,
-            branchName: authState.user.branchName,
-            teamRole: teamRole,
-            roles: roles,
-            isActive: profile.is_active,
-            lastLogin: new Date(),
-            assignedBranches: rolesData.map(r => r.branch_id).filter(Boolean),
-            primaryBranchId: profile.branch_id
-          };
-          setCurrentUser(userWithRoles);
-        } else {
-          setCurrentUser(null);
-        }
+        console.log('RBAC: Loaded user with roles', {
+          user: userWithRoles,
+          permissions: userPermissions
+        });
       } catch (error) {
-        console.error('Error loading user roles and permissions:', error);
-        setCurrentUser(null);
-        setUserRoles([]);
-        setUserPermissions([]);
+        console.error('Error loading user permissions:', error);
+        // Fallback to minimal permissions if there's an error
+        setPermissions(['dashboard.view']);
       } finally {
+        setIsLoading(false);
         setIsLoadingPermissions(false);
       }
     };
 
-    loadUserWithRolesAndPermissions();
+    loadUserPermissions();
   }, [authState.user]);
 
-  const getUserPermissions = (): Permission[] => {
-    if (!currentUser) {
-      return [];
-    }
-
-    // Add custom permissions if any
-    const permissions = new Set(userPermissions);
-    
-    if (currentUser.customPermissions) {
-      currentUser.customPermissions.forEach(permission => permissions.add(permission));
-    }
-
-    // Remove denied permissions
-    if (currentUser.deniedPermissions) {
-      currentUser.deniedPermissions.forEach(permission => permissions.delete(permission));
-    }
-
-    return Array.from(permissions);
-  };
-
-  const hasPermission = (permission: Permission): boolean => {
-    if (!currentUser) return false;
-
-    // Super admin has all permissions
-    if (currentUser.role === 'super-admin') return true;
-
-    // TEMPORARY OVERRIDE: Allow admin full access when permissions haven't loaded yet
-    // This will be removed once DB permissions are properly seeded
-    if (currentUser.role === 'admin' && userPermissions.length === 0) {
-      console.log('⚠️ [RBAC] Temporary admin override active - granting permission:', permission);
-      return true;
-    }
-
-    // Check against database-loaded permissions
-    return userPermissions.includes(permission);
-  };
-
-  const hasAnyPermission = (permissions: Permission[]): boolean => {
-    return permissions.some(permission => hasPermission(permission));
-  };
-
-  const hasAllPermissions = (permissions: Permission[]): boolean => {
-    return permissions.every(permission => hasPermission(permission));
-  };
-
-  const canAccessResource = (resource: string, action: string): boolean => {
-    const permission = `${resource}.${action}` as Permission;
-    return hasPermission(permission);
-  };
-
-  const canAccessBranch = (branchId: string): boolean => {
-    if (!currentUser) return false;
-    
-    // Super Admin and Admin can access all branches
-    if (currentUser.role === 'super-admin' || currentUser.role === 'admin') {
-      return true;
-    }
-    
-    // Team and Member are restricted to their assigned branch
-    return currentUser.branchId === branchId;
-  };
-
-  const getCurrentBranchId = (): string | null => {
-    return currentUser?.branchId || null;
-  };
-
-  const isTrainer = (): boolean => {
-    return currentUser?.role === 'team' && currentUser?.teamRole === 'trainer';
-  };
-
+  // Helper functions for role checks
   const isStaff = (): boolean => {
     return currentUser?.role === 'team' && currentUser?.teamRole === 'staff';
   };
@@ -469,24 +330,78 @@ export const RBACProvider = ({ children }: { children: ReactNode }) => {
     return currentUser?.role === 'team' && currentUser?.teamRole === 'manager';
   };
 
-  const value: RBACContextType = {
+  const isTrainer = (): boolean => {
+    return currentUser?.role === 'team' && currentUser?.teamRole === 'trainer';
+  };
+
+  const canAccessResource = (resource: string, action: string): boolean => {
+    if (currentUser?.role === 'super-admin') return true;
+    return permissions.includes(`${action}:${resource}` as Permission);
+  };
+
+  const canAccessBranch = (branchId: string): boolean => {
+    if (currentUser?.role === 'super-admin') return true;
+    return currentUser?.assignedBranches?.includes('all') || 
+           currentUser?.assignedBranches?.includes(branchId) ||
+           false;
+  };
+
+  const getCurrentBranchId = (): string | null => {
+    return currentUser?.branchId || null;
+  };
+
+  const contextValue: RBACContextType = {
     currentUser,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    getUserPermissions,
+    isLoading: isLoading || authState.isLoading,
+    isLoadingPermissions: isLoadingPermissions || authState.isLoading,
+    hasPermission: (requiredPermission: Permission) => {
+      // Super admin has all permissions
+      if (currentUser?.role === 'super-admin') return true;
+      return permissions.includes(requiredPermission);
+    },
+    hasAnyPermission: (requiredPermissions: Permission[]) => {
+      if (currentUser?.role === 'super-admin') return true;
+      return requiredPermissions.some(permission => permissions.includes(permission));
+    },
+    hasAllPermissions: (requiredPermissions: Permission[]) => {
+      if (currentUser?.role === 'super-admin') return true;
+      return requiredPermissions.every(permission => permissions.includes(permission));
+    },
+    getUserPermissions: () => permissions,
+    getUserRole: () => currentUser?.role || null,
+    isInRole: (role: UserRole) => currentUser?.role === role,
+    isInAnyRole: (roles: UserRole[]) =>
+      roles.some(role => currentUser?.role === role),
     canAccessResource,
     canAccessBranch,
     getCurrentBranchId,
     isTrainer,
     isStaff,
     isManager,
-    isLoadingPermissions
+    logActivity: (action: string, details: Record<string, unknown>) => {
+      const resource = (details.resource as string) || 'system';
+      const log: AuditLog = {
+        id: `log-${Date.now()}`,
+        userId: currentUser?.id || 'anonymous',
+        userName: currentUser?.name || 'System',
+        action,
+        resource,
+        resourceId: (details.id as string) || '',
+        branchId: currentUser?.branchId || 'none',
+        details,
+        ipAddress: '0.0.0.0',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+        timestamp: new Date()
+      };
+      setAuditLogs(prev => [log, ...prev].slice(0, 1000));
+    },
+    getAuditLogs: () => auditLogs,
+    getRoles: () => Object.values(mockRoles),
   };
 
   return (
-    <RBACContext.Provider value={value}>
-      {children}
+    <RBACContext.Provider value={contextValue}>
+      {!isLoading && children}
     </RBACContext.Provider>
   );
 };

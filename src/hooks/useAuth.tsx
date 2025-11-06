@@ -4,11 +4,20 @@ import api from '@/lib/axios';
 import { User, AuthState, LoginCredentials, UserRole } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
 
+interface SignUpData {
+  name: string;
+  phone?: string;
+  role?: string;
+  full_name?: string;
+  phone_number?: string;
+  [key: string]: unknown;
+}
+
 const AuthContext = createContext<{
   authState: AuthState;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signUp: (email: string, password: string, userData: SignUpData) => Promise<void>;
 }>({
   authState: { user: null, isAuthenticated: false, isLoading: true, error: null },
   login: async () => {},
@@ -32,12 +41,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     error: null
   });
 
-  useEffect(() => {
-    // Check if user has a valid session on mount
-    const checkSession = async () => {
-      const token = localStorage.getItem('access_token');
+  const refreshAccessToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return false;
 
-      if (!token) {
+      const response = await api.post('/api/auth/refresh', { refresh_token: refreshToken });
+      const { access_token, refresh_token } = response.data.data || response.data;
+      
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token);
+        }
+        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return false;
+    }
+  };
+
+  const fetchUserData = async (token: string) => {
+    try {
+      const response = await api.get('/api/auth/me');
+      const responseData = response.data.data || response.data;
+      const userData = responseData.user || responseData;
+
+      // Normalize role format (convert underscores to hyphens)
+      const normalizedRole = (userData.role || '').replace(/_/g, '-');
+      
+      return {
+        id: userData.user_id || userData.id,
+        email: userData.email,
+        name: userData.full_name || userData.name,
+        role: normalizedRole,
+        teamRole: (userData.team_role || normalizedRole).replace(/_/g, '-'),
+        avatar: userData.avatar_url || userData.avatar,
+        phone: userData.phone || userData.phone_number,
+        joinDate: (userData.created_at || userData.createdAt || new Date().toISOString()).split('T')[0],
+        branchId: userData.branch_id || userData.branchId,
+        branchName: userData.branch_name || userData.branchName,
+        gym_id: userData.gym_id || userData.gymId,
+        gymName: userData.gym_name || userData.gymName
+      };
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+      throw error;
+    }
+  };
+
+  // Only run checkSession on initial mount and when not authenticated
+  useEffect(() => {
+    // Skip if already authenticated to prevent race conditions with login
+    if (authState.isAuthenticated) {
+      return;
+    }
+
+    const checkSession = async () => {
+      let token = localStorage.getItem('access_token');
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      if (!token || !refreshToken) {
         setAuthState(prev => ({
           ...prev,
           isLoading: false,
@@ -47,40 +114,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        // Set the auth header for subsequent requests
+        // Set initial auth header
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
-        // Validate token and get user profile
-        const response = await api.get('/auth/me');
-        // Handle nested data structure in response
-        const responseData = response.data.data || response.data;
-        const userData = responseData.user || responseData;
-
-        // Map backend user data to frontend User type consistently with login
-        const user = {
-          id: userData.user_id || userData.id,
-          email: userData.email,
-          name: userData.full_name || userData.name,
-          role: userData.role,
-          teamRole: userData.team_role || userData.role, // Fallback to role if team_role not available
-          avatar: userData.avatar_url || userData.avatar,
-          phone: userData.phone || userData.phone_number,
-          joinDate: (userData.created_at || userData.createdAt || new Date().toISOString()).split('T')[0],
-          branchId: userData.branch_id || userData.branchId,
-          branchName: userData.branch_name || userData.branchName,
-          gym_id: userData.gym_id || userData.gymId,
-          gymName: userData.gym_name || userData.gymName
-        };
-
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null
-        });
-      } catch (error: any) {
+        try {
+          // Try to fetch user data with current token
+          const user = await fetchUserData(token);
+          
+          setAuthState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null
+          });
+        } catch (error) {
+          // If token is invalid, try to refresh it
+          console.log('Access token expired, attempting to refresh...');
+          const refreshed = await refreshAccessToken();
+          
+          if (refreshed) {
+            // Get new token and try fetching user data again
+            token = localStorage.getItem('access_token');
+            if (token) {
+              const user = await fetchUserData(token);
+              
+              setAuthState({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null
+              });
+            }
+          } else {
+            throw new Error('Failed to refresh token');
+          }
+        }
+      } catch (error) {
         console.error('Session validation failed:', error);
-        // Clear invalid token
+        // Clear invalid tokens
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         delete api.defaults.headers.common['Authorization'];
@@ -95,27 +166,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkSession();
-  }, []);
+  }, [authState.isAuthenticated]);
 
-  const login = async (credentials) => {
+  const login = async (credentials: LoginCredentials): Promise<void> => {
     setAuthState(prev => ({
       ...prev,
       isLoading: true,
-      error: null
+      error: null,
+      isAuthenticated: false,
+      user: null
     }));
     
     try {
-      const response = await api.post('/auth/login', {
+      console.log('Attempting login with email:', credentials.email);
+      // Use the new API path without version
+      const response = await api.post('/api/auth/login', {
         email: credentials.email,
         password: credentials.password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      }).catch(error => {
+        console.error('Login API error:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            data: error.config?.data
+          }
+        });
+        throw error;
       });
+      
+      console.log('Login response received:', response.data);
       
       // Handle nested data structure in response
       const responseData = response.data.data || response.data;
-      const { access_token, refresh_token, user: userData } = responseData;
+      const { access_token, refresh_token, user: userData } = responseData || {};
       
       if (!access_token || !userData) {
-        throw new Error('Invalid response from server');
+        console.error('Invalid response format:', responseData);
+        throw new Error('Invalid response from server: Missing token or user data');
       }
       
       // Store JWT tokens
@@ -127,18 +222,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Set default auth header for future requests
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
+      // Normalize role format (convert underscores to hyphens)
+      const normalizedRole = (userData.role || 'member').replace(/_/g, '-');
+      
       // Map backend user data to frontend User type
-      const user = {
-        id: userData.user_id || userData.id,
-        email: userData.email,
-        name: userData.full_name || userData.name,
-        role: userData.role,
-        teamRole: userData.team_role || userData.role, // Fallback to role if team_role not available
-        avatar: userData.avatar_url || userData.avatar,
-        phone: userData.phone || userData.phone_number,
+      const user: User = {
+        id: userData.user_id || userData.id || '',
+        email: userData.email || credentials.email,
+        name: userData.full_name || userData.name || 'User',
+        role: normalizedRole as UserRole,
+        teamRole: (userData.team_role || normalizedRole).replace(/_/g, '-'),
+        avatar: userData.avatar_url || userData.avatar || '',
+        phone: userData.phone || userData.phone_number || '',
         joinDate: (userData.created_at || new Date().toISOString()).split('T')[0],
-        branchId: userData.branch_id,
-        branchName: userData.branch_name,
+        branchId: userData.branch_id || '',
+        branchName: userData.branch_name || '',
         gym_id: userData.gym_id,
         gymName: userData.gym_name
       };
@@ -154,8 +252,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Welcome back!",
         description: `Logged in as ${user.name}`,
       });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Login failed';
+      
+      if (error instanceof Error) {
+        const axiosError = error as any;
+        if (axiosError.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          errorMessage = axiosError.response.data?.message || 
+                        axiosError.response.statusText || 
+                        `Server responded with status ${axiosError.response.status}`;
+          
+          if (axiosError.response.status === 500) {
+            errorMessage = 'Internal server error. Please try again later.';
+          } else if (axiosError.response.status === 401) {
+            errorMessage = 'Invalid email or password';
+          }
+        } else if (axiosError.request) {
+          // The request was made but no response was received
+          errorMessage = 'No response from server. Please check your connection.';
+        } else {
+          // Something happened in setting up the request
+          errorMessage = error.message || 'Error setting up login request';
+        }
+      }
+      
+      console.error('Login failed:', errorMessage);
       
       setAuthState(prev => ({
         ...prev,
@@ -175,19 +300,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, userData: any): Promise<void> => {
+  const signUp = async (email: string, password: string, userData: SignUpData) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await api.post('/auth/register', {
+      const response = await api.post('/api/auth/register', {
         email,
         password,
         full_name: userData.name || userData.full_name,
-        phone: userData.phone,
+        phone: userData.phone || userData.phone_number,
         role: userData.role || 'member',
       });
 
-      const { access_token, refresh_token, user: userResponse } = response.data;
+      const responseData = response.data.data || response.data;
+      const { access_token, refresh_token, user: userResponse } = responseData;
 
       // Store tokens if provided
       if (access_token) {
@@ -197,15 +323,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         
+        const user: User = {
+          id: userResponse.user_id || userResponse.id || '',
+          email: userResponse.email || email,
+          name: userResponse.full_name || userResponse.name || userData.name || 'User',
+          role: (userResponse.role || 'member') as UserRole,
+          teamRole: (userResponse.team_role || 'member').replace(/_/g, '-'),
+          avatar: userResponse.avatar_url || userResponse.avatar || '',
+          phone: userResponse.phone || userResponse.phone_number || userData.phone || userData.phone_number || '',
+          joinDate: (userResponse.created_at || new Date().toISOString()).split('T')[0],
+          branchId: userResponse.branch_id || '',
+          branchName: userResponse.branch_name || '',
+          gym_id: userResponse.gym_id,
+          gymName: userResponse.gym_name
+        };
+        
         setAuthState({
-          user: {
-            id: userResponse.user_id,
-            email: userResponse.email,
-            name: userResponse.full_name,
-            role: 'member' as UserRole,
-            phone: userResponse.phone,
-            joinDate: new Date().toISOString().split('T')[0],
-          },
+          user,
           isAuthenticated: true,
           isLoading: false,
           error: null
@@ -223,8 +357,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Account created",
         description: response.data.message || "Registration successful. Please check your email to verify your account.",
       });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Sign up failed';
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? (error as any).response?.data?.message || error.message 
+        : 'Sign up failed';
       
       setAuthState(prev => ({
         ...prev,
@@ -242,35 +378,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (showToast = true) => {
+    // Clear auth state immediately for better UX
+    const previousState = { ...authState };
+    
+    // Optimistically update the UI
+    setAuthState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null
+    });
+    
+    // Clear tokens and auth header
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    delete api.defaults.headers.common['Authorization'];
+    
     try {
-      // Call backend logout endpoint
-      await api.post('/auth/logout');
+      // Call backend logout endpoint with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      await api.post('/api/auth/logout', null, { signal: controller.signal });
+      clearTimeout(timeoutId);
     } catch (error) {
       console.error('Logout API error:', error);
-      // Continue with local cleanup even if API call fails
-    } finally {
-      // Clear tokens and auth header
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      delete api.defaults.headers.common['Authorization'];
-      
-      // Reset auth state
-      setAuthState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null
-      });
-
-      // Redirect to login
-      window.location.href = '/login';
-      
+      // Even if the API call fails, we've already cleared the local state
+    }
+    
+    // Show success message if requested
+    if (showToast) {
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
     }
+    
+    // Force a hard redirect to ensure all state is cleared
+    // This ensures any cached data is properly cleared
+    window.location.href = '/login';
+    
+    // Force a full page reload to ensure all application state is reset
+    // This is a fallback in case the redirect doesn't trigger a full reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   return (
