@@ -58,11 +58,11 @@ export const ModernAdminDashboard = () => {
   );
 
   // Process revenue chart data
-  const processedRevenueData = analyticsData?.slice(0, 7).reverse().map((item, index) => ({
+  const processedRevenueData = (Array.isArray(analyticsData) ? analyticsData.slice(0, 7).reverse().map((item: any, index: number) => ({
     month: new Date(item.month_year).toLocaleDateString('en-US', { month: 'short' }),
     value: item.total_revenue || 0,
     percentage: Math.min((item.total_revenue || 0) / 1000 * 100, 100)
-  })) || [
+  })) : null) || [
     { month: 'Apr', value: 32, percentage: 32 },
     { month: 'May', value: 48, percentage: 48 },
     { month: 'Jun', value: 78, percentage: 78 },
@@ -162,7 +162,7 @@ export const ModernAdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="text-2xl font-bold text-primary">${todayRevenue?.toFixed(2) || '0.00'}</div>
+              <div className="text-2xl font-bold text-primary">${typeof todayRevenue === 'number' ? todayRevenue.toFixed(2) : '0.00'}</div>
               
               {/* Revenue Chart Bar */}
               <div className="relative">
@@ -182,7 +182,7 @@ export const ModernAdminDashboard = () => {
                 </div>
               </div>
               
-              <div className="text-4xl font-bold text-foreground">Total: ${analyticsData?.reduce((sum, item) => sum + (item.total_revenue || 0), 0)?.toFixed(2) || '0.00'}</div>
+              <div className="text-4xl font-bold text-foreground">Total: ${Array.isArray(analyticsData) ? analyticsData.reduce((sum: number, item: any) => sum + (item.total_revenue || 0), 0).toFixed(2) : '0.00'}</div>
             </div>
           </CardContent>
         </Card>
@@ -354,8 +354,8 @@ export const ModernAdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="text-3xl font-bold text-foreground">New today: {newMembersToday || 0}</div>
-                <div className="text-3xl font-bold text-foreground">Sessions: {attendanceToday || 0}</div>
+                <div className="text-3xl font-bold text-foreground">New today: {typeof newMembersToday === 'number' ? newMembersToday : 0}</div>
+                <div className="text-3xl font-bold text-foreground">Sessions: {typeof attendanceToday === 'number' ? attendanceToday : 0}</div>
                 <div className="flex items-center gap-2">
                   <ArrowUpRight className="w-4 h-4 text-primary" />
                   <span className="text-sm text-muted-foreground">Completed rate</span>

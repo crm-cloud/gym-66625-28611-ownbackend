@@ -95,8 +95,9 @@ export const AdminBranchDashboard = () => {
   }
 
   const canCreateMoreBranches = (branches?.length || 0) < (gym.max_branches || 1);
-  const totalMembers = branches?.reduce((sum, branch) => sum + (branch.current_members || 0), 0) || 0;
-  const totalCapacity = branches?.reduce((sum, branch) => sum + (branch.capacity || 0), 0) || 0;
+  // Note: member counts would come from a separate members API call
+  const totalMembers = 0; // TODO: Fetch from members API
+  const totalCapacity = gym.max_members || 100;
   const occupancyRate = totalCapacity > 0 ? Math.round((totalMembers / totalCapacity) * 100) : 0;
 
   return (

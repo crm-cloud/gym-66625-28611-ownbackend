@@ -108,9 +108,6 @@ export function BranchListTable() {
           </TableHeader>
           <TableBody>
             {filteredBranches.map((branch, index) => {
-              const address = branch.address as any;
-              const contact = branch.contact as any;
-              
               return (
                 <motion.tr
                   key={branch.id}
@@ -125,10 +122,10 @@ export function BranchListTable() {
                         <MapPin className="w-4 h-4 text-primary" />
                         {branch.name}
                       </div>
-                      {contact?.phone && (
+                      {branch.phone && (
                         <div className="text-sm text-muted-foreground flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          {contact.phone}
+                          {branch.phone}
                         </div>
                       )}
                     </div>
@@ -143,10 +140,10 @@ export function BranchListTable() {
                   <TableCell>
                     <div className="space-y-1">
                       <div className="text-sm">
-                        {address?.street ? `${address.street}` : 'Address not set'}
+                        {branch.address || 'Address not set'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {address?.city && address?.state ? `${address.city}, ${address.state} ${address.zipCode || ''}` : 'Location not complete'}
+                        {branch.city && branch.state ? `${branch.city}, ${branch.state} ${branch.postal_code || ''}` : 'Location not complete'}
                       </div>
                     </div>
                   </TableCell>
@@ -154,40 +151,21 @@ export function BranchListTable() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-secondary" />
-                      <span className="font-medium">{branch.current_members || 0}</span>
+                      <span className="font-medium">N/A</span>
                     </div>
                   </TableCell>
                   
                   <TableCell>
                     <Badge variant="secondary">
-                      {branch.capacity || 'Not set'}
+                      N/A
                     </Badge>
                   </TableCell>
                   
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      {branch.manager ? (
-                        <>
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={branch.manager.avatar_url || ''} alt={branch.manager.full_name} />
-                            <AvatarFallback>
-                              {branch.manager.full_name?.charAt(0) || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-sm">
-                              {branch.manager.full_name || 'Unnamed'}
-                            </div>
-                            <div className="text-xs text-muted-foreground truncate max-w-[160px]">
-                              {branch.manager.email || 'No email'}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          Not assigned
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="text-xs">
+                        Not assigned
+                      </Badge>
                     </div>
                   </TableCell>
                   
