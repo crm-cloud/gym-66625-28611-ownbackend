@@ -264,18 +264,38 @@ const App = () => (
                         />
                         
                          {/* SaaS Management Routes - Super Admin only */}
-                       <Route 
-                         path="/gyms" 
-                         element={
-                           <RouteGuard allowedRoles={['super-admin']}>
-                             <DashboardLayout>
-                               <Suspense fallback={<PageLoadingState />}>
-                                 <lazyRoutes.GymManagement />
-                               </Suspense>
-                             </DashboardLayout>
-                           </RouteGuard>
-                         } 
-                       />
+                       {/* Gym Management - Accessible to super-admin and admins with active subscription */}
+                       {/* Gym Management - Requires active subscription */}
+                        <Route 
+                          path="/gyms" 
+                          element={
+                            <RouteGuard 
+                              allowedRoles={['super-admin', 'admin']}
+                              checkSubscription={true}
+                              requiredSubscriptionStatus='active'
+                            >
+                              <DashboardLayout>
+                                <Suspense fallback={<PageLoadingState />}>
+                                  <lazyRoutes.GymManagement />
+                                </Suspense>
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        
+                        {/* Subscription Status - Accessible to admins */}
+                        <Route 
+                          path="/gym/subscription" 
+                          element={
+                            <RouteGuard allowedRoles={['admin']}>
+                              <DashboardLayout>
+                                <Suspense fallback={<PageLoadingState />}>
+                                  <lazyRoutes.SubscriptionStatus />
+                                </Suspense>
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
                         <Route 
                           path="/subscription-plans" 
                           element={

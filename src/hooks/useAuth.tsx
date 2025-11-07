@@ -127,45 +127,75 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isLoading: false,
             error: null
           });
-        } catch (error) {
-          // If token is invalid, try to refresh it
-          console.log('Access token expired, attempting to refresh...');
-          const refreshed = await refreshAccessToken();
           
-          if (refreshed) {
-            // Get new token and try fetching user data again
-            token = localStorage.getItem('access_token');
-            if (token) {
-              const user = await fetchUserData(token);
+        } catch (error: any) {
+          // If token is invalid or expired, try to refresh it
+          if (error.response?.status === 401 && refreshToken) {
+            try {
+              // Try to refresh the token
+              const refreshResponse = await api.post('/api/auth/refresh', {
+                refresh_token: refreshToken
+              });
+              
+              const { access_token, refresh_token } = refreshResponse.data;
+              
+              // Update tokens in storage
+              localStorage.setItem('access_token', access_token);
+              if (refresh_token) {
+                localStorage.setItem('refresh_token', refresh_token);
+              }
+              
+              // Update auth header
+              api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+              
+              // Retry getting user data with new token
+              const userResponse = await api.get('/api/auth/me');
               
               setAuthState({
-                user,
+                user: userResponse.data,
                 isAuthenticated: true,
                 isLoading: false,
                 error: null
               });
+              
+              return;
+              
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+              // If refresh fails, clear everything and log out
+              await logout(false);
+              return;
             }
-          } else {
-            throw new Error('Failed to refresh token');
           }
+          
+          // If we get here, the error wasn't a 401 or refresh failed
+          throw error;
         }
-      } catch (error) {
-        console.error('Session validation failed:', error);
-        // Clear invalid tokens
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        delete api.defaults.headers.common['Authorization'];
         
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: 'Your session has expired. Please log in again.'
-        });
+      } catch (error) {
+        console.error('Session check failed:', error);
+        // Clear any invalid tokens
+        await logout(false);
       }
     };
 
     checkSession();
+    
+    // Set up a listener for storage events to handle logouts from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'access_token' && !e.newValue) {
+        // If access_token was removed, log out
+        setAuthState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: 'You have been logged out from another tab.'
+        });
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [authState.isAuthenticated]);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -378,9 +408,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = async (showToast = true) => {
-    // Clear auth state immediately for better UX
-    const previousState = { ...authState };
+  const logout = async (showToast = true, redirectToLogin = true) => {
+    // Clear tokens and auth header first to prevent any race conditions
+    const refreshToken = localStorage.getItem('refresh_token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    delete api.defaults.headers.common['Authorization'];
     
     // Optimistically update the UI
     setAuthState({
@@ -390,18 +423,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       error: null
     });
     
-    // Clear tokens and auth header
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    delete api.defaults.headers.common['Authorization'];
-    
     try {
-      // Call backend logout endpoint with a timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      await api.post('/api/auth/logout', null, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      // Only call the logout endpoint if we have a refresh token
+      if (refreshToken) {
+        // Call backend logout endpoint with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        try {
+          await api.post('/api/auth/logout', { refresh_token: refreshToken }, { 
+            signal: controller.signal,
+            skipAuthRefresh: true // Prevent infinite loops
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      }
     } catch (error) {
       console.error('Logout API error:', error);
       // Even if the API call fails, we've already cleared the local state
@@ -415,15 +452,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
     
-    // Force a hard redirect to ensure all state is cleared
-    // This ensures any cached data is properly cleared
-    window.location.href = '/login';
-    
-    // Force a full page reload to ensure all application state is reset
-    // This is a fallback in case the redirect doesn't trigger a full reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    // Only redirect if specified
+    if (redirectToLogin) {
+      // Force a hard redirect to ensure all state is cleared
+      window.location.href = '/login';
+      
+      // Force a full page reload after a short delay
+      // This ensures any cached data is properly cleared
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
   };
 
   return (

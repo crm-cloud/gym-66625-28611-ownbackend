@@ -111,7 +111,7 @@ export const useBranchById = (branchId: string) => {
   return useQuery({
     queryKey: ['branches', branchId],
     queryFn: async () => {
-      const response = await api.get(`/api/v1/branches/${branchId}`);
+      const response = await api.get(`/api/branches/${branchId}`);
       return response.data;
     },
     enabled: !!branchId
@@ -123,7 +123,7 @@ export const useCreateBranch = () => {
 
   const createBranch = useMutation<Branch, ApiErrorResponse, Omit<Branch, 'id'>>({
     mutationFn: async (newBranch) => {
-      const response = await api.post('/api/v1/branches', newBranch);
+      const response = await api.post('/api/branches', newBranch);
       return response.data;
     },
     onSuccess: () => {
@@ -150,7 +150,7 @@ export const useUpdateBranch = () => {
 
   return useMutation({
     mutationFn: async ({ branchId, data }: { branchId: string; data: any }) => {
-      const response = await api.put(`/api/v1/branches/${branchId}`, data);
+      const response = await api.put(`/api/branches/${branchId}`, data);
       return response.data;
     },
     onSuccess: (_, variables) => {
@@ -176,7 +176,7 @@ export const useDeleteBranch = () => {
 
   const deleteBranch = useMutation<void, ApiErrorResponse, string>({
     mutationFn: async (branchId) => {
-      await api.delete(`/api/v1/branches/${branchId}`);
+      await api.delete(`/api/branches/${branchId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });

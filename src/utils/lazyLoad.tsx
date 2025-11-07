@@ -10,9 +10,10 @@ export const createLazyComponent = <P extends object>(
 };
 
 // Preload function for route-based code splitting
-export const preloadRoute = (importFn: () => Promise<any>) => {
-  const componentImport = importFn();
-  return componentImport;
+export const preloadRoute = <T extends object>(
+  importFn: () => Promise<{ default: React.ComponentType<T> }>
+): Promise<{ default: React.ComponentType<T> }> => {
+  return importFn();
 };
 
 // Route-based lazy loading for major pages
@@ -34,6 +35,8 @@ export const lazyRoutes = {
   PlatformReports: createLazyComponent(() => import('@/pages/platform-reports/index').then(m => ({ default: m.default }))),
   // Gym Management for Admins
   AdminGymDashboard: createLazyComponent(() => import('@/components/gyms/AdminGymDashboard').then(m => ({ default: m.AdminGymDashboard }))),
+  // Subscription Management
+  SubscriptionStatus: createLazyComponent(() => import('@/pages/gyms/SubscriptionStatus').then(m => ({ default: m.default }))),
 };
 
 // Component-based lazy loading for heavy components (commented out until components are available)

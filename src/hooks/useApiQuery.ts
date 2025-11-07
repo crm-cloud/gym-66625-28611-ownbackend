@@ -52,11 +52,26 @@ export const useApiQuery = <TData,>(
         
         console.log(`[useApiQuery] Fetching from: ${formattedEndpoint}`);
         
-        const { data } = await api.get(formattedEndpoint);
+        // Get current token for debugging
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          console.warn('[useApiQuery] No access token found in localStorage');
+        }
+        
+        const { data } = await api.get<TData>(formattedEndpoint, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          // Add a flag to prevent the interceptor from retrying this request
+          _skipAuthRetry: true
+        });
+        
         return data;
       } catch (err) {
         const error = err as ApiErrorResponse;
-        console.error(`[useApiQuery] API Error (${endpoint}):`, {
+        const errorDetails = {
           status: error.response?.status,
           statusText: error.response?.statusText,
           url: error.config?.url,
@@ -64,10 +79,47 @@ export const useApiQuery = <TData,>(
           config: {
             url: error.config?.url,
             method: error.config?.method,
-            headers: error.config?.headers
+            headers: {
+              ...error.config?.headers,
+              // Don't log the full Authorization header for security
+              Authorization: error.config?.headers?.Authorization ? 'Bearer [REDACTED]' : undefined
+            }
           }
-        });
-        throw error;
+        };
+        
+        console.error(`[useApiQuery] API Error (${endpoint}):`, errorDetails);
+        
+        // If we get a 401, ensure we clear the tokens
+        if (error.response?.status === 401) {
+          console.warn('[useApiQuery] 401 Unauthorized - Clearing auth tokens');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          delete api.defaults.headers.common['Authorization'];
+          
+          // Only redirect if we're not already on the login page
+          if (!window.location.pathname.includes('/login')) {
+            window.location.assign('/login');
+          }
+        }
+        
+        // Transform the error to include more context
+        const enhancedError: ApiErrorResponse = {
+          ...error,
+          message: error.response?.data?.message || error.message || 'An unknown error occurred',
+          status: error.response?.status,
+          response: error.response
+            ? {
+                ...error.response,
+                data: {
+                  ...error.response.data,
+                  // Ensure we have a user-friendly message
+                  message: error.response.data?.message || 'An error occurred while processing your request'
+                }
+              }
+            : undefined
+        };
+        
+        throw enhancedError;
       }
     },
     retry: 1, // Retry once on failure

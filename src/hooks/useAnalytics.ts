@@ -40,7 +40,7 @@ interface AnalyticsFilters {
 export const useDashboardStats = (filters?: AnalyticsFilters) => {
   return useApiQuery<DashboardStats>(
     ['analytics', 'dashboard', filters],
-    `/api/v1/analytics/dashboard?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    `/api/analytics/dashboard?${new URLSearchParams(filters as Record<string, string>).toString()}`,
     {
       enabled: true,
       staleTime: 60000 // 1 minute
@@ -51,7 +51,7 @@ export const useDashboardStats = (filters?: AnalyticsFilters) => {
 export const useRevenueAnalytics = (filters?: AnalyticsFilters) => {
   return useApiQuery<RevenueData[]>(
     ['analytics', 'revenue', filters],
-    `/api/v1/analytics/revenue?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    `/api/analytics/revenue?${new URLSearchParams(filters as Record<string, string>).toString()}`,
     {
       enabled: true,
       staleTime: 300000 // 5 minutes
@@ -62,7 +62,7 @@ export const useRevenueAnalytics = (filters?: AnalyticsFilters) => {
 export const useMembershipAnalytics = (filters?: AnalyticsFilters) => {
   return useApiQuery<MembershipData[]>(
     ['analytics', 'membership', filters],
-    `/api/v1/analytics/membership?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    `/api/analytics/membership?${new URLSearchParams(filters as Record<string, string>).toString()}`,
     {
       enabled: true,
       staleTime: 300000
@@ -73,7 +73,7 @@ export const useMembershipAnalytics = (filters?: AnalyticsFilters) => {
 export const useClassPopularity = (filters?: AnalyticsFilters) => {
   return useApiQuery<ClassPopularity[]>(
     ['analytics', 'classes', filters],
-    `/api/v1/analytics/classes?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    `/api/analytics/classes?${new URLSearchParams(filters as Record<string, string>).toString()}`,
     {
       enabled: true,
       staleTime: 300000
@@ -101,7 +101,7 @@ export const usePlatformAnalytics = (filters?: Omit<AnalyticsFilters, 'branchId'
     }>;
   }>(
     ['platform', 'analytics', filters],
-    `/api/v1/platform/analytics?${new URLSearchParams(filters as Record<string, string>).toString()}`,
+    `/api/platform/analytics?${new URLSearchParams(filters as Record<string, string>).toString()}`,
     {
       enabled: true,
       staleTime: 300000

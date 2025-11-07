@@ -17,7 +17,7 @@ export async function uploadFile(file: File, category?: string): Promise<string>
     config.headers['x-upload-category'] = category;
   }
 
-  const { data } = await api.post('/api/v1/files/upload', formData, config);
+  const { data } = await api.post('/api/files/upload', formData, config);
   
   return data.url; // Return S3/local URL
 }
@@ -42,7 +42,7 @@ export async function uploadMultipleFiles(files: File[], category?: string): Pro
     config.headers['x-upload-category'] = category;
   }
 
-  const { data } = await api.post('/api/v1/files/upload-multiple', formData, config);
+  const { data } = await api.post('/api/files/upload-multiple', formData, config);
   
   return data.files.map((f: any) => f.url);
 }
@@ -54,7 +54,7 @@ export async function uploadAvatar(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('avatar', file);
 
-  const { data } = await api.post('/api/v1/files/upload-avatar', formData, {
+  const { data } = await api.post('/api/files/upload-avatar', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -67,5 +67,5 @@ export async function uploadAvatar(file: File): Promise<string> {
  * Delete file from backend
  */
 export async function deleteFile(fileKey: string): Promise<void> {
-  await api.delete(`/api/v1/files/${fileKey}`);
+  await api.delete(`/api/files/${fileKey}`);
 }

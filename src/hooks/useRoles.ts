@@ -6,7 +6,7 @@ export const useRoles = (filters?: RoleFilters) => {
   return useQuery({
     queryKey: ['roles', filters],
     queryFn: async () => {
-      const { data } = await api.get('/api/v1/roles', { params: filters });
+      const { data } = await api.get('/api/roles', { params: filters });
       return data;
     },
   });
@@ -16,7 +16,7 @@ export const useRoleById = (roleId: string) => {
   return useQuery<Role>({
     queryKey: ['roles', roleId],
     queryFn: async () => {
-      const { data } = await api.get(`/api/v1/roles/${roleId}`);
+      const { data } = await api.get(`/api/roles/${roleId}`);
       return data;
     },
     enabled: !!roleId,
@@ -27,7 +27,7 @@ export const usePermissions = () => {
   return useQuery<Permission[]>({
     queryKey: ['permissions'],
     queryFn: async () => {
-      const { data } = await api.get('/api/v1/roles/permissions');
+      const { data } = await api.get('/api/roles/permissions');
       return data;
     },
   });
@@ -37,7 +37,7 @@ export const useUserRoles = (userId: string) => {
   return useQuery<UserRole[]>({
     queryKey: ['user-roles', userId],
     queryFn: async () => {
-      const { data } = await api.get(`/api/v1/roles/user/${userId}`);
+      const { data } = await api.get(`/api/roles/user/${userId}`);
       return data;
     },
     enabled: !!userId,
@@ -49,7 +49,7 @@ export const useCreateRole = () => {
   
   return useMutation<Role, Error, CreateRoleInput>({
     mutationFn: async (input) => {
-      const { data } = await api.post('/api/v1/roles', input);
+      const { data } = await api.post('/api/roles', input);
       return data;
     },
     onSuccess: () => {
@@ -63,7 +63,7 @@ export const useUpdateRole = () => {
   
   return useMutation<void, Error, { id: string } & UpdateRoleInput>({
     mutationFn: async ({ id, ...input }) => {
-      await api.put(`/api/v1/roles/${id}`, input);
+      await api.put(`/api/roles/${id}`, input);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
@@ -76,7 +76,7 @@ export const useDeleteRole = () => {
   
   return useMutation<void, Error, string>({
     mutationFn: async (roleId) => {
-      await api.delete(`/api/v1/roles/${roleId}`);
+      await api.delete(`/api/roles/${roleId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
@@ -89,7 +89,7 @@ export const useAssignRole = () => {
   
   return useMutation<void, Error, AssignRoleInput>({
     mutationFn: async (input) => {
-      await api.post('/api/v1/roles/assign', input);
+      await api.post('/api/roles/assign', input);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-roles', variables.userId] });
@@ -102,7 +102,7 @@ export const useRemoveRole = () => {
   
   return useMutation<void, Error, { userId: string; roleId: string }>({
     mutationFn: async ({ userId, roleId }) => {
-      await api.delete(`/api/v1/roles/assign`, { data: { userId, roleId } });
+      await api.delete(`/api/roles/assign`, { data: { userId, roleId } });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-roles', variables.userId] });

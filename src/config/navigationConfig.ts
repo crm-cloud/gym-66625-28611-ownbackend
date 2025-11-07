@@ -133,14 +133,6 @@ export const navigationConfig: NavigationGroup[] = [
     priority: 2,
     items: [
       {
-        id: 'gym-management',
-        title: 'Gym Management',
-        url: '/gyms',
-        icon: Building,
-        group: 'platform-management',
-        allowedRoles: ['super-admin'],
-      },
-      {
         id: 'admin-management',
         title: 'Admin Management',
         url: '/users/admin-management',
@@ -155,6 +147,39 @@ export const navigationConfig: NavigationGroup[] = [
         icon: CreditCard,
         group: 'platform-management',
         allowedRoles: ['super-admin'],
+      }
+    ]
+  },
+  
+  // Admin Gym Management
+  {
+    id: 'gym-management',
+    title: 'My Gym',
+    allowedRoles: ['admin'],
+    priority: 3,
+    items: [
+      {
+        id: 'gym-dashboard',
+        title: 'Gym Dashboard',
+        url: '/gyms',
+        icon: Building,
+        group: 'gym-management',
+        requiredSubscriptionStatus: 'active',
+      },
+      {
+        id: 'gym-branches',
+        title: 'Branches',
+        url: '/branches',
+        icon: MapPin,
+        group: 'gym-management',
+        requiredSubscriptionStatus: 'active',
+      },
+      {
+        id: 'gym-subscription',
+        title: 'Subscription',
+        url: '/gym/subscription',
+        icon: CreditCard,
+        group: 'gym-management',
       }
     ]
   },
