@@ -185,6 +185,38 @@ export const navigationConfig: NavigationGroup[] = [
     ]
   },
   {
+    id: 'super-admin-settings',
+    title: 'Global Settings',
+    allowedRoles: ['super-admin'],
+    priority: 21,
+    items: [
+      {
+        id: 'global-settings',
+        title: 'Platform Settings',
+        url: '/settings/global',
+        icon: Settings,
+        group: 'super-admin-settings',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'email-settings',
+        title: 'Email Configuration',
+        url: '/settings/email',
+        icon: Mail,
+        group: 'super-admin-settings',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'sms-settings',
+        title: 'SMS Configuration',
+        url: '/settings/sms',
+        icon: Smartphone,
+        group: 'super-admin-settings',
+        allowedRoles: ['super-admin'],
+      }
+    ]
+  },
+  {
     id: 'gym-overview',
     title: 'Gym Overview',
     allowedRoles: ['admin'],

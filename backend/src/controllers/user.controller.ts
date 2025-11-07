@@ -140,6 +140,22 @@ export class UserController {
       next(error);
     }
   }
+
+  /**
+   * Get profiles (for super admin)
+   */
+  async getProfiles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { role, is_active } = req.query;
+      const profiles = await userService.getProfiles({
+        role: role as string,
+        is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined
+      });
+      res.json(profiles);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userController = new UserController();

@@ -320,6 +320,52 @@ export class UserService {
       }))
     };
   }
+
+  /**
+   * Get profiles with role filtering (for super admin)
+   */
+  async getProfiles(filters: { role?: string; is_active?: boolean }) {
+    const where: any = {};
+    
+    // Build where clause
+    if (filters.is_active !== undefined) {
+      where.is_active = filters.is_active;
+    }
+    
+    const profiles = await prisma.profiles.findMany({
+      where,
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        phone: true,
+        role: true,
+        is_active: true,
+        gym_id: true,
+        branch_id: true,
+        created_at: true,
+        updated_at: true,
+        gyms: {
+          select: {
+            name: true
+          }
+        },
+        branches: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    // Filter by role if specified
+    if (filters.role) {
+      return profiles.filter(p => p.role === filters.role);
+    }
+
+    return profiles;
+  }
 }
 
 export const userService = new UserService();

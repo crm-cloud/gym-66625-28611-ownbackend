@@ -72,3 +72,56 @@ export interface TrainerAnalytics {
   created_at: string;
   updated_at: string;
 }
+
+// Dashboard Stats Types
+export interface DashboardStats {
+  totalMembers: number;
+  activeMembers: number;
+  totalRevenue: number;
+  monthlyRevenue: number;
+  growthRate?: number;
+  memberRetention?: number;
+  classAttendance?: number;
+  
+  // Super Admin specific fields
+  totalGyms?: number;
+  activeGyms?: number;
+  totalBranches?: number;
+  totalTrainers?: number;
+  recentGyms?: Array<{
+    id: string;
+    name: string;
+    subscription_plan: string;
+    created_at: string;
+    branch_count: number;
+    member_count: number;
+  }>;
+}
+
+export interface RevenueAnalytics {
+  data: Array<{
+    month: string;
+    membership_fees: number;
+    personal_training: number;
+    retail: number;
+    total: number;
+  }>;
+}
+
+export interface MembershipAnalytics {
+  data: Array<{
+    month: string;
+    new_members: number;
+    active_members: number;
+    churned_members: number;
+    retention_rate: number;
+  }>;
+}
+
+export interface ClassPopularity {
+  class_type: string;
+  total_classes: number;
+  total_attendees: number;
+  avg_attendance: number;
+  cancellation_rate: number;
+}

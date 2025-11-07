@@ -76,6 +76,9 @@ import adminManagementRoutes from './routes/admin-management.routes';
 import mfaRoutes from './routes/mfa.routes';
 import oauthRoutes from './routes/oauth.routes';
 import aiPlanGeneratorRoutes from './routes/ai-plan-generator.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import gymSubscriptionRoutes from './routes/gym-subscription.routes';
+import profileRoutes from './routes/profile.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -252,13 +255,24 @@ v1Router.use('/templates', templatesRoutes);
 v1Router.use('/user-management', adminIpWhitelist, userManagementRoutes);
 v1Router.use('/admin-management', adminManagementRoutes);
 
+// New Phase: Super Admin & Analytics
+v1Router.use('/gym-subscriptions', gymSubscriptionRoutes);
+v1Router.use('/profiles', profileRoutes);
+v1Router.use('/analytics', analyticsRoutes);
+
 // Mount v1 router
 app.use('/api/v1', v1Router);
 
-// Legacy routes (redirect to v1 for backwards compatibility)
+// Legacy routes (no v1 version - direct /api/ routes)
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/gyms', gymRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/gym-subscriptions', gymSubscriptionRoutes);
+app.use('/api/profiles', profileRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

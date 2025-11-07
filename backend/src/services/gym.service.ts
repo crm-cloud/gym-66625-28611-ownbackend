@@ -226,6 +226,38 @@ export class GymService {
       }
     };
   }
+
+  /**
+   * Get gym usage statistics for super admin
+   */
+  async getGymUsage() {
+    const gyms = await prisma.gyms.findMany({
+      select: {
+        id: true,
+        name: true,
+        subscription_plan: true,
+        status: true,
+        max_branches: true,
+        max_members: true,
+        created_at: true,
+        _count: {
+          select: {
+            branches: true,
+            members: true,
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    return gyms.map(gym => ({
+      ...gym,
+      branch_count: gym._count.branches,
+      member_count: gym._count.members,
+      branch_utilization: ((gym._count.branches / gym.max_branches) * 100).toFixed(2),
+      member_utilization: ((gym._count.members / gym.max_members) * 100).toFixed(2)
+    }));
+  }
 }
 
 export const gymService = new GymService();

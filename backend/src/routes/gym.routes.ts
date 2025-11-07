@@ -9,6 +9,7 @@ router.use(authenticate);
 // GET routes - super_admin and admin can view
 router.get('/', authorize(['super_admin', 'admin']), gymController.getGyms);
 router.get('/stats', authorize(['super_admin']), gymController.getGymStats);
+router.get('/usage', authorize(['super_admin']), gymController.getGymUsage);
 router.get('/:id', authorize(['super_admin', 'admin']), gymController.getGymById);
 router.get('/:id/analytics', authorize(['super_admin', 'admin']), gymController.getGymAnalytics);
 

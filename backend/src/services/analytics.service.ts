@@ -3,7 +3,18 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export class AnalyticsService {
-  async getDashboardStats(gymId?: string, branchId?: string, startDate?: Date, endDate?: Date) {
+  async getDashboardStats(
+    gymId?: string, 
+    branchId?: string, 
+    startDate?: Date, 
+    endDate?: Date,
+    userRole?: string
+  ) {
+    // Super admin gets platform-wide stats
+    if (userRole === 'super_admin' && !gymId && !branchId) {
+      return await this.getPlatformDashboardStats(startDate, endDate);
+    }
+
     const where: any = {};
     
     if (branchId) {
@@ -255,6 +266,75 @@ export class AnalyticsService {
     });
 
     return Object.values(classStats);
+  }
+
+  /**
+   * Get platform-wide dashboard stats for super admin
+   */
+  private async getPlatformDashboardStats(startDate?: Date, endDate?: Date) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const dateFilter = startDate || thirtyDaysAgo;
+
+    const [
+      totalGyms,
+      activeGyms,
+      totalBranches,
+      totalMembers,
+      activeMembers,
+      totalTrainers,
+      revenueResult
+    ] = await Promise.all([
+      prisma.gyms.count(),
+      prisma.gyms.count({ where: { is_active: true } }),
+      prisma.branches.count(),
+      prisma.members.count(),
+      prisma.members.count({ where: { status: 'active' } }),
+      prisma.profiles.count({ where: { role: 'trainer', is_active: true } }),
+      prisma.payments.aggregate({
+        where: { 
+          status: 'success',
+          created_at: { gte: dateFilter }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+
+    // Get recent gyms for display
+    const recentGyms = await prisma.gyms.findMany({
+      take: 5,
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        subscription_plan: true,
+        created_at: true,
+        _count: {
+          select: {
+            branches: true,
+            members: true
+          }
+        }
+      }
+    });
+
+    return {
+      totalMembers,
+      activeMembers,
+      totalRevenue: revenueResult._sum.amount || 0,
+      monthlyRevenue: revenueResult._sum.amount || 0,
+      totalGyms,
+      activeGyms,
+      totalBranches,
+      totalTrainers,
+      recentGyms: recentGyms.map(gym => ({
+        ...gym,
+        branch_count: gym._count.branches,
+        member_count: gym._count.members
+      })),
+      growthRate: 0, // Calculate if needed
+      memberRetention: 0, // Calculate if needed
+      classAttendance: 0 // Calculate if needed
+    };
   }
 }
 

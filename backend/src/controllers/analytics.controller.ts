@@ -5,6 +5,7 @@ export class AnalyticsController {
   async getDashboardStats(req: Request, res: Response, next: NextFunction) {
     try {
       const { gymId, branchId, startDate, endDate } = req.query;
+      const userRole = req.user?.role;
       
       const start = startDate ? new Date(startDate as string) : undefined;
       const end = endDate ? new Date(endDate as string) : undefined;
@@ -13,7 +14,8 @@ export class AnalyticsController {
         gymId as string,
         branchId as string,
         start,
-        end
+        end,
+        userRole
       );
 
       res.json(stats);

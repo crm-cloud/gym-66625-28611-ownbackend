@@ -55,6 +55,13 @@ export class GymController {
       res.json(analytics);
     } catch (error) { next(error); }
   }
+
+  async getGymUsage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const usage = await gymService.getGymUsage();
+      res.json(usage);
+    } catch (error) { next(error); }
+  }
 }
 
 export const gymController = new GymController();
