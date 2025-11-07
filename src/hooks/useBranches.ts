@@ -3,6 +3,7 @@ import { ApiErrorResponse } from './useApiQuery';
 import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from './useAuth';
 
 const SELECTED_BRANCH_KEY = 'selected_branch_id';
 
@@ -19,12 +20,12 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
   const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(null);
   const queryClient = useQueryClient();
   
-  // Check if user is authenticated
-  const token = localStorage.getItem('access_token');
+  const { authState } = useAuth();
+  const { isAuthenticated, user } = authState;
   
-  // Only enable the query if there's an auth token and the parent component hasn't disabled it
-  // This prevents unnecessary API calls when the user is not authenticated
-  const enabled = !!token;
+  // Skip branch fetching for super admin
+  const isSuperAdmin = user?.role === 'super-admin';
+  const enabled = !isSuperAdmin && isAuthenticated;
 
   const queryResult = useQuery<Branch[], ApiErrorResponse>({
     queryKey: ['branches', filters?.search ?? '', filters?.isActive ?? 'all'],
@@ -41,6 +42,10 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
       }
 
       try {
+        // Skip API call for super admin
+        if (isSuperAdmin) {
+          return [];
+        }
         // Use the new API path without version
         const response = await api.get('/api/branches', { params });
         return response.data;
