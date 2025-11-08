@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, AlertTriangle, ShieldAlert, Server, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,8 +51,8 @@ export function ErrorPage({
   showHome = true,
   className,
 }: ErrorPageProps) {
-  const router = useRouter();
-  const isMaintenance = statusCode === 'maintenance';
+  const navigate = useNavigate();
+  const isMaintenance = typeof statusCode === 'string' && statusCode === 'maintenance';
   const errorType = isMaintenance ? 'maintenance' : (statusCode in errorConfigs ? statusCode as ErrorType : 500);
   const { icon: Icon, title: defaultTitle, message: defaultMessage, color } = errorConfigs[errorType];
 
@@ -121,7 +121,7 @@ export function ErrorPage({
                 <Button
                   variant="outline"
                   className="w-full group"
-                  onClick={() => router.back()}
+                  onClick={() => navigate(-1)}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                   Go Back
@@ -133,7 +133,7 @@ export function ErrorPage({
               <motion.div variants={item} className="w-full sm:w-auto">
                 <Button
                   className="w-full group"
-                  onClick={() => router.push('/')}
+                  onClick={() => navigate('/')}
                 >
                   <Home className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
                   Go to Home

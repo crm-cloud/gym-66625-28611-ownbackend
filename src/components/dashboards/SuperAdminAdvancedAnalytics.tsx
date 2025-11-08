@@ -38,24 +38,24 @@ export function SuperAdminAdvancedAnalytics() {
 
   // Transform analytics data to match the AdvancedMetrics interface
   const metrics: AdvancedMetrics = {
-    totalRevenue: dashboardStats.monthlyRevenue || 0,
+    totalRevenue: dashboardStats?.monthlyRevenue || 0,
     revenueGrowth: 22, // Mock growth percentage
-    totalGyms: dashboardStats.totalGyms || 0,
-    activeGyms: dashboardStats.activeGyms || 0,
-    totalBranches: dashboardStats.totalBranches || 0,
-    totalMembers: dashboardStats.totalMembers || 0,
+    totalGyms: dashboardStats?.totalGyms || 0,
+    activeGyms: dashboardStats?.activeGyms || 0,
+    totalBranches: dashboardStats?.totalBranches || 0,
+    totalMembers: dashboardStats?.totalMembers || 0,
     memberGrowth: 15, // Mock growth percentage
     systemHealth: 'healthy' as const,
     subscriptionDistribution: [
-      { name: 'Basic', value: dashboardStats.activeGyms || 0, color: '#8884d8' }
+      { name: 'Basic', value: dashboardStats?.activeGyms || 0, color: '#8884d8' }
     ],
     revenueByMonth: [
-      { month: 'Jan', revenue: (dashboardStats.monthlyRevenue || 0) * 0.8, growth: 5 },
-      { month: 'Feb', revenue: (dashboardStats.monthlyRevenue || 0) * 0.85, growth: 8 },
-      { month: 'Mar', revenue: (dashboardStats.monthlyRevenue || 0) * 0.9, growth: 12 },
-      { month: 'Apr', revenue: (dashboardStats.monthlyRevenue || 0) * 0.95, growth: 15 },
-      { month: 'May', revenue: (dashboardStats.monthlyRevenue || 0) * 0.98, growth: 18 },
-      { month: 'Jun', revenue: dashboardStats.monthlyRevenue || 0, growth: 22 },
+      { month: 'Jan', revenue: (dashboardStats?.monthlyRevenue || 0) * 0.8, growth: 5 },
+      { month: 'Feb', revenue: (dashboardStats?.monthlyRevenue || 0) * 0.85, growth: 8 },
+      { month: 'Mar', revenue: (dashboardStats?.monthlyRevenue || 0) * 0.9, growth: 12 },
+      { month: 'Apr', revenue: (dashboardStats?.monthlyRevenue || 0) * 0.95, growth: 15 },
+      { month: 'May', revenue: (dashboardStats?.monthlyRevenue || 0) * 0.98, growth: 18 },
+      { month: 'Jun', revenue: dashboardStats?.monthlyRevenue || 0, growth: 22 },
     ],
     topPerformingGyms: [],
     systemEvents: [

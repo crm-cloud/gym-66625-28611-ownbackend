@@ -9,13 +9,18 @@ export const LocationsSection = () => {
 
   const formatHours = (hours: any) => {
     if (!hours || typeof hours !== 'object') return 'Closed';
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    const todayKey = Object.keys(hours).find(key => 
-      key.toLowerCase() === today
-    ) || 'monday';
     
-    const todayHours = hours[todayKey];
-    return todayHours ? `${todayHours.open ?? ''} ${todayHours.open && todayHours.close ? '-' : ''} ${todayHours.close ?? ''}`.trim() || 'Closed' : 'Closed';
+    try {
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const todayKey = Object.keys(hours).find(key => 
+        key.toLowerCase() === today
+      ) || 'monday';
+      
+      const todayHours = hours[todayKey];
+      return todayHours ? `${todayHours.open ?? ''} ${todayHours.open && todayHours.close ? '-' : ''} ${todayHours.close ?? ''}`.trim() || 'Closed' : 'Closed';
+    } catch {
+      return '24/7';
+    }
   };
 
   return (
@@ -36,7 +41,7 @@ export const LocationsSection = () => {
             <Card key={branch.id} className="hover-scale transition-all duration-300 border-0 shadow-medium hover:shadow-strong">
               <div className="aspect-video overflow-hidden rounded-t-lg">
                 <img 
-                  src={(branch?.images && Array.isArray(branch.images) && branch.images[0]) ? branch.images[0] : 'https://picsum.photos/800/450'} 
+                  src='/placeholder.svg'
                   alt={branch.name || 'Branch image'}
                   className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                 />
@@ -44,8 +49,8 @@ export const LocationsSection = () => {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-2xl text-foreground">{branch.name || 'Unnamed Branch'}</CardTitle>
-                  <Badge variant={branch.status === 'active' ? 'default' : 'secondary'}>
-                    {branch.status || 'inactive'}
+                  <Badge variant={branch.is_active ? 'default' : 'secondary'}>
+                    {branch.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -54,43 +59,24 @@ export const LocationsSection = () => {
                   <MapPin className="w-5 h-5 text-primary mt-0.5" />
                   <div>
                     <p className="font-medium text-foreground">
-                      {branch.address?.street || 'Address not available'}
+                      {branch.address || 'Address not available'}
                     </p>
                     <p className="text-muted-foreground">
-                      {[branch.address?.city, branch.address?.state, branch.address?.zipCode].filter(Boolean).join(', ') || ''}
+                      {[branch.city, branch.state, branch.postal_code].filter(Boolean).join(', ') || 'Location not set'}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-primary" />
-                  <p className="text-muted-foreground">{branch.contact?.phone || 'N/A'}</p>
+                  <p className="text-muted-foreground">{branch.phone || 'N/A'}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="font-medium text-foreground">Today: {formatHours(branch.hours)}</p>
+                    <p className="font-medium text-foreground">Today: {formatHours(branch.operating_hours)}</p>
                     <p className="text-sm text-muted-foreground">24/7 access for members</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Car className="w-5 h-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium text-foreground">Amenities</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(branch.amenities || []).slice(0, 3).map((amenity, amenityIndex) => (
-                        <Badge key={amenityIndex} variant="outline" className="text-xs">
-                          {amenity}
-                        </Badge>
-                      ))}
-                      {(branch.amenities?.length || 0) > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{(branch.amenities?.length || 0) - 3} more
-                        </Badge>
-                      )}
-                    </div>
                   </div>
                 </div>
 
@@ -98,15 +84,15 @@ export const LocationsSection = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-foreground">Capacity:</span>
                     <span className="text-sm text-primary font-semibold">
-                      {(branch.currentMembers ?? 0)}/{(branch.capacity ?? 0)} members
+                      {(branch.current_occupancy ?? 0)}/{(branch.max_capacity ?? 0)} members
                     </span>
                   </div>
                   <div className="w-full bg-background rounded-full h-2 mt-2">
                     <div 
                       className="bg-gradient-primary h-2 rounded-full transition-all duration-300"
                       style={{ width: `${(() => {
-                        const members = Number(branch.currentMembers ?? 0);
-                        const capacity = Number(branch.capacity ?? 0);
+                        const members = Number(branch.current_occupancy ?? 0);
+                        const capacity = Number(branch.max_capacity ?? 0);
                         if (!capacity || capacity <= 0) return 0;
                         const pct = (members / capacity) * 100;
                         return Math.max(0, Math.min(100, pct));

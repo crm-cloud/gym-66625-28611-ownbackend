@@ -77,7 +77,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'dashboard',
     title: 'Dashboard',
-    allowedRoles: ['super-admin', 'admin', 'team', 'member'],
+    allowedRoles: ['super_admin', 'admin', 'team', 'member'],
     priority: 1,
     items: [
       {
@@ -93,7 +93,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'team-management',
     title: 'Team Management',
-    allowedRoles: ['admin', 'super-admin'],
+    allowedRoles: ['admin', 'super_admin'],
     requiredPermissions: ['team.view'],
     priority: 2,
     items: [
@@ -111,7 +111,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/roles',
         icon: Shield,
         group: 'team-management',
-        allowedRoles: ['super-admin', 'admin'],
+        allowedRoles: ['super_admin', 'admin'],
         requiredPermissions: ['roles.view'],
       },
       {
@@ -120,7 +120,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/roles/create',
         icon: Shield,
         group: 'team-management',
-        allowedRoles: ['super-admin', 'admin'],
+        allowedRoles: ['super_admin', 'admin'],
         requiredPermissions: ['roles.create'],
       }
     ]
@@ -129,7 +129,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'platform-management',
     title: 'Platform Management',
-    allowedRoles: ['super-admin'],
+    allowedRoles: ['super_admin'],
     priority: 2,
     items: [
       {
@@ -138,7 +138,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/users/admin-management',
         icon: UserCog,
         group: 'platform-management',
-        allowedRoles: ['super-admin'],
+        allowedRoles: ['super_admin'],
       },
       {
         id: 'subscription-plans',
@@ -146,7 +146,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/subscription-plans',
         icon: CreditCard,
         group: 'platform-management',
-        allowedRoles: ['super-admin'],
+        allowedRoles: ['super_admin'],
       }
     ]
   },
@@ -164,7 +164,6 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/gyms',
         icon: Building,
         group: 'gym-management',
-        requiredSubscriptionStatus: 'active',
       },
       {
         id: 'gym-branches',
@@ -172,7 +171,6 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/branches',
         icon: MapPin,
         group: 'gym-management',
-        requiredSubscriptionStatus: 'active',
       },
       {
         id: 'gym-subscription',
@@ -186,7 +184,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'platform-analytics',
     title: 'Platform Analytics',
-    allowedRoles: ['super-admin'],
+    allowedRoles: ['super_admin'],
     priority: 16,
     items: [
         {
@@ -195,7 +193,7 @@ export const navigationConfig: NavigationGroup[] = [
           url: '/platform-analytics',
           icon: BarChart3,
           group: 'platform-analytics',
-          allowedRoles: ['super-admin'],
+          allowedRoles: ['super_admin'],
           requiredPermissions: ['analytics.view'],
         },
         {
@@ -204,7 +202,7 @@ export const navigationConfig: NavigationGroup[] = [
           url: '/platform-reports',
           icon: FileText,
           group: 'platform-analytics',
-          allowedRoles: ['super-admin'],
+          allowedRoles: ['super_admin'],
           requiredPermissions: ['reports.view'],
         }
     ]
@@ -212,7 +210,7 @@ export const navigationConfig: NavigationGroup[] = [
   {
     id: 'super-admin-settings',
     title: 'Global Settings',
-    allowedRoles: ['super-admin'],
+    allowedRoles: ['super_admin'],
     priority: 21,
     items: [
       {
@@ -221,7 +219,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/settings/global',
         icon: Settings,
         group: 'super-admin-settings',
-        allowedRoles: ['super-admin'],
+        allowedRoles: ['super_admin'],
       },
       {
         id: 'email-settings',
@@ -229,7 +227,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/settings/email',
         icon: Mail,
         group: 'super-admin-settings',
-        allowedRoles: ['super-admin'],
+        allowedRoles: ['super_admin'],
       },
       {
         id: 'sms-settings',
@@ -237,7 +235,7 @@ export const navigationConfig: NavigationGroup[] = [
         url: '/settings/sms',
         icon: Smartphone,
         group: 'super-admin-settings',
-        allowedRoles: ['super-admin'],
+        allowedRoles: ['super_admin'],
       }
     ]
   },

@@ -44,7 +44,7 @@ export const BranchSelector = () => {
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium truncate">{selectedBranch?.name}</p>
               <p className="text-xs text-muted-foreground truncate">
-                {selectedBranch?.city}
+                {selectedBranch?.address || 'No address set'}
               </p>
             </div>
             <ChevronDown className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
@@ -63,7 +63,7 @@ export const BranchSelector = () => {
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <p className="text-xs text-muted-foreground truncate">
-                      {branch.city}, {branch.state}
+                      {branch.address || 'No address'}
                     </p>
                   </div>
                 </div>

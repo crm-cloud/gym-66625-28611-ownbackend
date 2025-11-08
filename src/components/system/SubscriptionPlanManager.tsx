@@ -56,7 +56,17 @@ const initialFormData: PlanFormData = {
 export const SubscriptionPlanManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [formData, setFormData] = useState<PlanFormData>(initialFormData);
+  const [formData, setFormData] = useState<PlanFormData>({
+    name: '',
+    description: '',
+    price: 0,
+    billing_cycle: 'monthly',
+    max_branches: 1,
+    max_trainers: 5,
+    max_members: 100,
+    features: '',
+    is_active: true,
+  });
   const queryClient = useQueryClient();
   const { formatCurrency } = useCurrency();
 

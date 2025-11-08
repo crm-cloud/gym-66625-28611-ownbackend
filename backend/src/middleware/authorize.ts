@@ -15,17 +15,17 @@ export function authorize(allowedRoles: string[]) {
     // Super admin special handling for SaaS workflow
     if (userRole === 'super_admin') {
       // Block super_admin from creating gyms (POST /gyms)
-      if (req.originalUrl.includes('/api/v1/gyms') && req.method === 'POST') {
+      if (req.originalUrl.includes('/gyms') && req.method === 'POST') {
         return next(new ApiError('Super Admin cannot create gyms. Only admin users can create gyms.', 403));
       }
       
-      // Allow super_admin read-only access (GET requests)
-      if (req.method === 'GET') {
+      // If super_admin is explicitly in allowedRoles, grant full access
+      if (allowedRoles.includes('super_admin')) {
         return next();
       }
       
-      // For other methods, check if super_admin is in allowedRoles
-      if (allowedRoles.includes('super_admin')) {
+      // Otherwise, allow read-only access (GET requests)
+      if (req.method === 'GET') {
         return next();
       }
       

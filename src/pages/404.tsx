@@ -1,4 +1,4 @@
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,15 +7,15 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 
 export default function NotFoundPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { authState } = useAuth();
   const { isAuthenticated, isLoading } = authState;
 
   const handleGoBack = () => {
     if (window.history.length > 1) {
-      router.back();
+      navigate(-1);
     } else {
-      router.push(isAuthenticated ? '/dashboard' : '/login');
+      navigate(isAuthenticated ? '/dashboard' : '/login');
     }
   };
 
@@ -100,7 +100,7 @@ export default function NotFoundPage() {
             <motion.div variants={item} className="w-full sm:w-auto">
               <Button
                 className="w-full group"
-                onClick={() => router.push(isAuthenticated ? '/dashboard' : '/login')}
+                onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
               >
                 <Home className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
                 {isAuthenticated ? 'Go to Dashboard' : 'Go to Login'}

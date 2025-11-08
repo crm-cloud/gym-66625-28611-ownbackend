@@ -143,7 +143,7 @@ export function BranchListTable() {
                         {branch.address || 'Address not set'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {branch.city && branch.state ? `${branch.city}, ${branch.state} ${branch.postal_code || ''}` : 'Location not complete'}
+                        Location not complete
                       </div>
                     </div>
                   </TableCell>

@@ -24,7 +24,7 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
   const { isAuthenticated, user } = authState;
   
   // Skip branch fetching for super admin
-  const isSuperAdmin = user?.role === 'super-admin';
+  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'super-admin';
   const enabled = !isSuperAdmin && isAuthenticated;
 
   const queryResult = useQuery<Branch[], ApiErrorResponse>({
@@ -120,6 +120,15 @@ export const useBranchById = (branchId: string) => {
 
 export const useCreateBranch = () => {
   const queryClient = useQueryClient();
+  
+  // Define Branch type based on your API response
+  interface Branch {
+    id: string;
+    name: string;
+    address?: string;
+    is_active?: boolean;
+    // Add other branch properties as needed
+  }
 
   const createBranch = useMutation<Branch, ApiErrorResponse, Omit<Branch, 'id'>>({
     mutationFn: async (newBranch) => {
