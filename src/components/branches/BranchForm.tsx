@@ -102,21 +102,22 @@ export function BranchForm({ branch, onSuccess }: BranchFormProps) {
 
     const branchData = {
       name: formData.name,
-      address: {
-        street: formData.street,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode
-      },
-      contact: {
-        phone: formData.phone,
-        email: formData.email
-      },
-      capacity: formData.capacity,
+      address: `${formData.street || ''}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+      city: formData.city,
+      state: formData.state,
+      country: 'US',
+      postal_code: formData.zipCode,
+      phone: formData.phone,
+      email: formData.email,
+      max_capacity: formData.capacity,
+      current_occupancy: 0,
       manager_id: formData.managerId || null,
       gym_id: authState.user?.gym_id,
-      hours: {},
-      status: 'active'
+      is_active: true,
+      operating_hours: {},
+      timezone: 'America/New_York',
+      created_at: null,
+      updated_at: null
     };
 
     if (branch) {

@@ -76,7 +76,7 @@ export default function LockerManagement() {
   };
 
   const handleDeleteLocker = (lockerId: string) => {
-    deleteLockerMutation.mutate(lockerId);
+    deleteLockerMutation.mutate(lockerId as any);
   };
 
   const handleAssignLocker = (locker: Locker) => {
@@ -85,7 +85,7 @@ export default function LockerManagement() {
   };
 
   const handleReleaseLocker = (locker: Locker) => {
-    releaseLockerMutation.mutate(locker.id);
+    releaseLockerMutation.mutate(locker.id as any);
   };
 
   const handleAssignComplete = (data: any) => {

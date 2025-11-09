@@ -107,7 +107,7 @@ export default function UserManagement() {
     navigate(`/users/${user.user_id}/profile`);
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = (users || []).filter((user: any) => {
     const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
@@ -196,7 +196,7 @@ export default function UserManagement() {
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '...' : users.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? '...' : (users || []).length}</div>
             <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
@@ -206,7 +206,7 @@ export default function UserManagement() {
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '...' : users.filter(u => u.is_active).length}</div>
+            <div className="text-2xl font-bold">{isLoading ? '...' : (users || []).filter((u: any) => u.is_active).length}</div>
             <p className="text-xs text-muted-foreground">98% active rate</p>
           </CardContent>
         </Card>
@@ -217,7 +217,7 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : users.filter(u => u.role === 'admin' || u.role === 'super-admin').length}
+              {isLoading ? '...' : (users || []).filter((u: any) => u.role === 'admin' || u.role === 'super-admin').length}
             </div>
             <p className="text-xs text-muted-foreground">System admins</p>
           </CardContent>

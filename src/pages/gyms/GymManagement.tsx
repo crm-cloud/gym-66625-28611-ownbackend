@@ -38,7 +38,7 @@ export default function GymManagement() {
   // Helper to get usage data for a gym
   const getUsageForGym = (gymId: string) => {
     if (!gymUsage) return null;
-    const latestUsage = gymUsage.find((u) => u.gym_id === gymId);
+    const latestUsage = (gymUsage as any[]).find((u: any) => u.gym_id === gymId);
     return latestUsage;
   };
 

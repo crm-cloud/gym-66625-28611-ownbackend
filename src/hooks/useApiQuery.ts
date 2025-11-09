@@ -63,12 +63,10 @@ export const useApiQuery = <TData,>(
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
             'Expires': '0'
-          },
-          // Add a flag to prevent the interceptor from retrying this request
-          _skipAuthRetry: true
-        });
+          }
+        } as any);
         
-        return data;
+        return data as TData;
       } catch (err) {
         const error = err as ApiErrorResponse;
         const errorDetails = {

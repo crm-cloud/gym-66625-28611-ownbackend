@@ -91,23 +91,18 @@ export function BranchCreationForm({ onSuccess }: BranchCreationFormProps) {
     
     const branchData = {
       name: data.name.trim(),
-      code: data.branchCode?.toUpperCase() || data.name.substring(0, 4).toUpperCase(),
-      address: {
-        street: data.street.trim(),
-        city: data.city.trim(),
-        state: data.state.trim(),
-        zipCode: data.pincode.trim(),
-        country: 'US'
-      },
-      contact: {
-        phone: data.phone.trim(),
-        email: branchEmail
-      },
-      capacity: Number(data.capacity) || 10,
-      current_members: 0,
+      address: `${data.street.trim()}, ${data.city.trim()}, ${data.state.trim()} ${data.pincode.trim()}`,
+      city: data.city.trim(),
+      state: data.state.trim(),
+      country: 'US',
+      postal_code: data.pincode.trim(),
+      phone: data.phone.trim(),
+      email: branchEmail,
+      max_capacity: Number(data.capacity) || 10,
+      current_occupancy: 0,
       gym_id: authState.user.gym_id,
-      status: 'active',
-      hours: {
+      is_active: true,
+      operating_hours: {
         monday: { open: '06:00', close: '22:00' },
         tuesday: { open: '06:00', close: '22:00' },
         wednesday: { open: '06:00', close: '22:00' },
@@ -116,7 +111,10 @@ export function BranchCreationForm({ onSuccess }: BranchCreationFormProps) {
         saturday: { open: '08:00', close: '20:00' },
         sunday: { open: '08:00', close: '18:00' }
       },
-      amenities: ['Parking', 'Lockers', 'WiFi']
+      timezone: 'America/New_York',
+      manager_id: null,
+      created_at: null,
+      updated_at: null
     };
 
     try {

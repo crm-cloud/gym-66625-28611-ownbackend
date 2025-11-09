@@ -1326,6 +1326,7 @@ export const navigationConfig: NavigationGroup[] = [
 
 // Role-specific default routes
 export const roleDefaultRoutes: Record<UserRole, string> = {
+  'super_admin': '/dashboard',
   'super-admin': '/dashboard',
   'admin': '/dashboard',
   'manager': '/dashboard',

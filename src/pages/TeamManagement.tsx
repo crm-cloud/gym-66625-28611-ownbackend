@@ -118,11 +118,11 @@ export default function TeamManagement() {
   };
 
   const handleDisableMember = (member: TeamMember) => {
-    toggleMemberStatus(member);
+    toggleMemberStatus(member as any);
   };
 
   const handleResetPassword = (member: TeamMember) => {
-    resetPassword(member.email);
+    resetPassword(member.email as any);
   };
 
   if (isLoading) {

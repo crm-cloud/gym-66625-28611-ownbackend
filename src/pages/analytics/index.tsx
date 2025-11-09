@@ -209,7 +209,7 @@ export default function AnalyticsPage() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {classAttendanceData.map((entry, index) => {
+                      {(classAttendanceData || []).map((entry: any, index: number) => {
                         const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe'];
                         return <Cell key={`cell-${index}`} fill={entry.color || colors[index % colors.length]} />;
                       })}

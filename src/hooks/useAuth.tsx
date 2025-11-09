@@ -432,9 +432,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         try {
           await api.post('/api/auth/logout', { refresh_token: refreshToken }, { 
-            signal: controller.signal,
-            skipAuthRefresh: true // Prevent infinite loops
-          });
+            signal: controller.signal
+          } as any);
         } finally {
           clearTimeout(timeoutId);
         }

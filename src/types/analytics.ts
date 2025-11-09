@@ -124,4 +124,5 @@ export interface ClassPopularity {
   total_attendees: number;
   avg_attendance: number;
   cancellation_rate: number;
+  color?: string;
 }

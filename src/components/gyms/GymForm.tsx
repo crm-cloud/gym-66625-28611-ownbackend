@@ -115,7 +115,7 @@ export function GymForm({ gym, onSuccess }: GymFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {subscriptionPlans?.map((plan) => (
+                  {(subscriptionPlans || []).map((plan: any) => (
                     <SelectItem key={plan.id} value={plan.name.toLowerCase()}>
                       {plan.name} - ${plan.price}/{plan.billing_cycle}
                     </SelectItem>

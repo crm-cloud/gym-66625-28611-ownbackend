@@ -120,10 +120,8 @@ api.interceptors.response.use(
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          withCredentials: true,
-          skipAuthRefresh: true, // Prevent infinite refresh loops
-          _retry: true // Mark this as a retry request
-        }
+          withCredentials: true
+        } as any
       );
 
       // Handle different response formats

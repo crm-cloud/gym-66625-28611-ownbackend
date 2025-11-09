@@ -1,5 +1,7 @@
 
 export type Permission = 
+  // Dashboard
+  | 'dashboard.view'
   // System Management (Super Admin only)
   | 'system.view' | 'system.manage' | 'system.backup' | 'system.restore'
   // Branch Management
@@ -96,6 +98,7 @@ export interface RBACContext {
   isTrainer: () => boolean;
   isStaff: () => boolean;
   isManager: () => boolean;
+  isLoading: boolean;
   isLoadingPermissions: boolean;
 }
 

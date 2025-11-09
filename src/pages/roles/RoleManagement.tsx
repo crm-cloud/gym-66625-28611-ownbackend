@@ -66,7 +66,7 @@ export default function RoleManagement() {
 
   const handleConfirmDelete = async () => {
     if (roleToDelete) {
-      await deleteRole.mutateAsync(roleToDelete);
+      await deleteRole.mutateAsync(roleToDelete as any);
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
     }
@@ -151,8 +151,8 @@ export default function RoleManagement() {
             setSelectedRole(null);
           }}
           role={selectedRole}
-          permissionsByModule={permissionsByModule || []}
-          currentPermissions={currentPermissions || []}
+          permissionsByModule={(permissionsByModule || []) as any}
+          currentPermissions={(currentPermissions || []) as string[]}
           onSave={handleUpdatePermissions}
           isLoading={updateRolePermissions.isPending}
         />

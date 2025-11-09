@@ -106,7 +106,7 @@ export function HierarchicalSettingsManager({ level }: Props) {
         }
       }
       
-      await bulkUpdate.mutateAsync(settingsToSave);
+      await bulkUpdate.mutateAsync(settingsToSave as any);
       return updatedSettings;
     },
     onSuccess: () => {
