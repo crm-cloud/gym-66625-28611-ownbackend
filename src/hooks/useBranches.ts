@@ -4,19 +4,11 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
+import { Branch } from '@/types/branch';
 
 const SELECTED_BRANCH_KEY = 'selected_branch_id';
 
 export const useBranches = (filters?: { search?: string; isActive?: boolean }) => {
-  // Define Branch type based on your API response
-  interface Branch {
-    id: string;
-    name: string;
-    address?: string;
-    is_active?: boolean;
-    // Add other branch properties as needed
-  }
-
   const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(null);
   const queryClient = useQueryClient();
   
@@ -120,17 +112,8 @@ export const useBranchById = (branchId: string) => {
 
 export const useCreateBranch = () => {
   const queryClient = useQueryClient();
-  
-  // Define Branch type based on your API response
-  interface Branch {
-    id: string;
-    name: string;
-    address?: string;
-    is_active?: boolean;
-    // Add other branch properties as needed
-  }
 
-  const createBranch = useMutation<Branch, ApiErrorResponse, Omit<Branch, 'id'>>({
+  const createBranch = useMutation<Branch, ApiErrorResponse, Partial<Branch>>({
     mutationFn: async (newBranch) => {
       const response = await api.post('/api/branches', newBranch);
       return response.data;

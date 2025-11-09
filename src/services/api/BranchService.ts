@@ -1,17 +1,5 @@
 import { BaseService } from './BaseService';
-
-export interface Branch {
-  id: string;
-  gym_id: string;
-  name: string;
-  address: any;
-  contact: any;
-  capacity: number;
-  current_members?: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Branch } from '@/types/branch';
 
 export interface BranchFilters {
   gymId?: string;

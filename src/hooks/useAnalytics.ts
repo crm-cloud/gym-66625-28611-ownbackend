@@ -1,13 +1,5 @@
 import { useApiQuery } from './useApiQuery';
-
-export interface DashboardStats {
-  totalMembers: number;
-  activeMembers: number;
-  totalRevenue: number;
-  growthRate: number;
-  pendingPayments: number;
-  activeClasses: number;
-}
+import { DashboardStats, ClassPopularity, RevenueAnalytics, MembershipAnalytics } from '@/types/analytics';
 
 export interface RevenueData {
   date: string;
@@ -21,13 +13,6 @@ export interface MembershipData {
   new: number;
   active: number;
   expired: number;
-}
-
-export interface ClassPopularity {
-  name: string;
-  attendance: number;
-  capacity: number;
-  revenue: number;
 }
 
 interface AnalyticsFilters {
