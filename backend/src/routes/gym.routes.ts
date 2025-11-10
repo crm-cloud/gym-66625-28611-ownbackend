@@ -13,8 +13,8 @@ router.get('/usage', authorize(['super_admin']), gymController.getGymUsage);
 router.get('/:id', authorize(['super_admin', 'admin']), gymController.getGymById);
 router.get('/:id/analytics', authorize(['super_admin', 'admin']), gymController.getGymAnalytics);
 
-// POST route - ONLY admin can create (super_admin blocked by authorize middleware)
-router.post('/', authorize(['admin']), gymController.createGym);
+// POST route - ONLY super_admin can create gyms (FIXED)
+router.post('/', authorize(['super_admin']), gymController.createGym);
 
 // PUT/DELETE - super_admin only (admin can't modify after creation)
 router.put('/:id', authorize(['super_admin']), gymController.updateGym);

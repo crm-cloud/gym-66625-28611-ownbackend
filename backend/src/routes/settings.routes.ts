@@ -7,14 +7,28 @@ const router = Router();
 
 router.use(authenticate);
 
-// Get all settings for current context
-router.get('/', settingsController.getAllSettings);
+// Get all settings - Only admin and super_admin
+router.get('/', 
+  authorize(['admin', 'super_admin']), 
+  settingsController.getAllSettings
+);
 
-// Get/update specific category settings
-router.get('/:category', settingsController.getSettingsByCategory);
-router.post('/:category', authorize(['admin', 'super_admin']), settingsController.updateSettings);
+// Get specific category - Only admin and super_admin
+router.get('/:category', 
+  authorize(['admin', 'super_admin']), 
+  settingsController.getSettingsByCategory
+);
 
-// Test settings (send test email/SMS)
-router.post('/:category/test', authorize(['admin', 'super_admin']), settingsController.testSettings);
+// Update settings - Only admin and super_admin
+router.post('/:category', 
+  authorize(['admin', 'super_admin']), 
+  settingsController.updateSettings
+);
+
+// Test settings - Only admin and super_admin
+router.post('/:category/test', 
+  authorize(['admin', 'super_admin']), 
+  settingsController.testSettings
+);
 
 export default router;

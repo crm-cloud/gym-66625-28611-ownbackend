@@ -31,7 +31,60 @@ export const memberController = {
    */
   createMember: asyncHandler(async (req: Request, res: Response) => {
     const data = createMemberSchema.parse(req.body);
-    
+
+    // CRITICAL: Check subscription limit
+    const { default: prisma } = await import('../config/database');
+    const branch = await prisma.branches.findUnique({
+      where: { id: data.branch_id },
+      include: {
+        gyms: {
+          include: {
+            subscription_plans: {
+              select: {
+                max_members: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!branch) {
+      const { ApiError } = await import('../middleware/errorHandler');
+      throw new ApiError('Branch not found', 404);
+    }
+
+    const gym = branch.gyms;
+    if (!gym.subscription_plan_id || !gym.subscription_plans) {
+      const { ApiError } = await import('../middleware/errorHandler');
+      throw new ApiError('No active subscription plan found for this gym', 403);
+    }
+
+    const maxMembers = gym.subscription_plans.max_members;
+    if (!maxMembers) {
+      const { ApiError } = await import('../middleware/errorHandler');
+      throw new ApiError('Subscription plan does not specify member limit', 500);
+    }
+
+    // Count current members for this gym (across all branches)
+    const currentMemberCount = await prisma.members.count({
+      where: {
+        branches: {
+          gym_id: gym.id
+        }
+      }
+    });
+
+    if (currentMemberCount >= maxMembers) {
+      const { ApiError } = await import('../middleware/errorHandler');
+      throw new ApiError(
+        `Member limit reached. Your "${gym.subscription_plans.name}" plan allows ${maxMembers} member(s). Please upgrade your subscription.`,
+        403
+      );
+    }
+
+    // Create member
     const member = await memberService.createMember(data);
     res.status(201).json(member);
   }),

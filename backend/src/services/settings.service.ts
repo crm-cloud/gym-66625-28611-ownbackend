@@ -66,50 +66,87 @@ export class SettingsService {
     gymId?: string,
     branchId?: string
   ) {
-    let whereClause = '';
-    
-    // Super admin sees global settings
+    // CRITICAL: Enforce role-based access using parameterized queries
+    let whereClause: any = { category };
+
     if (userRole === 'super_admin') {
-      whereClause = `WHERE category = '${category}' AND gym_id IS NULL AND branch_id IS NULL`;
-    }
-    // Admin sees gym-level settings (or global if no gym setting)
-    else if (userRole === 'admin' && gymId) {
-      whereClause = `WHERE category = '${category}' AND (gym_id = '${gymId}' OR (gym_id IS NULL AND branch_id IS NULL))`;
-    }
-    // Branch manager sees branch-level settings (with fallback to gym/global)
-    else if (branchId) {
-      whereClause = `WHERE category = '${category}' AND (branch_id = '${branchId}' OR gym_id = '${gymId}' OR (gym_id IS NULL AND branch_id IS NULL))`;
-    }
-    // Default to global
-    else {
-      whereClause = `WHERE category = '${category}' AND gym_id IS NULL AND branch_id IS NULL`;
+      // Super admin: ONLY global settings (null gym_id and branch_id)
+      whereClause.gym_id = null;
+      whereClause.branch_id = null;
+    } else if (userRole === 'admin' && gymId) {
+      // Admin: ONLY their gym's settings (or global as fallback)
+      // First try gym-specific
+      const gymSetting = await prisma.system_settings.findFirst({
+        where: {
+          category,
+          gym_id: gymId,
+          branch_id: null
+        }
+      });
+
+      if (gymSetting) {
+        return this.decryptSettingFields(gymSetting);
+      }
+
+      // Fallback to global
+      whereClause.gym_id = null;
+      whereClause.branch_id = null;
+    } else if (branchId && gymId) {
+      // Branch manager: Branch settings > Gym settings > Global
+      const branchSetting = await prisma.system_settings.findFirst({
+        where: {
+          category,
+          branch_id: branchId
+        }
+      });
+
+      if (branchSetting) {
+        return this.decryptSettingFields(branchSetting);
+      }
+
+      // Fallback to gym
+      const gymSetting = await prisma.system_settings.findFirst({
+        where: {
+          category,
+          gym_id: gymId,
+          branch_id: null
+        }
+      });
+
+      if (gymSetting) {
+        return this.decryptSettingFields(gymSetting);
+      }
+
+      // Fallback to global
+      whereClause.gym_id = null;
+      whereClause.branch_id = null;
+    } else {
+      // Default: global only
+      whereClause.gym_id = null;
+      whereClause.branch_id = null;
     }
 
-    const settingsResult = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT * FROM system_settings
-      ${whereClause}
-      ORDER BY 
-        CASE 
-          WHEN branch_id IS NOT NULL THEN 1
-          WHEN gym_id IS NOT NULL THEN 2
-          ELSE 3
-        END
-      LIMIT 1
-    `);
+    const setting = await prisma.system_settings.findFirst({
+      where: whereClause
+    });
 
-    if (settingsResult.length === 0) {
+    if (!setting) {
       return this.getDefaultSettings(category);
     }
 
-    const setting = settingsResult[0];
+    return this.decryptSettingFields(setting);
+  }
 
-    // Decrypt sensitive fields
+  /**
+   * Decrypt sensitive fields in settings
+   */
+  private decryptSettingFields(setting: any) {
     if (setting.config) {
       const config = setting.config;
       const sensitiveFields = ['api_key', 'api_secret', 'webhook_secret', 'merchant_key', 'password'];
       
       for (const field of sensitiveFields) {
-        if (config[field] && config[field].includes(':')) {
+        if (config[field] && typeof config[field] === 'string' && config[field].includes(':')) {
           try {
             config[field] = this.decryptSecret(config[field]);
           } catch (error) {
@@ -118,7 +155,6 @@ export class SettingsService {
         }
       }
     }
-
     return setting;
   }
 
@@ -132,6 +168,24 @@ export class SettingsService {
     gymId?: string,
     branchId?: string
   ) {
+    // CRITICAL: Enforce role-based write access
+    if (userRole === 'super_admin') {
+      // Super admin can ONLY update global settings
+      if (gymId || branchId) {
+        throw new ApiError('Super admin cannot update gym or branch settings', 403);
+      }
+    } else if (userRole === 'admin') {
+      // Admin can ONLY update their gym's settings
+      if (!gymId) {
+        throw new ApiError('Admin must have a gym_id', 403);
+      }
+      if (branchId) {
+        throw new ApiError('Admin cannot update branch settings directly', 403);
+      }
+    } else {
+      throw new ApiError('Insufficient permissions to update settings', 403);
+    }
+
     // Encrypt sensitive fields
     const sensitiveFields = ['api_key', 'api_secret', 'webhook_secret', 'merchant_key', 'password'];
     const encryptedConfig = { ...config };
@@ -142,54 +196,35 @@ export class SettingsService {
       }
     }
 
-    // Determine scope based on user role
-    let scope = { gym_id: null, branch_id: null };
-    
-    if (userRole === 'admin' && gymId) {
-      scope.gym_id = gymId;
-    } else if (branchId) {
-      scope.branch_id = branchId;
-      scope.gym_id = gymId;
-    }
+    // Determine scope
+    const scope = {
+      gym_id: userRole === 'admin' ? gymId : null,
+      branch_id: branchId || null
+    };
 
-    // Check if setting exists
-    const existing = await prisma.$queryRaw<any[]>`
-      SELECT id FROM system_settings
-      WHERE category = ${category}
-      AND gym_id ${scope.gym_id ? `= '${scope.gym_id}'` : 'IS NULL'}
-      AND branch_id ${scope.branch_id ? `= '${scope.branch_id}'` : 'IS NULL'}
-      LIMIT 1
-    `;
-
-    if (existing.length > 0) {
-      // Update existing
-      await prisma.$executeRaw`
-        UPDATE system_settings
-        SET 
-          config = ${JSON.stringify(encryptedConfig)}::jsonb,
-          is_active = ${config.is_active !== undefined ? config.is_active : true},
-          updated_at = NOW()
-        WHERE id = ${existing[0].id}
-      `;
-    } else {
-      // Insert new
-      const gymIdValue = scope.gym_id || null;
-      const branchIdValue = scope.branch_id || null;
-      
-      await prisma.$executeRaw`
-        INSERT INTO system_settings (id, category, gym_id, branch_id, config, is_active, created_at, updated_at)
-        VALUES (
-          gen_random_uuid(),
-          ${category},
-          ${gymIdValue}::uuid,
-          ${branchIdValue}::uuid,
-          ${JSON.stringify(encryptedConfig)}::jsonb,
-          ${config.is_active !== undefined ? config.is_active : true},
-          NOW(),
-          NOW()
-        )
-      `;
-    }
+    // Use Prisma's upsert for safety
+    await prisma.system_settings.upsert({
+      where: {
+        category_gym_id_branch_id: {
+          category,
+          gym_id: scope.gym_id,
+          branch_id: scope.branch_id
+        }
+      },
+      update: {
+        config: encryptedConfig,
+        is_active: config.is_active !== undefined ? config.is_active : true,
+        updated_at: new Date()
+      },
+      create: {
+        id: crypto.randomUUID(),
+        category,
+        gym_id: scope.gym_id,
+        branch_id: scope.branch_id,
+        config: encryptedConfig,
+        is_active: config.is_active !== undefined ? config.is_active : true
+      }
+    });
 
     return { success: true, message: 'Settings updated successfully' };
   }

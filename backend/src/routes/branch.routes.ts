@@ -20,9 +20,9 @@ router.get('/:id/stats',
   branchController.getBranchStats
 );
 
-// Create branch (admin only)
+// Create branch - ONLY admin (gym owners) can create branches
 router.post('/', 
-  authorize(['admin', 'super_admin']), 
+  authorize(['admin']), 
   branchController.createBranch
 );
 

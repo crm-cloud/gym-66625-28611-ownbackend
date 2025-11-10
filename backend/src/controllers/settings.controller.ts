@@ -28,6 +28,18 @@ export class SettingsController {
       const gymId = req.user?.gymId;
       const branchId = req.user?.branchId;
 
+      // CRITICAL: Super admin can only see platform settings
+      if (userRole === 'super_admin' && (gymId || branchId)) {
+        const ApiError = (await import('../utils/ApiError.js')).ApiError;
+        throw new ApiError('Super admin account should not have gym_id or branch_id', 500);
+      }
+
+      // CRITICAL: Admin must have gym_id
+      if (userRole === 'admin' && !gymId) {
+        const ApiError = (await import('../utils/ApiError.js')).ApiError;
+        throw new ApiError('Admin must be associated with a gym', 403);
+      }
+
       // Sensitive categories require super_admin
       const sensitiveCategories = ['security', 'api', 'system'];
       if (sensitiveCategories.includes(category) && userRole !== 'super_admin') {
@@ -57,6 +69,29 @@ export class SettingsController {
       const userRole = req.user?.role;
       const gymId = req.user?.gymId;
       const branchId = req.user?.branchId;
+
+      // CRITICAL: Validate user context
+      if (userRole === 'super_admin') {
+        if (gymId || branchId) {
+          const ApiError = (await import('../utils/ApiError.js')).ApiError;
+          throw new ApiError('Super admin should not have gym_id or branch_id', 500);
+        }
+      } else if (userRole === 'admin') {
+        if (!gymId) {
+          const ApiError = (await import('../utils/ApiError.js')).ApiError;
+          throw new ApiError('Admin must be associated with a gym', 403);
+        }
+      } else {
+        const ApiError = (await import('../utils/ApiError.js')).ApiError;
+        throw new ApiError('Only admin and super_admin can update settings', 403);
+      }
+
+      // Sensitive categories require super_admin
+      const sensitiveCategories = ['security', 'api', 'system'];
+      if (sensitiveCategories.includes(category) && userRole !== 'super_admin') {
+        const ApiError = (await import('../utils/ApiError.js')).ApiError;
+        throw new ApiError('Insufficient permissions to update this category', 403);
+      }
 
       const result = await settingsService.updateSettings(
         category,

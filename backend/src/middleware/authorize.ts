@@ -12,27 +12,18 @@ export function authorize(allowedRoles: string[]) {
 
     const userRole = req.user.role;
     
-    // Super admin special handling for SaaS workflow
+    // FIXED: Super admin has explicit permissions based on allowedRoles
     if (userRole === 'super_admin') {
-      // Block super_admin from creating gyms (POST /gyms)
-      if (req.originalUrl.includes('/gyms') && req.method === 'POST') {
-        return next(new ApiError('Super Admin cannot create gyms. Only admin users can create gyms.', 403));
-      }
-      
-      // If super_admin is explicitly in allowedRoles, grant full access
+      // If super_admin is in allowedRoles, grant access
       if (allowedRoles.includes('super_admin')) {
         return next();
       }
       
-      // Otherwise, allow read-only access (GET requests)
-      if (req.method === 'GET') {
-        return next();
-      }
-      
+      // Otherwise deny (no special GET access)
       return next(new ApiError('Insufficient permissions', 403));
     }
     
-    // Regular role check
+    // Regular role check for non-super_admin users
     if (!userRole || !allowedRoles.includes(userRole)) {
       return next(new ApiError('Insufficient permissions', 403));
     }
