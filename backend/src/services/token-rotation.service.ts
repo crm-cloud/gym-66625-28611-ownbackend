@@ -23,7 +23,7 @@ export class TokenRotationService {
       // Calculate expiration (7 days from now)
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       
-      await prisma.refreshToken.create({
+      await prisma.refresh_tokens.create({
         data: {
           user_id: userId,
           token: token,
@@ -60,7 +60,7 @@ export class TokenRotationService {
     }
 
     // Check if refresh token exists and is not revoked
-    const storedToken = await prisma.refreshToken.findFirst({
+    const storedToken = await prisma.refresh_tokens.findFirst({
       where: {
         token: oldRefreshToken,
         is_revoked: false,
@@ -139,7 +139,7 @@ export class TokenRotationService {
     const newRefreshToken = generateRefreshToken(tokenPayload);
 
     // Store new refresh token
-    await prisma.refreshToken.create({
+    await prisma.refresh_tokens.create({
       data: {
         token: newRefreshToken,
         user_id: storedToken.user.user_id,
@@ -161,7 +161,7 @@ export class TokenRotationService {
    * Revoke a specific refresh token
    */
   async revokeToken(token: string): Promise<void> {
-    await prisma.refreshToken.updateMany({
+    await prisma.refresh_tokens.updateMany({
       where: { token },
       data: { 
         is_revoked: true,
@@ -174,7 +174,7 @@ export class TokenRotationService {
    * Revoke all tokens for a user (used in logout or security breach)
    */
   async revokeAllUserTokens(userId: string): Promise<void> {
-    await prisma.refreshToken.updateMany({
+    await prisma.refresh_tokens.updateMany({
       where: { 
         user_id: userId,
         is_revoked: false,
@@ -190,7 +190,7 @@ export class TokenRotationService {
    * Clean up expired tokens (run periodically)
    */
   async cleanupExpiredTokens(): Promise<number> {
-    const result = await prisma.refreshToken.deleteMany({
+    const result = await prisma.refresh_tokens.deleteMany({
       where: {
         OR: [
           { expires_at: { lt: new Date() } },
@@ -209,7 +209,7 @@ export class TokenRotationService {
    * Get active sessions for user
    */
   async getUserSessions(userId: string) {
-    return prisma.refreshToken.findMany({
+    return prisma.refresh_tokens.findMany({
       where: {
         user_id: userId,
         is_revoked: false,
