@@ -1,6 +1,17 @@
 import prisma from '../config/database.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type TokenPayload } from '../utils/jwt.js';
 
+// Define AuthUser type to match what's expected by the JWT functions
+interface AuthUser {
+  userId: string;
+  user_id: string;
+  email: string;
+  role: string;
+  branchId?: string;
+  gymId?: string;
+  permissions: string[];
+}
+
 /**
  * Token Rotation Service
  * Implements refresh token rotation for enhanced security
@@ -23,11 +34,11 @@ export class TokenRotationService {
       // Calculate expiration (7 days from now)
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       
-      await prisma.refreshToken.create({
+      await (prisma as any).refresh_tokens.create({
         data: {
           user_id: userId,
           token: token,
-          expires_at: expiresAt,
+          expires_at: expiresAt.toISOString(), // Convert Date to ISO string
           ip_address: ipAddress,
           user_agent: userAgent,
           is_revoked: false,
@@ -60,7 +71,7 @@ export class TokenRotationService {
     }
 
     // Check if refresh token exists and is not revoked
-    const storedToken = await prisma.refreshToken.findFirst({
+    const storedToken = await this.prisma.refresh_tokens.findFirst({
       where: {
         token: oldRefreshToken,
         is_revoked: false,
@@ -115,21 +126,25 @@ export class TokenRotationService {
       }
     };
 
-    // Collect all permissions from all roles
+    // Collect all permissions    // Get all role permissions
     const permissions = new Set<string>();
-    storedToken.user.user_roles?.forEach(ur => {
-      ur.roles?.role_permissions?.forEach(rp => {
-        if (rp.permissions) {
-          permissions.add(rp.permissions.name);
-        }
-      });
+    
+    storedToken.user.user_roles.forEach((ur: any) => {
+      if (ur.roles?.role_permissions) {
+        ur.roles.role_permissions.forEach((rp: any) => {
+          if (rp.permissions?.name) {
+            permissions.add(rp.permissions.name);
+          }
+        });
+      }
     });
 
     // Generate new tokens
-    const tokenPayload = {
+    const tokenPayload: AuthUser = {
       userId: storedToken.user.user_id,
+      user_id: storedToken.user.user_id, // For backward compatibility
       email: storedToken.user.email,
-      role: primaryRole.role,
+      role: primaryRole.role || 'member',
       branchId: primaryRole.branch_id || undefined,
       gymId: primaryRole.gym_id || undefined,
       permissions: Array.from(permissions)
@@ -139,7 +154,7 @@ export class TokenRotationService {
     const newRefreshToken = generateRefreshToken(tokenPayload);
 
     // Store new refresh token
-    await prisma.refreshToken.create({
+    await this.prisma.refresh_tokens.create({
       data: {
         token: newRefreshToken,
         user_id: storedToken.user.user_id,
@@ -161,7 +176,7 @@ export class TokenRotationService {
    * Revoke a specific refresh token
    */
   async revokeToken(token: string): Promise<void> {
-    await prisma.refreshToken.updateMany({
+    await this.prisma.refresh_tokens.updateMany({
       where: { token },
       data: { 
         is_revoked: true,
@@ -174,7 +189,7 @@ export class TokenRotationService {
    * Revoke all tokens for a user (used in logout or security breach)
    */
   async revokeAllUserTokens(userId: string): Promise<void> {
-    await prisma.refreshToken.updateMany({
+    await this.prisma.refresh_tokens.updateMany({
       where: { 
         user_id: userId,
         is_revoked: false,
@@ -190,7 +205,7 @@ export class TokenRotationService {
    * Clean up expired tokens (run periodically)
    */
   async cleanupExpiredTokens(): Promise<number> {
-    const result = await prisma.refreshToken.deleteMany({
+    const result = await this.prisma.refresh_tokens.deleteMany({
       where: {
         OR: [
           { expires_at: { lt: new Date() } },
@@ -209,7 +224,7 @@ export class TokenRotationService {
    * Get active sessions for user
    */
   async getUserSessions(userId: string) {
-    return prisma.refreshToken.findMany({
+    return this.prisma.refresh_tokens.findMany({
       where: {
         user_id: userId,
         is_revoked: false,
@@ -221,6 +236,8 @@ export class TokenRotationService {
         expires_at: true,
         ip_address: true,
         user_agent: true,
+        is_revoked: true,
+        revoked_at: true,
       },
       orderBy: {
         created_at: 'desc',

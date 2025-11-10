@@ -48,6 +48,15 @@ async function createSuperAdmin() {
       return;
     }
 
+    // Get the super admin role ID
+    const superAdminRole = await prisma.roles.findUnique({
+      where: { name: 'super_admin' }
+    });
+
+    if (!superAdminRole) {
+      throw new Error('Super admin role not found in the database');
+    }
+
     // Create the super admin user
     await prisma.$transaction(async (tx) => {
       // First create the profile
@@ -68,6 +77,7 @@ async function createSuperAdmin() {
             create: {
               id: uuidv4(),
               role: 'super_admin',
+              role_id: superAdminRole.id,
               created_at: new Date()
             }
           }
