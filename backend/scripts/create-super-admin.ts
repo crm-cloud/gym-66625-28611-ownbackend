@@ -1,7 +1,7 @@
 // scripts/create-super-admin.ts
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { hashPassword } from '../src/utils/crypto-utils';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -11,10 +11,11 @@ async function createSuperAdmin() {
     const password = 'SuperAdmin@123';
     const userId = uuidv4();
     
-    // Hash the password using the same method as registration
-    console.log('🔐 Hashing password...');
-    const passwordHash = hashPassword(password);
-    console.log('✅ Password hashed successfully');
+    // Hash the password using bcrypt
+    console.log('🔐 Hashing password with bcrypt...');
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    console.log('✅ Password hashed successfully with bcrypt');
 
     // Check if super admin already exists
     const existingAdmin = await prisma.profiles.findUnique({
@@ -49,7 +50,7 @@ async function createSuperAdmin() {
 
     // Create the super admin user
     await prisma.$transaction(async (tx) => {
-      // Create the profile with password hash (NO role, gym_id, or branch_id)
+      // First create the profile
       const profile = await tx.profiles.create({
         data: {
           user_id: userId,
@@ -62,21 +63,21 @@ async function createSuperAdmin() {
           email_verified: true,
           created_at: new Date(),
           updated_at: new Date(),
+          // Create the user_roles relationship in the same operation
+          user_roles: {
+            create: {
+              id: uuidv4(),
+              role: 'super_admin',
+              created_at: new Date()
+            }
+          }
+        },
+        include: {
+          user_roles: true
         }
       });
 
-      // Create user_roles entry with 'super_admin' role (NO gym_id or branch_id)
-      await tx.user_roles.create({
-        data: {
-          id: uuidv4(),
-          user_id: userId,
-          role: 'super_admin',
-          // Super admins have NO gym_id or branch_id - they manage all gyms
-          created_at: new Date(),
-        }
-      });
-
-      console.log('✅ Profile created:', profile.user_id);
+      console.log('✅ Profile and role created:', profile.user_id);
     });
 
     console.log('\n✅ Super admin created successfully!');
