@@ -8,12 +8,27 @@ import { useToast } from '@/components/ui/use-toast';
 import { useProfile } from '@/hooks/useProfiles';
 import { ArrowLeft, Edit, Phone, Mail, MapPin, Calendar, User, Shield } from 'lucide-react';
 
+interface UserProfile {
+  user_id?: string;
+  avatar_url?: string;
+  full_name?: string;
+  email?: string;
+  role?: string;
+  team_role?: string;
+  is_active?: boolean;
+  phone?: string;
+  branches?: { name: string };
+  created_at?: string;
+  last_login_at?: string;
+}
+
 export default function UserProfile() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { data: user, isLoading: loading, error } = useProfile(userId);
+  const { data: userData, isLoading: loading, error } = useProfile(userId);
+  const user = userData as UserProfile | undefined;
 
   useEffect(() => {
     if (error) {
@@ -87,25 +102,25 @@ export default function UserProfile() {
         <Card className="lg:col-span-1">
           <CardHeader className="text-center">
             <Avatar className="h-24 w-24 mx-auto mb-4">
-              <AvatarImage src={user.avatar_url} alt={user.full_name} />
+              <AvatarImage src={user?.avatar_url} alt={user?.full_name || 'User'} />
               <AvatarFallback className="text-2xl">
-                {getInitials(user.full_name)}
+                {getInitials(user?.full_name || 'User')}
               </AvatarFallback>
             </Avatar>
-            <CardTitle>{user.full_name}</CardTitle>
-            <CardDescription>{user.email}</CardDescription>
+            <CardTitle>{user?.full_name || 'Unknown User'}</CardTitle>
+            <CardDescription>{user?.email || 'No email'}</CardDescription>
             <div className="flex justify-center gap-2 mt-4">
-              <Badge variant={getRoleColor(user.role) as any} className="inline-flex items-center">
+              <Badge variant={getRoleColor(user?.role || 'member') as any} className="inline-flex items-center">
                 <Shield className="w-3 h-3 mr-1" />
-                {user.role}
+                {user?.role || 'member'}
               </Badge>
-              {user.team_role && (
+              {user?.team_role && (
                 <Badge variant="outline">
                   {user.team_role}
                 </Badge>
               )}
-              <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                {user.is_active ? 'Active' : 'Inactive'}
+              <Badge variant={user?.is_active ? 'default' : 'secondary'}>
+                {user?.is_active ? 'Active' : 'Inactive'}
               </Badge>
             </div>
           </CardHeader>
@@ -124,7 +139,7 @@ export default function UserProfile() {
                   <Mail className="w-4 h-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Email</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <p className="text-sm text-muted-foreground">{user?.email || 'Not provided'}</p>
                   </div>
                 </div>
                 
@@ -132,7 +147,7 @@ export default function UserProfile() {
                   <Phone className="w-4 h-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Phone</p>
-                    <p className="text-sm text-muted-foreground">{user.phone || 'Not provided'}</p>
+                    <p className="text-sm text-muted-foreground">{user?.phone || 'Not provided'}</p>
                   </div>
                 </div>
                 
@@ -140,7 +155,7 @@ export default function UserProfile() {
                   <User className="w-4 h-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Role</p>
-                    <p className="text-sm text-muted-foreground">{user.role}</p>
+                    <p className="text-sm text-muted-foreground">{user?.role || 'member'}</p>
                   </div>
                 </div>
               </div>
@@ -151,9 +166,9 @@ export default function UserProfile() {
                   <div>
                     <p className="text-sm font-medium">Branch</p>
                     <p className="text-sm text-muted-foreground">
-                      {user.role === 'super-admin' || user.role === 'admin' 
+                      {user?.role === 'super-admin' || user?.role === 'admin' 
                         ? 'All Branches' 
-                        : user.branches?.name || 'Not assigned'
+                        : user?.branches?.name || 'Not assigned'
                       }
                     </p>
                   </div>
@@ -164,7 +179,7 @@ export default function UserProfile() {
                   <div>
                     <p className="text-sm font-medium">Member Since</p>
                     <p className="text-sm text-muted-foreground">
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                      {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -174,7 +189,7 @@ export default function UserProfile() {
                   <div>
                     <p className="text-sm font-medium">Last Login</p>
                     <p className="text-sm text-muted-foreground">
-                      {user.last_login_at 
+                      {user?.last_login_at 
                         ? new Date(user.last_login_at).toLocaleString()
                         : 'Never'
                       }

@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { AuthUser } from '../types/user.js';
+import { tokenRotationService } from '../services/token-rotation.service.js';
 
 declare global {
   namespace Express {
@@ -130,6 +131,19 @@ class AuthController {
       const accessToken = generateAccessToken(tokenPayload);
       const refreshToken = generateRefreshToken(tokenPayload);
 
+      // Store refresh token in database
+      try {
+        await tokenRotationService.storeRefreshToken(
+          refreshToken,
+          user.user_id,
+          req.ip || 'unknown',
+          req.headers['user-agent'] || 'unknown'
+        );
+      } catch (error) {
+        console.error('❌ [AUTH] Failed to store refresh token:', error);
+        throw new ApiError('Failed to complete authentication', 500);
+      }
+
       // Update last login timestamp
       try {
         await prisma.profiles.update({
@@ -201,26 +215,38 @@ class AuthController {
         throw new ApiError('Refresh token required', 400);
       }
 
-      const payload = verifyRefreshToken(refresh_token);
-      const user = await prisma.profiles.findUnique({
-        where: { user_id: payload.userId }
-      });
+      console.log('🔄 [AUTH] Token refresh requested');
 
-      if (!user) {
-        throw new ApiError('User not found', 404);
-      }
+      // Use token rotation service for secure refresh
+      const { accessToken, refreshToken: newRefreshToken } = 
+        await tokenRotationService.rotateTokens(
+          refresh_token,
+          req.ip || 'unknown',
+          req.headers['user-agent'] || 'unknown'
+        );
 
-      const newAccessToken = generateAccessToken(payload);
-      const newRefreshToken = generateRefreshToken(payload);
+      console.log('✅ [AUTH] Token rotation successful');
 
       res.json({
-        access_token: newAccessToken,
+        access_token: accessToken,
         refresh_token: newRefreshToken,
         token_type: 'bearer',
         expires_in: process.env.JWT_ACCESS_EXPIRATION_MINUTES || '15'
       });
     } catch (error) {
-      next(error);
+      console.error('❌ [AUTH] Token refresh failed:', error);
+      
+      // Clear any invalid tokens
+      if (req.body.refresh_token) {
+        try {
+          await tokenRotationService.revokeToken(req.body.refresh_token);
+        } catch (revokeError) {
+          console.error('Failed to revoke invalid token:', revokeError);
+        }
+      }
+      
+      // Return 401 to trigger frontend logout
+      return next(new ApiError('Invalid or expired refresh token', 401));
     }
   }
 
@@ -298,6 +324,19 @@ class AuthController {
       const accessToken = generateAccessToken(tokenPayload);
       const refreshToken = generateRefreshToken(tokenPayload);
 
+      // Store refresh token in database
+      try {
+        await tokenRotationService.storeRefreshToken(
+          refreshToken,
+          newUser.user_id,
+          req.ip || 'unknown',
+          req.headers['user-agent'] || 'unknown'
+        );
+      } catch (error) {
+        console.error('❌ [AUTH] Failed to store refresh token:', error);
+        throw new ApiError('Failed to complete registration', 500);
+      }
+
       // TODO: Send verification email
 
       res.status(201).json({
@@ -359,9 +398,28 @@ class AuthController {
     }
   }
 
-  async logout(_req: Request, res: Response, _next: NextFunction) {
-    // In a real app, you might want to invalidate the refresh token here
-    res.json({ message: 'Logout successful' });
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { refresh_token } = req.body;
+      
+      if (refresh_token) {
+        // Revoke the refresh token
+        await tokenRotationService.revokeToken(refresh_token);
+        console.log('✅ [AUTH] Refresh token revoked on logout');
+      }
+      
+      // Optionally revoke all user tokens
+      if (req.user?.userId) {
+        await tokenRotationService.revokeAllUserTokens(req.user.userId);
+        console.log('✅ [AUTH] All user tokens revoked');
+      }
+      
+      res.json({ message: 'Logout successful' });
+    } catch (error) {
+      console.error('❌ [AUTH] Logout error:', error);
+      // Still return success - logout should always work
+      res.json({ message: 'Logout successful' });
+    }
   }
 
   async changePassword(req: Request, res: Response, next: NextFunction) {

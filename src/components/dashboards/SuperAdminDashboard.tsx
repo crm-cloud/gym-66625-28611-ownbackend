@@ -150,7 +150,7 @@ export const SuperAdminDashboard = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium capitalize">{gym.status}</p>
+                    <p className="text-sm font-medium">{gym.branch_count} branches, {gym.member_count} members</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(gym.created_at).toLocaleDateString()}
                     </p>

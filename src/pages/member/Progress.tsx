@@ -58,16 +58,16 @@ export const MemberProgress = () => {
     );
   }
 
-  const chartData = (measurements || []).map((m: any) => ({
+  const chartData = Array.isArray(measurements) ? measurements.map((m: any) => ({
     date: format(new Date(m.measured_date), 'MMM dd'),
     weight: m.weight,
     bodyFat: m.body_fat_percentage,
     muscleMass: m.muscle_mass,
     bmi: m.bmi
-  }));
+  })) : [];
 
-  const latestMeasurement = measurements?.[measurements.length - 1];
-  const firstMeasurement = measurements?.[0];
+  const latestMeasurement = Array.isArray(measurements) && measurements.length > 0 ? measurements[measurements.length - 1] : null;
+  const firstMeasurement = Array.isArray(measurements) && measurements.length > 0 ? measurements[0] : null;
 
   const weightChange = latestMeasurement && firstMeasurement 
     ? (latestMeasurement.weight || 0) - (firstMeasurement.weight || 0)

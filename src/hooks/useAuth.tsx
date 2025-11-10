@@ -409,8 +409,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async (showToast = true, redirectToLogin = true) => {
-    // Clear tokens and auth header first to prevent any race conditions
+    // Get refresh token before clearing
     const refreshToken = localStorage.getItem('refresh_token');
+    
+    // Clear tokens and auth header first to prevent any race conditions
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     delete api.defaults.headers.common['Authorization'];

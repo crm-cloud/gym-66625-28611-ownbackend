@@ -8,10 +8,49 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type Tok
 
 export class TokenRotationService {
   /**
+   * Store a new refresh token in the database
+   */
+  async storeRefreshToken(
+    token: string,
+    userId: string,
+    ipAddress: string,
+    userAgent: string
+  ): Promise<void> {
+    try {
+      // Verify token to extract metadata
+      const payload = verifyRefreshToken(token);
+      
+      // Calculate expiration (7 days from now)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      
+      await prisma.refreshToken.create({
+        data: {
+          user_id: userId,
+          token: token,
+          expires_at: expiresAt,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          is_revoked: false,
+          parent_token: null
+        }
+      });
+      
+      console.log('✅ [TOKEN] Refresh token stored for user:', userId);
+    } catch (error) {
+      console.error('❌ [TOKEN] Failed to store refresh token:', error);
+      throw new Error('Failed to store refresh token');
+    }
+  }
+
+  /**
    * Refresh access token with token rotation
    * Old refresh token is invalidated and new one is issued
    */
-  async rotateTokens(oldRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async rotateTokens(
+    oldRefreshToken: string,
+    ipAddress: string = 'unknown',
+    userAgent: string = 'unknown'
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     // Verify old refresh token
     let payload: TokenPayload;
     try {
@@ -106,6 +145,9 @@ export class TokenRotationService {
         user_id: storedToken.user.user_id,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         parent_token: oldRefreshToken, // Track token family
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        is_revoked: false
       },
     });
 

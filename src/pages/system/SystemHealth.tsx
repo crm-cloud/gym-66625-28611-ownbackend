@@ -27,38 +27,38 @@ export default function SystemHealth() {
   const healthMetrics = [
     { 
       name: 'Server Status', 
-      value: systemMetrics?.server?.status === 'healthy' ? 'Online' : 'Issues Detected', 
-      status: systemMetrics?.server?.status || 'healthy', 
+      value: (systemMetrics as any)?.server?.status === 'healthy' ? 'Online' : 'Issues Detected', 
+      status: (systemMetrics as any)?.server?.status || 'healthy', 
       icon: Server 
     },
     { 
       name: 'Database', 
-      value: `${systemMetrics?.server?.uptime || '99.9%'} Uptime`, 
-      status: systemMetrics?.database?.status || 'healthy', 
+      value: `${(systemMetrics as any)?.server?.uptime || '99.9%'} Uptime`, 
+      status: (systemMetrics as any)?.database?.status || 'healthy', 
       icon: Database 
     },
     { 
       name: 'Network', 
-      value: systemMetrics?.network?.status === 'healthy' ? 'Stable' : 'Unstable', 
-      status: systemMetrics?.network?.status || 'healthy', 
+      value: (systemMetrics as any)?.network?.status === 'healthy' ? 'Stable' : 'Unstable', 
+      status: (systemMetrics as any)?.network?.status || 'healthy', 
       icon: Wifi 
     },
     { 
       name: 'Storage', 
-      value: `${systemMetrics?.storage?.used || 78}% Used`, 
-      status: systemMetrics?.storage?.status || 'warning', 
+      value: `${(systemMetrics as any)?.storage?.used || 78}% Used`, 
+      status: (systemMetrics as any)?.storage?.status || 'warning', 
       icon: HardDrive 
     },
     { 
       name: 'CPU Usage', 
-      value: `${systemMetrics?.cpu?.usage || 45}%`, 
-      status: systemMetrics?.cpu?.status || 'healthy', 
+      value: `${(systemMetrics as any)?.cpu?.usage || 45}%`, 
+      status: (systemMetrics as any)?.cpu?.status || 'healthy', 
       icon: Cpu 
     },
     { 
       name: 'Memory', 
-      value: `${systemMetrics?.memory?.usage || 62}%`, 
-      status: systemMetrics?.memory?.status || 'healthy', 
+      value: `${(systemMetrics as any)?.memory?.usage || 62}%`, 
+      status: (systemMetrics as any)?.memory?.status || 'healthy', 
       icon: Activity 
     }
   ];
@@ -98,13 +98,13 @@ export default function SystemHealth() {
                   </Badge>
                 </div>
                 {metric.name === 'Storage' && (
-                  <Progress value={systemMetrics?.storage?.used || 78} className="mt-2" />
+                  <Progress value={(systemMetrics as any)?.storage?.used || 78} className="mt-2" />
                 )}
                 {metric.name === 'CPU Usage' && (
-                  <Progress value={systemMetrics?.cpu?.usage || 45} className="mt-2" />
+                  <Progress value={(systemMetrics as any)?.cpu?.usage || 45} className="mt-2" />
                 )}
                 {metric.name === 'Memory' && (
-                  <Progress value={systemMetrics?.memory?.usage || 62} className="mt-2" />
+                  <Progress value={(systemMetrics as any)?.memory?.usage || 62} className="mt-2" />
                 )}
               </CardContent>
             </Card>
@@ -162,21 +162,21 @@ export default function SystemHealth() {
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Response Time</span>
-                <span>{performanceMetrics?.responseTime?.avg || 125}ms avg</span>
+                <span>{(performanceMetrics as any)?.responseTime?.avg || 125}ms avg</span>
               </div>
               <Progress value={75} />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Throughput</span>
-                <span>{performanceMetrics?.throughput?.current || 1250} req/min</span>
+                <span>{(performanceMetrics as any)?.throughput?.current || 1250} req/min</span>
               </div>
               <Progress value={85} />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Error Rate</span>
-                <span>{performanceMetrics?.errorRate?.current || 0.02}%</span>
+                <span>{(performanceMetrics as any)?.errorRate?.current || 0.02}%</span>
               </div>
               <Progress value={2} />
             </div>

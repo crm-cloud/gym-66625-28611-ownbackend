@@ -28,6 +28,13 @@ export class SettingsController {
       const gymId = req.user?.gymId;
       const branchId = req.user?.branchId;
 
+      // Sensitive categories require super_admin
+      const sensitiveCategories = ['security', 'api', 'system'];
+      if (sensitiveCategories.includes(category) && userRole !== 'super_admin') {
+        const ApiError = (await import('../utils/ApiError.js')).ApiError;
+        throw new ApiError('Insufficient permissions to view this category', 403);
+      }
+
       const settings = await settingsService.getSettingsByCategory(
         category,
         userRole,

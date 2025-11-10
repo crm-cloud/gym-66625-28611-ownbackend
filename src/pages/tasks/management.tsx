@@ -92,26 +92,29 @@ export const TaskManagementPage = () => {
       status: 'pending',
       assignedTo: newTask.assignedTo,
       assignedBy: 'Current User',
-      dueDate: new Date(newTask.dueDate),
-      createdAt: new Date(),
-      category: newTask.category,
-      tags: []
+      dueDate: newTask.dueDate,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      category: newTask.category as any
     };
 
-    setTasks([task, ...tasks]);
-    setNewTask({
-      title: '',
-      description: '',
-      priority: 'medium',
-      assignedTo: '',
-      dueDate: '',
-      category: ''
-    });
-    setShowCreateDialog(false);
+    createTaskMutation.mutate(task as any, {
+      onSuccess: () => {
+        setNewTask({
+          title: '',
+          description: '',
+          priority: 'medium',
+          assignedTo: '',
+          dueDate: '',
+          category: ''
+        });
+        setShowCreateDialog(false);
 
-    toast({
-      title: 'Task Created',
-      description: 'New task has been assigned successfully.'
+        toast({
+          title: 'Task Created',
+          description: 'New task has been assigned successfully.'
+        });
+      }
     });
   };
 
@@ -125,13 +128,13 @@ export const TaskManagementPage = () => {
       return;
     }
 
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
-
-    toast({
-      title: 'Task Updated',
-      description: 'Task status has been updated successfully.'
+    updateTaskMutation.mutate({ id: taskId, status: newStatus } as any, {
+      onSuccess: () => {
+        toast({
+          title: 'Task Updated',
+          description: 'Task status has been updated successfully.'
+        });
+      }
     });
   };
 
@@ -145,11 +148,13 @@ export const TaskManagementPage = () => {
       return;
     }
 
-    setTasks(tasks.filter(task => task.id !== taskId));
-    
-    toast({
-      title: 'Task Deleted',
-      description: 'Task has been removed successfully.'
+    deleteTaskMutation.mutate(taskId, {
+      onSuccess: () => {
+        toast({
+          title: 'Task Deleted',
+          description: 'Task has been removed successfully.'
+        });
+      }
     });
   };
 
@@ -603,7 +608,7 @@ export const TaskManagementPage = () => {
                     <PermissionGate permission="tasks.edit">
                       <Button
                         size="sm"
-                        onClick={() => handleUpdateTaskStatus(task.id, 'in-progress')}
+                        onClick={() => handleUpdateTaskStatus(task.id, 'in_progress')}
                       >
                         Start Task
                       </Button>

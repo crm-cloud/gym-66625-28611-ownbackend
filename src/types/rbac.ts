@@ -72,6 +72,7 @@ export interface RoleDefinition {
 }
 
 import { User } from './auth';
+import type { UserRole } from './auth';
 
 export interface UserWithRoles extends User {
   roles: RoleDefinition[];
@@ -92,6 +93,9 @@ export interface RBACContext {
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
   getUserPermissions: () => Permission[];
+  getUserRole: () => UserRole | null;
+  isInRole: (role: UserRole) => boolean;
+  isInAnyRole: (roles: UserRole[]) => boolean;
   canAccessResource: (resource: string, action: string) => boolean;
   canAccessBranch: (branchId: string) => boolean;
   getCurrentBranchId: () => string | null;
@@ -100,6 +104,9 @@ export interface RBACContext {
   isManager: () => boolean;
   isLoading: boolean;
   isLoadingPermissions: boolean;
+  logActivity?: (action: string, details: Record<string, unknown>) => void;
+  getAuditLogs?: () => AuditLog[];
+  getRoles?: () => RoleDefinition[];
 }
 
 export interface AuditLog {

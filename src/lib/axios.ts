@@ -141,10 +141,10 @@ api.interceptors.response.use(
         throw new Error('No access token in refresh response');
       }
 
-      // Store new tokens
+      // Store BOTH new tokens (important for rotation)
       localStorage.setItem('access_token', access_token);
       if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
+        localStorage.setItem('refresh_token', refresh_token); // Store new refresh token
       }
 
       // Update auth header
