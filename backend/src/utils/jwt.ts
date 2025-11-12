@@ -96,8 +96,8 @@ function generateTokenId(): string {
 export function verifyAccessToken(token: string): TokenPayload {
   try {
     const payload = jwt.verify(token, JWT_SECRET, {
-      issuer: 'gym-management-api',
-      audience: 'gym-management-client'
+      issuer: 'fitverse-api',
+      audience: 'fitverse-client'
     }) as TokenPayload;
     
     // Basic validation of required fields
