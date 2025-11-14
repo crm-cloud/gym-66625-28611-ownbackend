@@ -95,10 +95,23 @@ function generateTokenId(): string {
 
 export function verifyAccessToken(token: string): TokenPayload {
   try {
+    console.log('[JWT] Verifying access token', { 
+      tokenLength: token.length, 
+      tokenPreview: token.substring(0, 30) + '...',
+      secretConfigured: !!JWT_SECRET,
+      secretLength: JWT_SECRET.length
+    });
+    
     const payload = jwt.verify(token, JWT_SECRET, {
       issuer: 'fitverse-api',
       audience: 'fitverse-client'
     }) as TokenPayload;
+    
+    console.log('[JWT] Token verification successful', {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role
+    });
     
     // Basic validation of required fields
     if (!payload.userId || !payload.email) {
@@ -125,8 +138,16 @@ export function verifyAccessToken(token: string): TokenPayload {
     return verifiedPayload;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
+      console.error('[JWT] ❌ Token expired', { 
+        expiredAt: error.expiredAt,
+        now: new Date()
+      });
       throw new Error('Token expired');
     }
+    console.error('[JWT] ❌ Token verification failed', { 
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'Unknown'
+    });
     throw new Error('Invalid token');
   }
 }
