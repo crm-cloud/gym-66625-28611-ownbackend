@@ -1645,7 +1645,6 @@ model profiles {
   admin_subscriptions          admin_subscriptions[]
   assigned_subscriptions       admin_subscriptions[]          @relation("assigned_by")
   created_system_backups       system_backups[]               @relation("creator")
-  refresh_tokens               refresh_tokens[]               @relation("user_refresh_tokens")
 
   @@map("profiles")
   @@schema("public")
@@ -1684,29 +1683,6 @@ model progress_photos {
   progress_entries progress_entries? @relation(fields: [related_entry_id], references: [id])
 
   @@map("progress_photos")
-  @@schema("public")
-}
-
-// Token rotation table for secure authentication
-model refresh_tokens {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String    @db.Uuid
-  token        String    @unique @db.Text
-  expires_at   DateTime  @db.Timestamptz()
-  created_at   DateTime  @default(now()) @db.Timestamptz()
-  is_revoked   Boolean   @default(false)
-  revoked_at   DateTime? @db.Timestamptz()
-  parent_token String?   @db.Text // Track token family for rotation
-  ip_address   String?   @db.VarChar(45)
-  user_agent   String?   @db.Text
-  
-  // Relations
-  user profiles @relation("user_refresh_tokens", fields: [user_id], references: [user_id], onDelete: Cascade)
-  
-  @@index([user_id])
-  @@index([token])
-  @@index([expires_at])
-  @@map("refresh_tokens")
   @@schema("public")
 }
 
