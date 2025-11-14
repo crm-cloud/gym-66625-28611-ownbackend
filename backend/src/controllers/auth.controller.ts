@@ -2,9 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type TokenPayload } from '../utils/jwt.js';
 import { AuthUser } from '../types/user.js';
-import { tokenRotationService } from '../services/token-rotation.service.js';
 
 declare global {
   namespace Express {
@@ -131,18 +130,7 @@ class AuthController {
       const accessToken = generateAccessToken(tokenPayload);
       const refreshToken = generateRefreshToken(tokenPayload);
 
-      // Store refresh token in database
-      try {
-        await tokenRotationService.storeRefreshToken(
-          refreshToken,
-          user.user_id,
-          req.ip || 'unknown',
-          req.headers['user-agent'] || 'unknown'
-        );
-      } catch (error) {
-        console.error('❌ [AUTH] Failed to store refresh token:', error);
-        throw new ApiError('Failed to complete authentication', 500);
-      }
+      console.log('✅ [AUTH] Tokens generated for user:', user.user_id);
 
       // Update last login timestamp
       try {
@@ -217,36 +205,76 @@ class AuthController {
 
       console.log('🔄 [AUTH] Token refresh requested');
 
-      // Use token rotation service for secure refresh
-      const { accessToken, refreshToken: newRefreshToken } = 
-        await tokenRotationService.rotateTokens(
-          refresh_token,
-          req.ip || 'unknown',
-          req.headers['user-agent'] || 'unknown'
-        );
+      // Verify refresh token (stateless - no DB lookup)
+      let payload: TokenPayload;
+      try {
+        payload = verifyRefreshToken(refresh_token);
+      } catch (error) {
+        console.error('❌ [AUTH] Invalid refresh token:', error);
+        throw new ApiError('Invalid or expired refresh token', 401);
+      }
 
-      console.log('✅ [AUTH] Token rotation successful');
+      // Fetch fresh user data to ensure account is still active
+      const user = await prisma.profiles.findUnique({
+        where: { user_id: payload.userId },
+        include: {
+          user_roles: {
+            include: {
+              roles: {
+                include: {
+                  role_permissions: {
+                    include: {
+                      permissions: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: { created_at: 'asc' }
+          }
+        }
+      });
+
+      if (!user || !user.is_active) {
+        throw new ApiError('User account not found or inactive', 401);
+      }
+
+      // Get primary role and permissions
+      const primaryRole = user.user_roles?.[0]?.role || 'member';
+      const allPermissions = new Set<string>();
+      user.user_roles?.forEach(ur => {
+        ur.roles?.role_permissions?.forEach(rp => {
+          if (rp.permissions?.name) {
+            allPermissions.add(rp.permissions.name);
+          }
+        });
+      });
+
+      // Generate new tokens with fresh data
+      const tokenPayload = {
+        userId: user.user_id,
+        user_id: user.user_id,
+        email: user.email,
+        role: primaryRole,
+        branchId: user.user_roles?.[0]?.branch_id || undefined,
+        gymId: user.user_roles?.[0]?.gym_id || undefined,
+        permissions: Array.from(allPermissions)
+      };
+
+      const newAccessToken = generateAccessToken(tokenPayload);
+      const newRefreshToken = generateRefreshToken(tokenPayload);
+
+      console.log('✅ [AUTH] Token refresh successful');
 
       res.json({
-        access_token: accessToken,
+        access_token: newAccessToken,
         refresh_token: newRefreshToken,
         token_type: 'bearer',
         expires_in: process.env.JWT_ACCESS_EXPIRATION_MINUTES || '15'
       });
     } catch (error) {
       console.error('❌ [AUTH] Token refresh failed:', error);
-      
-      // Clear any invalid tokens
-      if (req.body.refresh_token) {
-        try {
-          await tokenRotationService.revokeToken(req.body.refresh_token);
-        } catch (revokeError) {
-          console.error('Failed to revoke invalid token:', revokeError);
-        }
-      }
-      
-      // Return 401 to trigger frontend logout
-      return next(new ApiError('Invalid or expired refresh token', 401));
+      next(error);
     }
   }
 
@@ -400,25 +428,17 @@ class AuthController {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refresh_token } = req.body;
+      // With stateless JWTs, tokens cannot be revoked server-side
+      // Tokens will expire naturally based on their expiration time
+      console.log('✅ [AUTH] Logout successful (client-side only)');
       
-      if (refresh_token) {
-        // Revoke the refresh token
-        await tokenRotationService.revokeToken(refresh_token);
-        console.log('✅ [AUTH] Refresh token revoked on logout');
-      }
-      
-      // Optionally revoke all user tokens
-      if (req.user?.userId) {
-        await tokenRotationService.revokeAllUserTokens(req.user.userId);
-        console.log('✅ [AUTH] All user tokens revoked');
-      }
-      
-      res.json({ message: 'Logout successful' });
+      res.json({ 
+        message: 'Logout successful',
+        note: 'Please clear tokens from client storage'
+      });
     } catch (error) {
       console.error('❌ [AUTH] Logout error:', error);
-      // Still return success - logout should always work
-      res.json({ message: 'Logout successful' });
+      next(error);
     }
   }
 
