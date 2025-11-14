@@ -132,7 +132,10 @@ export function verifyAccessToken(token: string): TokenPayload {
 }
 
 export function verifyRefreshToken(token: string): TokenPayload {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  return jwt.verify(token, JWT_SECRET, {
+    issuer: 'fitverse-api',
+    audience: 'fitverse-client'
+  }) as TokenPayload;
 }
 
 /**
