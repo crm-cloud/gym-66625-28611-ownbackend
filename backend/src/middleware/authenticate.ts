@@ -32,24 +32,39 @@ declare global {
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
+    console.log('[AUTH] 🔐 Authentication attempt', { 
+      url: req.url, 
+      method: req.method,
+      hasAuthHeader: !!authHeader,
+      authHeaderPreview: authHeader ? authHeader.substring(0, 20) + '...' : 'none'
+    });
 
     if (!authHeader) {
+      console.error('[AUTH] ❌ No authorization header provided');
       throw new ApiError('No authorization header provided', 401);
     }
 
     if (!authHeader.startsWith('Bearer ')) {
+      console.error('[AUTH] ❌ Invalid authorization header format');
       throw new ApiError('Invalid authorization header format', 401);
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('[AUTH] 🎫 Token extracted', { tokenLength: token.length, tokenPreview: token.substring(0, 20) + '...' });
 
     if (!token) {
+      console.error('[AUTH] ❌ No token provided');
       throw new ApiError('No token provided', 401);
     }
 
     // Verify token
+    console.log('[AUTH] 🔍 Attempting to verify JWT...');
     const payload = verifyAccessToken(token);
-    console.log('[AUTH] JWT verified', { userId: (payload as any).userId, email: (payload as any).email });
+    console.log('[AUTH] ✅ JWT verified successfully', { 
+      userId: (payload as any).userId, 
+      email: (payload as any).email,
+      role: (payload as any).role
+    });
 
     // Prefer userId but fallback to user_id if needed
     const uid = (payload as any).userId || (payload as any).user_id;
@@ -148,6 +163,13 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
     next();
   } catch (error: any) {
+    console.error('[AUTH] ❌ Authentication failed', {
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'Unknown',
+      url: req.url,
+      method: req.method
+    });
+    
     if (error instanceof ApiError) {
       return next(error);
     }
