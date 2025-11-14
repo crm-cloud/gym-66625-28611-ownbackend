@@ -49,6 +49,13 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
     // Verify token
     const payload = verifyAccessToken(token);
+    console.log('[AUTH] JWT verified', { userId: (payload as any).userId, email: (payload as any).email });
+
+    // Prefer userId but fallback to user_id if needed
+    const uid = (payload as any).userId || (payload as any).user_id;
+    if (!uid) {
+      throw new ApiError('Invalid token payload: missing user id', 401);
+    }
     
     // Get fresh user data to ensure the account is still active
     let userData;
@@ -75,7 +82,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
         LEFT JOIN roles r ON ur.role = r.name
         LEFT JOIN role_permissions rp ON r.role_id = rp.role_id
         LEFT JOIN permissions p2 ON rp.permission_id = p2.permission_id
-        WHERE p.user_id = ${payload.userId}
+        WHERE p.user_id = ${uid}
         ORDER BY ur.created_at ASC
       ` as any[];
 
