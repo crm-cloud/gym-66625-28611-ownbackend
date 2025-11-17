@@ -36,7 +36,8 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       url: req.url, 
       method: req.method,
       hasAuthHeader: !!authHeader,
-      authHeaderPreview: authHeader ? authHeader.substring(0, 20) + '...' : 'none'
+      authHeaderPreview: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+      allHeaders: Object.keys(req.headers)
     });
 
     if (!authHeader) {
@@ -75,69 +76,84 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     // Get fresh user data to ensure the account is still active
     let userData;
     try {
-      // Use raw query to avoid Prisma type issues
-      const users = await prisma.$queryRaw`
-        SELECT 
-          p.user_id,
-          p.email,
-          p.is_active,
-          p.full_name,
-          p.phone,
-          p.avatar_url,
-          p.email_verified,
-          ur.role,
-          ur.branch_id,
-          ur.gym_id,
-          r.role_id,
-          r.name as role_name,
-          rp.permission_id,
-          p2.name as permission_name
-        FROM profiles p
-        LEFT JOIN user_roles ur ON p.user_id = ur.user_id
-        LEFT JOIN roles r ON ur.role = r.name
-        LEFT JOIN role_permissions rp ON r.role_id = rp.role_id
-        LEFT JOIN permissions p2 ON rp.permission_id = p2.permission_id
-        WHERE p.user_id = ${uid}
-        ORDER BY ur.created_at ASC
-      ` as any[];
-
-      if (!users || users.length === 0) {
-        console.error('User not found in database:', payload.userId);
-        throw new ApiError('User not found', 401);
-      }
-
-      // Group permissions by user
-      const userPermissions = new Map<string, string[]>();
-      users.forEach(row => {
-        if (row.permission_name) {
-          const perms = userPermissions.get(row.user_id) || [];
-          perms.push(row.permission_name);
-          userPermissions.set(row.user_id, perms);
+      // First, get the user profile
+      const user = await prisma.profiles.findUnique({
+        where: { user_id: uid },
+        select: {
+          user_id: true,
+          email: true,
+          is_active: true,
+          full_name: true,
+          phone: true,
+          avatar_url: true,
+          email_verified: true
         }
       });
 
-      // Get the first user (should only be one)
-      const firstUser = users[0];
+      if (!user) {
+        console.error('[AUTH] ❌ User not found in database:', {
+          userId: uid,
+          tokenUserId: payload.userId
+        });
+        throw new ApiError('User not found', 401);
+      }
+      
+      console.log('[AUTH] ✅ User found in database:', {
+        userId: user.user_id,
+        email: user.email,
+        isActive: user.is_active
+      });
+
+      // Get user roles
+      const userRoles = await prisma.user_roles.findMany({
+        where: { user_id: uid },
+        select: {
+          role: true,
+          branch_id: true,
+          gym_id: true
+        }
+      });
+
+      const primaryRole = userRoles[0];
+      const userRole = primaryRole?.role || 'member';
+      
+      // Super admins should not have branch_id or gym_id
+      const isSuperAdmin = userRole === 'super_admin' || userRole === 'super-admin';
+      
       userData = {
-        user_id: firstUser.user_id,
-        email: firstUser.email,
-        is_active: firstUser.is_active,
-        full_name: firstUser.full_name,
-        phone: firstUser.phone,
-        avatar_url: firstUser.avatar_url,
-        email_verified: firstUser.email_verified,
-        role: firstUser.role,
-        branch_id: firstUser.branch_id,
-        gym_id: firstUser.gym_id,
-        permissions: Array.from(new Set(userPermissions.get(firstUser.user_id) || []))
+        user_id: user.user_id,
+        email: user.email,
+        is_active: user.is_active,
+        full_name: user.full_name,
+        phone: user.phone,
+        avatar_url: user.avatar_url,
+        email_verified: user.email_verified,
+        role: userRole,
+        branch_id: isSuperAdmin ? null : primaryRole?.branch_id,
+        gym_id: isSuperAdmin ? null : primaryRole?.gym_id,
+        permissions: [] // TODO: Fetch permissions if needed
       };
 
-      if (!userData.is_active) {
-        console.error('User account is inactive:', payload.userId);
+      // Only reject if explicitly set to false (treat null/undefined as active)
+      if (userData.is_active === false) {
+        console.error('[AUTH] ❌ User account is inactive:', payload.userId);
         throw new ApiError('Account is inactive', 401);
       }
+      
+      console.log('[AUTH] ✅ User account is active:', {
+        userId: userData.user_id,
+        isActive: userData.is_active,
+        email: userData.email
+      });
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      console.error('[AUTH] ❌ Error fetching user data:', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: uid,
+        errorStack: error instanceof Error ? error.stack : 'no stack'
+      });
       throw new ApiError('Authentication failed', 401);
     }
 

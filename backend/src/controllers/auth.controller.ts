@@ -1,18 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type TokenPayload } from '../utils/jwt.js';
-import { AuthUser } from '../types/user.js';
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthUser;
-    }
-  }
-}
-
+import { generateAccessToken } from '../utils/jwt.js';
 const prisma = new PrismaClient();
 
 class AuthController {
@@ -112,7 +103,7 @@ class AuthController {
         });
       });
 
-      // Generate tokens with user information
+      // Generate access token with user information
       const tokenPayload = {
         userId: user.user_id,
         user_id: user.user_id, // For backward compatibility
@@ -128,9 +119,8 @@ class AuthController {
       };
 
       const accessToken = generateAccessToken(tokenPayload);
-      const refreshToken = generateRefreshToken(tokenPayload);
 
-      console.log('✅ [AUTH] Tokens generated for user:', user.user_id);
+      console.log('✅ [AUTH] Access token generated for user:', user.user_id);
 
       // Update last login timestamp
       try {
@@ -172,7 +162,6 @@ class AuthController {
       // Prepare response data
       const responseData = {
         access_token: accessToken,
-        refresh_token: refreshToken,
         user: userData,
         expires_in: process.env.JWT_ACCESS_EXPIRATION_MINUTES || '15',
         token_type: 'bearer'
@@ -191,89 +180,6 @@ class AuthController {
       // Return the response
       return res.json(responseData);
     } catch (error) {
-      next(error);
-    }
-  }
-
-  async refresh(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { refresh_token } = req.body;
-
-      if (!refresh_token) {
-        throw new ApiError('Refresh token required', 400);
-      }
-
-      console.log('🔄 [AUTH] Token refresh requested');
-
-      // Verify refresh token (stateless - no DB lookup)
-      let payload: TokenPayload;
-      try {
-        payload = verifyRefreshToken(refresh_token);
-      } catch (error) {
-        console.error('❌ [AUTH] Invalid refresh token:', error);
-        throw new ApiError('Invalid or expired refresh token', 401);
-      }
-
-      // Fetch fresh user data to ensure account is still active
-      const user = await prisma.profiles.findUnique({
-        where: { user_id: payload.userId },
-        include: {
-          user_roles: {
-            include: {
-              roles: {
-                include: {
-                  role_permissions: {
-                    include: {
-                      permissions: true
-                    }
-                  }
-                }
-              }
-            },
-            orderBy: { created_at: 'asc' }
-          }
-        }
-      });
-
-      if (!user || !user.is_active) {
-        throw new ApiError('User account not found or inactive', 401);
-      }
-
-      // Get primary role and permissions
-      const primaryRole = user.user_roles?.[0]?.role || 'member';
-      const allPermissions = new Set<string>();
-      user.user_roles?.forEach(ur => {
-        ur.roles?.role_permissions?.forEach(rp => {
-          if (rp.permissions?.name) {
-            allPermissions.add(rp.permissions.name);
-          }
-        });
-      });
-
-      // Generate new tokens with fresh data
-      const tokenPayload = {
-        userId: user.user_id,
-        user_id: user.user_id,
-        email: user.email,
-        role: primaryRole,
-        branchId: user.user_roles?.[0]?.branch_id || undefined,
-        gymId: user.user_roles?.[0]?.gym_id || undefined,
-        permissions: Array.from(allPermissions)
-      };
-
-      const newAccessToken = generateAccessToken(tokenPayload);
-      const newRefreshToken = generateRefreshToken(tokenPayload);
-
-      console.log('✅ [AUTH] Token refresh successful');
-
-      res.json({
-        access_token: newAccessToken,
-        refresh_token: newRefreshToken,
-        token_type: 'bearer',
-        expires_in: process.env.JWT_ACCESS_EXPIRATION_MINUTES || '15'
-      });
-    } catch (error) {
-      console.error('❌ [AUTH] Token refresh failed:', error);
       next(error);
     }
   }
@@ -325,19 +231,13 @@ class AuthController {
             id: crypto.randomUUID(),
             user_id: newUser.user_id,
             role_id: memberRole.id,
-            created_at: new Date(),
-            role: {
-              connect: { id: memberRole.id }
-            },
-            user: {
-              connect: { user_id: newUser.user_id }
-            }
+            created_at: new Date()
           }
         });
       }
 
-      // Generate tokens with complete user information
-      const tokenPayload: AuthUser = {
+      // Generate access token with user information
+      const tokenPayload = {
         userId: newUser.user_id,
         user_id: newUser.user_id,
         email: newUser.email,
@@ -350,20 +250,6 @@ class AuthController {
       };
 
       const accessToken = generateAccessToken(tokenPayload);
-      const refreshToken = generateRefreshToken(tokenPayload);
-
-      // Store refresh token in database
-      try {
-        await tokenRotationService.storeRefreshToken(
-          refreshToken,
-          newUser.user_id,
-          req.ip || 'unknown',
-          req.headers['user-agent'] || 'unknown'
-        );
-      } catch (error) {
-        console.error('❌ [AUTH] Failed to store refresh token:', error);
-        throw new ApiError('Failed to complete registration', 500);
-      }
 
       // TODO: Send verification email
 
@@ -376,7 +262,6 @@ class AuthController {
           email_verified: false
         },
         access_token: accessToken,
-        refresh_token: refreshToken,
         token_type: 'bearer',
         expires_in: process.env.JWT_ACCESS_EXPIRATION_MINUTES || '15'
       });

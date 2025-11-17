@@ -87,11 +87,10 @@ export const useApiQuery = <TData,>(
         
         console.error(`[useApiQuery] API Error (${endpoint}):`, errorDetails);
         
-        // If we get a 401, ensure we clear the tokens
+        // If we get a 401, ensure we clear the token
         if (error.response?.status === 401) {
           console.warn('[useApiQuery] 401 Unauthorized - Clearing auth tokens');
           localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
           delete api.defaults.headers.common['Authorization'];
           
           // Only redirect if we're not already on the login page

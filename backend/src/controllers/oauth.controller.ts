@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { generateAccessToken } from '../utils/jwt.js';
 import { prisma } from '../lib/prisma.js';
 import { ApiError } from '../middleware/errorHandler';
 
@@ -18,32 +18,17 @@ class OAuthController {
         throw new ApiError('OAuth authentication failed', 401);
       }
 
-      // Generate tokens
+      // Generate access token
       const accessToken = generateAccessToken({
         userId: (req.user as any).user_id,
         email: (req.user as any).email,
         role: (req.user as any).role,
       });
 
-      const refreshToken = generateRefreshToken({
-        userId: (req.user as any).user_id,
-        email: (req.user as any).email,
-        role: (req.user as any).role,
-      });
-
-      // Store refresh token
-      await prisma.refreshToken.create({
-        data: {
-          token: refreshToken,
-          user_id: (req.user as any).user_id,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        },
-      });
-
       // Redirect to frontend with tokens
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       res.redirect(
-        `${frontendUrl}/auth/callback?access_token=${accessToken}&refresh_token=${refreshToken}`
+        `${frontendUrl}/auth/callback?access_token=${accessToken}`
       );
     } catch (error) {
       next(error);

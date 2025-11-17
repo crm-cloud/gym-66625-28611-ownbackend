@@ -17,7 +17,23 @@ export const useSystemSettings = (category?: string) => {
 
 export const useSystemSetting = (category: string, key: string) => {
   const { data: settings } = useSystemSettings(category);
-  const setting = settings?.find(s => s.key === key);
+  
+  if (settings) {
+    console.log('[useSystemSetting] Settings data received:', {
+      type: typeof settings,
+      isArray: Array.isArray(settings),
+      keys: Array.isArray(settings) ? undefined : Object.keys(settings || {}),
+      value: settings
+    });
+  }
+  
+  // Ensure settings is an array before calling find
+  if (!Array.isArray(settings)) {
+    console.warn('[useSystemSetting] Settings is not an array:', settings);
+    return undefined;
+  }
+  
+  const setting = settings.find(s => s.key === key);
   return setting?.value;
 };
 

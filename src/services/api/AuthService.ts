@@ -15,7 +15,6 @@ export interface RegisterData {
 export interface AuthResponse {
   user: any;
   access_token: string;
-  refresh_token: string;
 }
 
 /**
@@ -48,12 +47,10 @@ class AuthServiceClass {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const { data } = await api.post('/api/auth/login', credentials);
     
-    // Store tokens
+    // Store access token
     if (data.access_token) {
       localStorage.setItem('access_token', data.access_token);
-    }
-    if (data.refresh_token) {
-      localStorage.setItem('refresh_token', data.refresh_token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
     }
     
     return data;
@@ -64,15 +61,13 @@ class AuthServiceClass {
    */
   async logout(): Promise<void> {
     try {
-      await api.post('/api/auth/logout', {
-        refresh_token: localStorage.getItem('refresh_token')
-      });
+      await api.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Always clear local tokens
+      // Clear local auth data
       localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      delete api.defaults.headers.common['Authorization'];
     }
   }
 
@@ -84,24 +79,8 @@ class AuthServiceClass {
     return data;
   }
 
-  /**
-   * Refresh access token
-   */
-  async refreshToken(): Promise<{ access_token: string }> {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) throw new Error('No refresh token available');
-
-    const { data } = await api.post('/api/auth/refresh', {
-      refresh_token: refreshToken
-    });
-
-    // Store new access token
-    if (data.access_token) {
-      localStorage.setItem('access_token', data.access_token);
-    }
-
-    return data;
-  }
+  // Token refresh functionality has been removed
+  // Users will need to log in again when their session expires
 
   /**
    * Change password

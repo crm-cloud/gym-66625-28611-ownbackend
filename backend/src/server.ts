@@ -166,110 +166,95 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDefinition, {
   customSiteTitle: 'GymFlow API Documentation',
 }));
 
-// API v1 routes with versioning
-const v1Router = express.Router();
-
-// Apply general rate limiter to all v1 routes
-v1Router.use(generalLimiter);
+// API routes - consolidated without v1 versioning
+// Apply general rate limiter to all routes
+app.use('/api/', generalLimiter);
 
 // Public routes (no IP restrictions)
-v1Router.use('/auth', authRoutes);
-v1Router.use('/oauth', oauthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/oauth', oauthRoutes);
+
 // Protected routes (authenticated users)
-v1Router.use('/members', memberRoutes);
-v1Router.use('/branches', branchRoutes);
-v1Router.use('/trainers', trainerRoutes);
-v1Router.use('/membership-plans', membershipRoutes);
-v1Router.use('/classes', classRoutes);
-v1Router.use('/products', productRoutes);
-v1Router.use('/orders', orderRoutes);
-v1Router.use('/attendance', attendanceRoutes);
-v1Router.use('/transactions', transactionRoutes);
-v1Router.use('/lockers', lockerRoutes);
-v1Router.use('/equipment', equipmentRoutes);
-v1Router.use('/plans', dietWorkoutRoutes);
-v1Router.use('/feedback', feedbackRoutes);
-v1Router.use('/announcements', announcementRoutes);
-v1Router.use('/referrals', referralRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/trainers', trainerRoutes);
+app.use('/api/membership-plans', membershipRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/lockers', lockerRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/plans', dietWorkoutRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/referrals', referralRoutes);
 
 // MFA routes (protected)
-v1Router.use('/mfa', mfaRoutes);
+app.use('/api/mfa', mfaRoutes);
 
 // AI Plan Generator
-v1Router.use('/ai-plans', aiPlanGeneratorRoutes);
+app.use('/api/ai-plans', aiPlanGeneratorRoutes);
 
 // Phase 6-8: User, Role, Payment, Subscription Management
-v1Router.use('/users', userRoutes);
-v1Router.use('/roles', ipWhitelist, roleRoutes); // IP whitelist for role management
-v1Router.use('/payments', paymentRoutes);
-v1Router.use('/subscriptions', subscriptionRoutes);
-v1Router.use('/invoices', invoiceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/roles', ipWhitelist, roleRoutes); // IP whitelist for role management
+app.use('/api/payments', paymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // Phase 9-10: Trainer Advanced & Multi-Tenancy
-v1Router.use('/assignments', assignmentRoutes);
-v1Router.use('/packages', packageRoutes);
-v1Router.use('/trainer-changes', trainerChangeRoutes);
-v1Router.use('/trainer-reviews', trainerReviewRoutes);
-v1Router.use('/gyms', gymRoutes);
-v1Router.use('/enrollments', enrollmentRoutes);
-v1Router.use('/leads', leadRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/packages', packageRoutes);
+app.use('/api/trainer-changes', trainerChangeRoutes);
+app.use('/api/trainer-reviews', trainerReviewRoutes);
+app.use('/api/gyms', gymRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/leads', leadRoutes);
 
 // Phase 11-12: Member Progress & Task Management
-v1Router.use('/progress', memberProgressRoutes);
-v1Router.use('/tasks', taskRoutes);
+app.use('/api/progress', memberProgressRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Phase 1 Migration: Member Credits & Membership Freeze
-v1Router.use('/member-credits', memberCreditsRoutes);
-v1Router.use('/membership-freeze', membershipFreezeRoutes);
+app.use('/api/member-credits', memberCreditsRoutes);
+app.use('/api/membership-freeze', membershipFreezeRoutes);
 
 // NEW: Missing Backend Endpoints (All 6 Phases Implementation)
 // Phase 1: Payment Webhooks & Discounts
 import discountRoutes from './routes/discount.routes';
-v1Router.use('/discounts', discountRoutes);
+app.use('/api/discounts', discountRoutes);
 
 // Phase 2: System Settings
 import settingsRoutes from './routes/settings.routes';
-v1Router.use('/settings', settingsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Phase 4: File Upload
 import fileRoutes from './routes/file.routes';
-v1Router.use('/files', fileRoutes);
+app.use('/api/files', fileRoutes);
 
 // Phase 5: Platform Analytics & System Tools
 import platformRoutes from './routes/platform.routes';
 import systemRoutes from './routes/system.routes';
-v1Router.use('/platform', platformRoutes);
-v1Router.use('/system', systemRoutes);
+app.use('/api/platform', platformRoutes);
+app.use('/api/system', systemRoutes);
 
 // Phase 6: Template & Log Management
 import maintenanceRoutes from './routes/maintenance.routes';
 import logsRoutes from './routes/logs.routes';
-v1Router.use('/maintenance', maintenanceRoutes);
-v1Router.use('/logs', logsRoutes);
-v1Router.use('/member-goals', memberGoalsRoutes);
-v1Router.use('/analytics', analyticsEventsRoutes);
-v1Router.use('/team', teamRoutes);
-v1Router.use('/templates', templatesRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/logs', logsRoutes);
+app.use('/api/member-goals', memberGoalsRoutes);
+app.use('/api/analytics-events', analyticsEventsRoutes);
+app.use('/api/team', teamRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // Admin routes with IP whitelisting
-v1Router.use('/user-management', adminIpWhitelist, userManagementRoutes);
-v1Router.use('/admin-management', adminManagementRoutes);
+app.use('/api/user-management', adminIpWhitelist, userManagementRoutes);
+app.use('/api/admin-management', adminManagementRoutes);
 
 // New Phase: Super Admin & Analytics
-v1Router.use('/gym-subscriptions', gymSubscriptionRoutes);
-v1Router.use('/profiles', profileRoutes);
-v1Router.use('/analytics', analyticsRoutes);
-
-// Mount v1 router
-app.use('/api/v1', v1Router);
-
-// Legacy routes (no v1 version - direct /api/ routes)
-app.use('/api/auth', authRoutes);
-app.use('/api/members', memberRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/gyms', gymRoutes);
-app.use('/api/branches', branchRoutes);
-app.use('/api/settings', settingsRoutes);
 app.use('/api/gym-subscriptions', gymSubscriptionRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -299,7 +284,7 @@ app.listen(PORT, () => {
   console.log(`\n✅ Server ready at http://localhost:${PORT}`);
   console.log(`✅ Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`🔑 API v1: http://localhost:${PORT}/api/v1\n`);
+  console.log(`🔑 API Base URL: http://localhost:${PORT}/api\n`);
 });
 
 // Graceful shutdown

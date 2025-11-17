@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
+import type { AxiosError } from 'axios';
 import api from '@/lib/axios';
 import { User, AuthState, LoginCredentials, UserRole } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
@@ -41,29 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     error: null
   });
 
-  const refreshAccessToken = async (): Promise<boolean> => {
-    try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) return false;
-
-      const response = await api.post('/api/auth/refresh', { refresh_token: refreshToken });
-      const { access_token, refresh_token } = response.data.data || response.data;
-      
-      if (access_token) {
-        localStorage.setItem('access_token', access_token);
-        if (refresh_token) {
-          localStorage.setItem('refresh_token', refresh_token);
-        }
-        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to refresh token:', error);
-      return false;
-    }
-  };
-
   const fetchUserData = async (token: string) => {
     try {
       const response = await api.get('/api/auth/me');
@@ -101,10 +79,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const checkSession = async () => {
-      let token = localStorage.getItem('access_token');
-      const refreshToken = localStorage.getItem('refresh_token');
+      const token = localStorage.getItem('access_token');
 
-      if (!token || !refreshToken) {
+      if (!token) {
         setAuthState(prev => ({
           ...prev,
           isLoading: false,
@@ -127,54 +104,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isLoading: false,
             error: null
           });
-          
-        } catch (error: any) {
-          // If token is invalid or expired, try to refresh it
-          if (error.response?.status === 401 && refreshToken) {
-            try {
-              // Try to refresh the token
-              const refreshResponse = await api.post('/api/auth/refresh', {
-                refresh_token: refreshToken
-              });
-              
-              const { access_token, refresh_token } = refreshResponse.data;
-              
-              // Update tokens in storage
-              localStorage.setItem('access_token', access_token);
-              if (refresh_token) {
-                localStorage.setItem('refresh_token', refresh_token);
-              }
-              
-              // Update auth header
-              api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-              
-              // Retry getting user data with new token
-              const userResponse = await api.get('/api/auth/me');
-              
-              setAuthState({
-                user: userResponse.data,
-                isAuthenticated: true,
-                isLoading: false,
-                error: null
-              });
-              
-              return;
-              
-            } catch (refreshError) {
-              console.error('Token refresh failed:', refreshError);
-              // If refresh fails, clear everything and log out
-              await logout(false);
-              return;
-            }
+        } catch (error) {
+          const axiosError = error as AxiosError;
+          if (axiosError.response?.status === 401) {
+            toast({
+              title: 'Session expired',
+              description: 'Please sign in again to continue.',
+            });
+            await logout(false);
+            return;
           }
-          
-          // If we get here, the error wasn't a 401 or refresh failed
           throw error;
         }
-        
       } catch (error) {
         console.error('Session check failed:', error);
-        // Clear any invalid tokens
         await logout(false);
       }
     };
@@ -216,9 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }, {
         headers: {
           'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      }).catch(error => {
+        }
+      }).catch((error: AxiosError) => {
         console.error('Login API error:', {
           status: error.response?.status,
           statusText: error.response?.statusText,
@@ -236,21 +178,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Handle nested data structure in response
       const responseData = response.data.data || response.data;
-      const { access_token, refresh_token, user: userData } = responseData || {};
+      console.log('[useAuth] Response data extracted:', {
+        hasData: !!responseData,
+        keys: responseData ? Object.keys(responseData) : [],
+        accessTokenExists: !!responseData?.access_token,
+        userExists: !!responseData?.user
+      });
       
+      const { access_token, user: userData } = responseData || {};
+
       if (!access_token || !userData) {
         console.error('Invalid response format:', responseData);
         throw new Error('Invalid response from server: Missing token or user data');
       }
       
-      // Store JWT tokens
+      console.log('[useAuth] ✅ Token and user data extracted:', {
+        tokenLength: access_token.length,
+        userEmail: userData.email
+      });
+
+      // Store JWT token
       localStorage.setItem('access_token', access_token);
-      if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
-      }
-      
+      console.log('[useAuth] ✅ Token stored in localStorage:', {
+        tokenLength: access_token.length,
+        tokenPreview: access_token.substring(0, 30) + '...',
+        storedToken: localStorage.getItem('access_token')?.substring(0, 30) + '...'
+      });
+
       // Set default auth header for future requests
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      console.log('[useAuth] ✅ Authorization header set:', {
+        header: api.defaults.headers.common['Authorization']?.substring(0, 30) + '...'
+      });
       
       // Normalize role format (convert underscores to hyphens)
       const normalizedRole = (userData.role || 'member').replace(/_/g, '-');
@@ -288,7 +247,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let errorMessage = 'Login failed';
       
       if (error instanceof Error) {
-        const axiosError = error as any;
+        const axiosError = error as AxiosError;
         if (axiosError.response) {
           // The request was made and the server responded with a status code
           // that falls out of the range of 2xx
@@ -343,14 +302,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       const responseData = response.data.data || response.data;
-      const { access_token, refresh_token, user: userResponse } = responseData;
+      const { access_token, user: userResponse } = responseData;
 
-      // Store tokens if provided
-      if (access_token) {
+      if (access_token && userResponse) {
         localStorage.setItem('access_token', access_token);
-        if (refresh_token) {
-          localStorage.setItem('refresh_token', refresh_token);
-        }
         api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         
         const user: User = {
@@ -389,7 +344,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error 
-        ? (error as any).response?.data?.message || error.message 
+        ? (error as AxiosError).response?.data?.message || error.message 
         : 'Sign up failed';
       
       setAuthState(prev => ({
@@ -409,12 +364,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async (showToast = true, redirectToLogin = true) => {
-    // Get refresh token before clearing
-    const refreshToken = localStorage.getItem('refresh_token');
-    
     // Clear tokens and auth header first to prevent any race conditions
     localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
     delete api.defaults.headers.common['Authorization'];
     
     // Optimistically update the UI
@@ -426,19 +377,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     try {
-      // Only call the logout endpoint if we have a refresh token
-      if (refreshToken) {
-        // Call backend logout endpoint with a timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        try {
-          await api.post('/api/auth/logout', { refresh_token: refreshToken }, { 
-            signal: controller.signal
-          } as any);
-        } finally {
-          clearTimeout(timeoutId);
-        }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      try {
+        await api.post('/api/auth/logout', undefined, {
+          signal: controller.signal
+        } as any);
+      } finally {
+        clearTimeout(timeoutId);
       }
     } catch (error) {
       console.error('Logout API error:', error);

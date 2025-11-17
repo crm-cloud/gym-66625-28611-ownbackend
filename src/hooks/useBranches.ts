@@ -57,7 +57,6 @@ export const useBranches = (filters?: { search?: string; isActive?: boolean }) =
           console.error('Authentication failed. Redirecting to login...');
           // Clear tokens and redirect to login
           localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
           // Use a small timeout to allow the error to be logged before redirecting
           setTimeout(() => {
             window.location.href = '/login';

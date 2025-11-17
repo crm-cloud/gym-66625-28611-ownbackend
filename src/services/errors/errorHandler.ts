@@ -85,7 +85,6 @@ class ErrorHandlerService {
   handleAuthError(): void {
     // Clear tokens
     localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
     
     // Redirect to login
     window.location.href = '/login';
