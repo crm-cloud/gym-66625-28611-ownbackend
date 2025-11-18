@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { branchController } from '../controllers/branch.controller';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { enforceSubscriptionLimits } from '../middleware/subscription-limits';
 
 const router = Router();
 
@@ -22,7 +23,8 @@ router.get('/:id/stats',
 
 // Create branch - ONLY admin (gym owners) can create branches
 router.post('/', 
-  authorize(['admin']), 
+  authorize(['admin']),
+  enforceSubscriptionLimits('branch'),
   branchController.createBranch
 );
 
