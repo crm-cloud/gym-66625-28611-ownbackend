@@ -93,6 +93,12 @@ import { RoleCreatePage } from "./pages/roles/create";
 import AttendanceDashboard from "./pages/attendance/dashboard";
 import AttendanceDevicesPage from "./pages/attendance/devices";
 import SetupGym from "./pages/SetupGym";
+// Platform and System Management pages
+import PlatformOverview from "./pages/platform/PlatformOverview";
+import PlatformAnalytics from "./pages/platform/PlatformAnalytics";
+import SystemLogs from "./pages/system/SystemLogs";
+import AuditLogs from "./pages/system/AuditLogs";
+import AdminSubscriptions from "./pages/AdminSubscriptions";
 
 // Admin Onboarding Guard Component
 const AdminOnboardingGuard = ({ children }: { children: React.ReactNode }) => {
@@ -292,6 +298,58 @@ const App = () => (
                             <RouteGuard allowedRoles={['super-admin']}>
                               <DashboardLayout>
                                 <SystemBackup />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/system/logs" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <SystemLogs />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/system/audit-logs" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <AuditLogs />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        
+                        {/* Platform Management Routes - Super Admin only */}
+                        <Route 
+                          path="/platform/overview" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <PlatformOverview />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/platform-analytics" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <PlatformAnalytics />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/admin-subscriptions" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <AdminSubscriptions />
                               </DashboardLayout>
                             </RouteGuard>
                           } 

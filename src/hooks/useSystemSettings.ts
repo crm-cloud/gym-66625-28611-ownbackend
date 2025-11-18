@@ -16,7 +16,12 @@ export const useSystemSettings = (category?: string) => {
 };
 
 export const useSystemSetting = (category: string, key: string) => {
-  const { data: settings } = useSystemSettings(category);
+  const { data: settings, error } = useSystemSettings(category);
+  
+  if (error) {
+    console.error('[useSystemSetting] API Error:', error);
+    return undefined;
+  }
   
   if (settings) {
     console.log('[useSystemSetting] Settings data received:', {
@@ -29,6 +34,10 @@ export const useSystemSetting = (category: string, key: string) => {
   
   // Ensure settings is an array before calling find
   if (!Array.isArray(settings)) {
+    if (settings === undefined) {
+      // Still loading or error occurred
+      return undefined;
+    }
     console.warn('[useSystemSetting] Settings is not an array:', settings);
     return undefined;
   }

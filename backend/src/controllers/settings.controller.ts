@@ -41,10 +41,10 @@ export class SettingsController {
       const gymId = req.user?.gymId;
       const branchId = req.user?.branchId;
 
-      // CRITICAL: Super admin can only see platform settings
-      if (userRole === 'super_admin' && (gymId || branchId)) {
-        const ApiError = (await import('../utils/ApiError.js')).ApiError;
-        throw new ApiError('Super admin account should not have gym_id or branch_id', 500);
+      // Super admins should ignore gym_id/branch_id if accidentally set
+      if (userRole === 'super_admin') {
+        gymId = undefined;
+        branchId = undefined;
       }
 
       // CRITICAL: Admin must have gym_id
@@ -104,10 +104,9 @@ export class SettingsController {
 
       // CRITICAL: Validate user context
       if (userRole === 'super_admin') {
-        if (gymId || branchId) {
-          const ApiError = (await import('../utils/ApiError.js')).ApiError;
-          throw new ApiError('Super admin should not have gym_id or branch_id', 500);
-        }
+        // Super admins should ignore gym_id/branch_id if accidentally set
+        gymId = undefined;
+        branchId = undefined;
       } else if (userRole === 'admin') {
         if (!gymId) {
           const ApiError = (await import('../utils/ApiError.js')).ApiError;
