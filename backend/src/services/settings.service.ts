@@ -66,8 +66,11 @@ export class SettingsService {
     gymId?: string,
     branchId?: string
   ) {
-    // CRITICAL: Enforce role-based access using parameterized queries
-    let whereClause: any = { category };
+    try {
+      console.log('[Settings] Getting settings:', { category, userRole, gymId, branchId });
+      
+      // CRITICAL: Enforce role-based access using parameterized queries
+      let whereClause: any = { category };
 
     if (userRole === 'super_admin') {
       // Super admin: ONLY global settings (null gym_id and branch_id)
@@ -135,6 +138,11 @@ export class SettingsService {
     }
 
     return this.decryptSettingFields(setting);
+    } catch (error) {
+      console.error('[Settings] Error in getSettingsByCategory:', error);
+      // Return defaults on error instead of crashing
+      return this.getDefaultSettings(category);
+    }
   }
 
   /**

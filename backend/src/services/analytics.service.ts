@@ -44,73 +44,88 @@ export class AnalyticsService {
     endDate?: Date,
     userRole?: string
   ) {
-    // Super admin gets platform-wide stats
-    if (userRole === 'super_admin' && !gymId && !branchId) {
-      return await this.getPlatformDashboardStats(startDate, endDate);
+    try {
+      console.log('[Analytics] Getting dashboard stats:', { gymId, branchId, userRole });
+      
+      // Super admin gets platform-wide stats
+      if (userRole === 'super_admin' && !gymId && !branchId) {
+        return await this.getPlatformDashboardStats(startDate, endDate);
+      }
+
+      const where: any = {};
+      
+      if (branchId) {
+        where.branch_id = branchId;
+      } else if (gymId) {
+        where.branches = { gym_id: gymId };
+      }
+
+      if (startDate || endDate) {
+        where.created_at = {};
+        if (startDate) where.created_at.gte = startDate;
+        if (endDate) where.created_at.lte = endDate;
+      }
+
+      // Get member counts
+      const totalMembers = await prisma.members.count({ where });
+      const activeMembers = await prisma.members.count({
+        where: {
+          ...where,
+          status: 'active'
+        }
+      });
+
+      // Get revenue
+      const transactions = await prisma.transactions.aggregate({
+        where: {
+          ...where,
+          status: 'success'
+        },
+        _sum: {
+          amount: true
+        }
+      });
+
+      // Get class attendance
+      const attendance = await prisma.attendance.count({
+        where: {
+          ...where,
+          status: 'present'
+        }
+      });
+
+      const totalClasses = await prisma.gym_classes.count({ where });
+      const classAttendanceRate = totalClasses > 0 ? (attendance / totalClasses) * 100 : 0;
+
+      // Calculate retention (members who stayed vs churned)
+      const churnedMembers = await prisma.members.count({
+        where: {
+          ...where,
+          status: 'inactive'
+        }
+      });
+      const memberRetention = totalMembers > 0 ? ((totalMembers - churnedMembers) / totalMembers) * 100 : 0;
+
+      return {
+        totalMembers,
+        activeMembers,
+        monthlyRevenue: transactions._sum.amount || 0,
+        classAttendance: Math.round(classAttendanceRate),
+        memberRetention: Math.round(memberRetention * 10) / 10,
+        growthRate: 3.3 // TODO: Calculate actual growth
+      };
+    } catch (error) {
+      console.error('[Analytics] Error in getDashboardStats:', error);
+      // Return empty/default stats on error
+      return {
+        totalMembers: 0,
+        activeMembers: 0,
+        monthlyRevenue: 0,
+        classAttendance: 0,
+        memberRetention: 0,
+        growthRate: 0
+      };
     }
-
-    const where: any = {};
-    
-    if (branchId) {
-      where.branch_id = branchId;
-    } else if (gymId) {
-      where.branches = { gym_id: gymId };
-    }
-
-    if (startDate || endDate) {
-      where.created_at = {};
-      if (startDate) where.created_at.gte = startDate;
-      if (endDate) where.created_at.lte = endDate;
-    }
-
-    // Get member counts
-    const totalMembers = await prisma.members.count({ where });
-    const activeMembers = await prisma.members.count({
-      where: {
-        ...where,
-        status: 'active'
-      }
-    });
-
-    // Get revenue
-    const transactions = await prisma.transactions.aggregate({
-      where: {
-        ...where,
-        status: 'success'
-      },
-      _sum: {
-        amount: true
-      }
-    });
-
-    // Get class attendance
-    const attendance = await prisma.attendance.count({
-      where: {
-        ...where,
-        status: 'present'
-      }
-    });
-
-    const totalClasses = await prisma.gym_classes.count({ where });
-    const classAttendanceRate = totalClasses > 0 ? (attendance / totalClasses) * 100 : 0;
-
-    // Calculate retention (members who stayed vs churned)
-    const churnedMembers = await prisma.members.count({
-      where: {
-        ...where,
-        status: 'inactive'
-      }
-    });
-    const memberRetention = totalMembers > 0 ? ((totalMembers - churnedMembers) / totalMembers) * 100 : 0;
-
-    return {
-      totalMembers,
-      activeMembers,
-      monthlyRevenue: transactions._sum.amount || 0,
-      classAttendance: Math.round(classAttendanceRate),
-      memberRetention: Math.round(memberRetention * 10) / 10,
-      growthRate: 3.3 // TODO: Calculate actual growth
-    };
   }
 
   async getRevenueAnalytics(gymId?: string, branchId?: string, startDate?: Date, endDate?: Date) {

@@ -251,7 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (axiosError.response) {
           // The request was made and the server responded with a status code
           // that falls out of the range of 2xx
-          errorMessage = axiosError.response.data?.message || 
+          errorMessage = (axiosError.response.data as any)?.message || 
                         axiosError.response.statusText || 
                         `Server responded with status ${axiosError.response.status}`;
           
@@ -344,7 +344,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error 
-        ? (error as AxiosError).response?.data?.message || error.message 
+        ? ((error as AxiosError).response?.data as any)?.message || error.message 
         : 'Sign up failed';
       
       setAuthState(prev => ({
