@@ -211,28 +211,38 @@ export class SettingsService {
     };
 
     // Use Prisma's upsert for safety
-    await prisma.system_settings.upsert({
+    // First, try to find existing setting
+    const existingSetting = await prisma.system_settings.findFirst({
       where: {
-        category_gym_id_branch_id: {
-          category,
-          gym_id: scope.gym_id,
-          branch_id: scope.branch_id
-        }
-      },
-      update: {
-        config: encryptedConfig,
-        is_active: config.is_active !== undefined ? config.is_active : true,
-        updated_at: new Date()
-      },
-      create: {
-        id: crypto.randomUUID(),
         category,
         gym_id: scope.gym_id,
-        branch_id: scope.branch_id,
-        config: encryptedConfig,
-        is_active: config.is_active !== undefined ? config.is_active : true
+        branch_id: scope.branch_id
       }
     });
+
+    if (existingSetting) {
+      // Update existing
+      await prisma.system_settings.update({
+        where: { id: existingSetting.id },
+        data: {
+          config: encryptedConfig,
+          is_active: config.is_active !== undefined ? config.is_active : true,
+          updated_at: new Date()
+        }
+      });
+    } else {
+      // Create new
+      await prisma.system_settings.create({
+        data: {
+          id: crypto.randomUUID(),
+          category,
+          gym_id: scope.gym_id,
+          branch_id: scope.branch_id,
+          config: encryptedConfig,
+          is_active: config.is_active !== undefined ? config.is_active : true
+        }
+      });
+    }
 
     return { success: true, message: 'Settings updated successfully' };
   }
