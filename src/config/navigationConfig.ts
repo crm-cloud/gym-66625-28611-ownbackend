@@ -125,29 +125,111 @@ export const navigationConfig: NavigationGroup[] = [
       }
     ]
   },
-  // Super Admin specific navigation
+  // Super Admin SaaS Platform Management
   {
-    id: 'platform-management',
-    title: 'Platform Management',
+    id: 'saas-platform',
+    title: 'SaaS Platform',
     allowedRoles: ['super-admin'],
-    priority: 2,
+    priority: 1,
     items: [
       {
+        id: 'platform-overview',
+        title: 'Platform Overview',
+        url: '/platform/overview',
+        icon: LayoutDashboard,
+        group: 'saas-platform',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'gym-tenants',
+        title: 'Gym Tenants',
+        url: '/gyms',
+        icon: Building,
+        group: 'saas-platform',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'platform-analytics',
+        title: 'Platform Analytics',
+        url: '/platform-analytics',
+        icon: TrendingUp,
+        group: 'saas-platform',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'platform-reports',
+        title: 'Platform Reports',
+        url: '/platform-reports',
+        icon: FileText,
+        group: 'saas-platform',
+        allowedRoles: ['super-admin'],
+      },
+      {
         id: 'admin-management',
-        title: 'Admin Management',
+        title: 'Admin Accounts',
         url: '/users/admin-management',
         icon: UserCog,
-        group: 'platform-management',
+        group: 'saas-platform',
         allowedRoles: ['super-admin'],
       },
       {
         id: 'subscription-plans',
         title: 'Subscription Plans',
         url: '/subscription-plans',
-        icon: CreditCard,
-        group: 'platform-management',
+        icon: Package,
+        group: 'saas-platform',
         allowedRoles: ['super-admin'],
-      }
+      },
+      {
+        id: 'subscription-assignments',
+        title: 'Assign Subscriptions',
+        url: '/admin-subscriptions',
+        icon: CreditCard,
+        group: 'saas-platform',
+        allowedRoles: ['super-admin'],
+      },
+    ]
+  },
+  
+  // System Management
+  {
+    id: 'system-management',
+    title: 'System Management',
+    allowedRoles: ['super-admin'],
+    priority: 10,
+    items: [
+      {
+        id: 'system-health',
+        title: 'System Health',
+        url: '/system/health',
+        icon: Activity,
+        group: 'system-management',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'system-backups',
+        title: 'Backups & Restore',
+        url: '/system/backups',
+        icon: Database,
+        group: 'system-management',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'system-logs',
+        title: 'System Logs',
+        url: '/system/logs',
+        icon: FileText,
+        group: 'system-management',
+        allowedRoles: ['super-admin'],
+      },
+      {
+        id: 'audit-logs',
+        title: 'Audit Logs',
+        url: '/system/audit-logs',
+        icon: Shield,
+        group: 'system-management',
+        allowedRoles: ['super-admin'],
+      },
     ]
   },
   
@@ -1327,6 +1409,7 @@ export const navigationConfig: NavigationGroup[] = [
 // Role-specific default routes
 export const roleDefaultRoutes: Record<UserRole, string> = {
   'super-admin': '/dashboard',
+  'super_admin': '/dashboard',
   'admin': '/dashboard',
   'manager': '/dashboard',
   'staff': '/dashboard',

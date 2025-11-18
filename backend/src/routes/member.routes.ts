@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { memberController } from '../controllers/member.controller';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { enforceSubscriptionLimits } from '../middleware/subscription-limits';
 
 const router = Router();
 
@@ -28,7 +29,8 @@ router.get('/:id',
 
 // Create member
 router.post('/', 
-  authorize(['admin', 'manager', 'staff']), 
+  authorize(['admin', 'manager', 'staff']),
+  enforceSubscriptionLimits('member'),
   memberController.createMember
 );
 
