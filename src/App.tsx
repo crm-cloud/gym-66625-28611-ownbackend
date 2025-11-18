@@ -202,6 +202,40 @@ const App = () => (
                             </RouteGuard>
                           } 
                         />
+                        
+                        {/* Settings Routes - Aliases for super admin navigation */}
+                        <Route 
+                          path="/settings/global" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin']}>
+                              <DashboardLayout>
+                                <SystemSettings />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/settings/email" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin', 'admin']}>
+                              <DashboardLayout>
+                                <SystemSettings />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        <Route 
+                          path="/settings/sms" 
+                          element={
+                            <RouteGuard allowedRoles={['super-admin', 'admin']}>
+                              <DashboardLayout>
+                                <SystemSettings />
+                              </DashboardLayout>
+                            </RouteGuard>
+                          } 
+                        />
+                        
+                        {/* System Settings Routes - Super Admin only */}
                         <Route 
                           path="/system/email" 
                           element={

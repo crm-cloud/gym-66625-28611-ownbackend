@@ -208,6 +208,7 @@ export const useRBAC = () => {
 const getRolePermissions = (role: UserRole, teamRole?: string): Permission[] => {
   switch (role) {
     case 'super-admin':
+    case 'super_admin':
       // Super admin gets all permissions
       return Object.values(mockRoles).flatMap(roleDef => roleDef.permissions || []);
     case 'admin':
@@ -233,6 +234,7 @@ const getRolePermissions = (role: UserRole, teamRole?: string): Permission[] => 
 const getUserRoleDefinition = (role: UserRole, teamRole?: string): RoleDefinition => {
   switch (role) {
     case 'super-admin':
+    case 'super_admin':
       return mockRoles['super-admin'];
     case 'admin':
       return mockRoles['admin'];

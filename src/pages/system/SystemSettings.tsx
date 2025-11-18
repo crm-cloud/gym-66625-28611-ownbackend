@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useSearchParams } from 'react-router-dom';
 
 export default function SystemSettings() {
-  const { data: allSettings, isLoading } = useSystemSettings();
+  const { data: rawSettings, isLoading } = useSystemSettings();
   const updateSetting = useUpdateSystemSetting();
   const createSetting = useCreateSystemSetting();
   const [searchParams] = useSearchParams();
@@ -27,13 +27,16 @@ export default function SystemSettings() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showSMSEditor, setShowSMSEditor] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
-const [showWhatsAppEditor, setShowWhatsAppEditor] = useState(false);
+  const [showWhatsAppEditor, setShowWhatsAppEditor] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Ensure allSettings is always an array
+  const allSettings = Array.isArray(rawSettings) ? rawSettings : [];
+
   // Group settings by category
   const getSettingsByCategory = (category: string) => {
-    return allSettings?.filter(setting => setting.category === category) || [];
+    return allSettings.filter(setting => setting.category === category) || [];
   };
 
   const getSettingValue = (category: string, key: string) => {
@@ -41,7 +44,7 @@ const [showWhatsAppEditor, setShowWhatsAppEditor] = useState(false);
     if (pendingKey in pendingChanges) {
       return pendingChanges[pendingKey];
     }
-    const setting = allSettings?.find(s => s.category === category && s.key === key);
+    const setting = allSettings.find(s => s.category === category && s.key === key);
     return setting?.value;
   };
 
@@ -55,7 +58,7 @@ const [showWhatsAppEditor, setShowWhatsAppEditor] = useState(false);
     try {
       const promises = Object.entries(pendingChanges).map(async ([key, value]) => {
         const [category, settingKey] = key.split('.');
-        const setting = allSettings?.find(s => s.category === category && s.key === settingKey);
+        const setting = allSettings.find(s => s.category === category && s.key === settingKey);
         
         if (setting) {
           // Update existing setting

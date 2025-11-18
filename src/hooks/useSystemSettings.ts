@@ -39,8 +39,8 @@ export const useSystemSetting = (category: string, key: string) => {
 
 export const useUpdateSystemSetting = () => {
   return useApiMutation(
-    '/api/settings',
-    'put',
+    (data: any) => `/api/settings/${data.category}`,
+    'post',
     {
       invalidateQueries: [['system-settings']],
       successMessage: 'Setting updated successfully'
@@ -61,7 +61,7 @@ export const useBulkUpdateSettings = () => {
 
 export const useCreateSystemSetting = () => {
   return useApiMutation(
-    '/api/settings',
+    (data: any) => `/api/settings/${data.category}`,
     'post',
     {
       invalidateQueries: [['system-settings']],

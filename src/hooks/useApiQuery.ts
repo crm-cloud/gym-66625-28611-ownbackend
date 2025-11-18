@@ -126,7 +126,7 @@ export const useApiQuery = <TData,>(
 
 // Generic mutation hook with automatic error handling
 export const useApiMutation = <TData, TVariables = Record<string, unknown>>(
-  endpoint: string,
+  endpoint: string | ((variables: TVariables) => string),
   method: 'post' | 'put' | 'patch' | 'delete' = 'post',
   options?: {
     onSuccess?: (data: TData, variables: TVariables) => void;
@@ -140,13 +140,16 @@ export const useApiMutation = <TData, TVariables = Record<string, unknown>>(
   return useMutation<TData, ApiErrorResponse, TVariables>({
     mutationFn: async (variables: TVariables): Promise<TData> => {
       try {
-        // Ensure endpoint starts with /api/v1/ if it's not an auth endpoint
-        const formattedEndpoint = endpoint.startsWith('auth/') || 
-                               endpoint.startsWith('/auth/') ||
-                               endpoint.startsWith('api/') ||
-                               endpoint.startsWith('/api/') 
-                               ? endpoint 
-                               : `api/v1/${endpoint}`;
+        // Support dynamic endpoint based on variables
+        const dynamicEndpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
+        
+        // Ensure endpoint starts with /api/ if it's not an auth endpoint
+        const formattedEndpoint = dynamicEndpoint.startsWith('auth/') || 
+                               dynamicEndpoint.startsWith('/auth/') ||
+                               dynamicEndpoint.startsWith('api/') ||
+                               dynamicEndpoint.startsWith('/api/') 
+                               ? dynamicEndpoint 
+                               : `/api/${dynamicEndpoint}`;
         
         console.log(`Mutating (${method}): ${formattedEndpoint}`, variables); // Debug log
         
